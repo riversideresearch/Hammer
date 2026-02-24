@@ -7,7 +7,7 @@
 *.class
 libhammer.pc
 build/
-examples/dns
+dns_parser
 examples/base64
 examples/base64_sem1
 examples/base64_sem2
