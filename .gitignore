@@ -8,6 +8,7 @@
 libhammer.pc
 build/
 dns_parser
+examples/old/dns
 examples/base64
 examples/base64_sem1
 examples/base64_sem2
