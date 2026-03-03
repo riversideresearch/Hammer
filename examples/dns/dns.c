@@ -17,12 +17,12 @@ const uint16_t valid_types[] = {
 const size_t valid_types_count = sizeof(valid_types) / sizeof(valid_types[0]);
 
 int binarySearch(const uint16_t arr[], int left, int right, int key){
-    if (right >=left) {
+    if (right >= left) {
         int mid = left + (right - left) / 2;
 
         if (arr[mid] == key) return mid;
-        if(arr[mid] > key) return binarySearch(arr, left, mid-1, key);
-        return binarySearch(arr, mid +1, right, key);
+        if (arr[mid] > key) return binarySearch(arr, left, mid-1, key);
+        return binarySearch(arr, mid + 1, right, key);
     }
     return -1;
 }
@@ -40,17 +40,17 @@ bool validate_pointer(HParseResult *result, void *user){
 bool validate_type(HParseResult *result, void *user_data){
     uint16_t type = (uint16_t)result->ast->uint;
     int res = binarySearch(valid_types, 0, valid_types_count-1, type);
-    if(res >=0) return true;
+    if (res >= 0) return true;
     else return false;
 }
 bool validate_rclass(HParseResult *result, void *user_data){
     uint16_t class = (uint16_t)result->ast->uint;
-    if (class >= 1 && class<=4) return true;
+    if (class >= 1 && class <= 4) return true;
     else return false;
 }
 bool validate_qclass(HParseResult *result, void *user_data){
     uint16_t class = (uint16_t)result->ast->uint;
-    if ((class >= 1 && class<=4) || class == 254 || class == 255) return true;
+    if ((class >= 1 && class <= 4) || class == 254 || class == 255) return true;
     else return false;
 }
 

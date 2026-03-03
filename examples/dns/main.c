@@ -30,7 +30,6 @@ int main(int argc, char *argv[]) {
 
     if (!header_result){
         puts("Bad header, Packet Failed");
-        h_parse_result_free(header_result);
         return 1;
     }
 
@@ -48,19 +47,11 @@ int main(int argc, char *argv[]) {
     if (!body_result){
         puts("Bad body, Packet Failed");
         h_parse_result_free(header_result);
-        h_parse_result_free(body_result);
         return 1;
     }
 
-    if (header_result && body_result){
-        puts("Packet Passed");
-        h_parse_result_free(header_result);
-        h_parse_result_free(body_result);
-        return 0;
-    }else{
-        puts("Packet Failed");
-         h_parse_result_free(header_result);
-        h_parse_result_free(body_result);
-        return 1;
-    }
+    puts("Packet Passed");
+    h_parse_result_free(header_result);
+    h_parse_result_free(body_result);
+    return 0;
 }
