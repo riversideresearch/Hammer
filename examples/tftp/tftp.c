@@ -1,3 +1,4 @@
+#include "tftp.h"
 #include <hammer/glue.h>
 #include <hammer/hammer.h>
 #include <stdio.h>
@@ -6,7 +7,7 @@
 //uint - 16bits (2 byte op code), (2 byte block #). Data can be 512bytes * 8 max or less
 //function used for bound checking 
 bool validate_dataBytes(HParseResult *result, void* user_data){
-    return result && result->ast && ((result->ast->uint)-16) <= (512*8);
+    return result && result->ast && ((result->ast->uint)-32) <= (512*8);
 }
 
 /*
@@ -49,6 +50,7 @@ HParser *rrqwrqParser(){
     //same shape for read&write requests
     H_RULE(rrqwrq, h_sequence(opc, filename, mode, NULL));
 
+    return rrqwrq;
 }
 
 /*
@@ -67,6 +69,7 @@ HParser *dataParser(){
 
     H_RULE(dataPacket, h_sequence(opc, blockNum, dataBytes, NULL));
 
+    return dataPacket;
 }
 
 /*
@@ -80,8 +83,8 @@ HParser *ackParser(){
     
 
     H_RULE(ackPacket, h_sequence(opc, blockNum, h_end_p(), NULL));
-    //H_RULE(ackPacket, h_sequence(opc, blockNum, NULL));
 
+    return ackPacket;
 }
 
 /*
@@ -106,4 +109,5 @@ HParser *errpktParser(){
 
     H_RULE(errPacket, h_sequence(opc, errCode, errMsg, NULL));
 
+    return errPacket;
 }

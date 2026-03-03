@@ -1,13 +1,10 @@
 #  TFTP Packet Parser
 
-Authored by Matthew Kinnison, you can reach me on Teams or email @ mkinniosn@riversideresearch.org
-
-Here's a link to a tutorial write-up about this file: https://confluence.riversideresearch.org/display/TRS/TFTP+Tutorial
-
 This program will parse TFTP packets to check their validity.
 
-Testing was done with hand typed hex packets, and is not yet comprehensive. 
-For the syntax of a packet, please refer to the tutorial linked above.
+Parser implementation based on [RFC 1350](https://www.rfc-editor.org/rfc/rfc1350).
+
+Testing was done with hand typed hex packets, and is not yet comprehensive.
 
 
 ## Build and Run

@@ -1,5 +1,5 @@
 
-#include "tftp.c"
+#include "tftp.h"
 #include <stdio.h>
 
 int main(int argc, char *argv[]) {
@@ -32,7 +32,6 @@ int main(int argc, char *argv[]) {
         "\x6e\x66\x69\x67\x2e\x74\x78\x74\x01\x6f\x63\x74\x65\x74\x00\x6e\x66\x69\x67\x2e\x74\x78\x74\x01\x6f\x63\x74\x65\x74\x00"
         "\x6e\x66\x69\x67\x2e\x74\x78\x74\x01\x6f\x63\x74\x65\x74\x00\x6e\x66\x69\x67\x2e\x74\x78\x74\x01\x6f\x63\x74\x65\x74\x00"
         "\x6e\x66\x69\x67\x2e\x74\x78\x74\x01\x6f\x63\x74\x65\x74\x00\x6e\x66\x69\x67\x2e\x74\x78\x74\x01\x6f\x63\x74\x65\x74\x00"
-        "\x6e\x66\x69\x67\x2e\x74\x78\x74\x01\x6f\x63\x74\x65\x74\x00\x6e\x66\x69\x67\x2e\x74\x78\x74\x01\x6f\x63\x74\x65\x74\x00"
         "\x6e\x66\x69\x67\x2e\x74\x78\x74\x01""\x01""\x01""\x01";
 
     uint8_t ackPTest1[] = "\x00\x04\x00\x01";     // valid packet within range
@@ -45,58 +44,23 @@ int main(int argc, char *argv[]) {
     uint8_t errTest3[] = "\x00\x05\x04\x00\x1b\x2b";                    // invalid packet, contains invalid string char
     uint8_t errTest4[] = "\x00\x05\x00\x01\x6f\x63\x74\x65\x74\x01";    // invalid  packet, no trailing zero
 
-    //may not always give the length if using a pointer
-    int inputLength  = sizeof(rwTest1);  
-    int inputLength2 = sizeof(rwTest2); 
-    int inputLength3 = sizeof(rwTest3); 
-    int inputLength4 = sizeof(rwTest4); 
-
-    int inputLength5 = sizeof(dataPTest1); 
-    int inputLength6 = sizeof(dataPTest2);
-    int inputLength7 = sizeof(dataPTest3); 
-    int inputLength8 = sizeof(dataPTest4);
-    int inputLength9 = sizeof(dataPTest5);
-
-    int inputLength10  = sizeof(ackPTest1); 
-    int inputLength11 = sizeof(ackPTest2); 
-    int inputLength12 = sizeof(ackPTest3); 
-    int inputLength13 = sizeof(ackPTest4);
-
-    int inputLength14 = sizeof(errTest1); 
-    int inputLength15 = sizeof(errTest2); 
-    int inputLength16 = sizeof(errTest3); 
-    int inputLength17 = sizeof(errTest4); 
-
     //input length - 1 because a string array appends a cheeky hidden 0 byte
-    HParseResult *result  = h_parse(Parser, rwTest1, inputLength-1);
-    HParseResult *result2 = h_parse(Parser, rwTest2, inputLength2-1);
-    HParseResult *result3 = h_parse(Parser, rwTest3, inputLength3-1);
-    HParseResult *result4 = h_parse(Parser, rwTest4, inputLength4-1);
+    const uint8_t *tests[] = {
+        rwTest1, rwTest2, rwTest3, rwTest4,
+        dataPTest1, dataPTest2, dataPTest3, dataPTest4, dataPTest5,
+        ackPTest1, ackPTest2, ackPTest3, ackPTest4,
+        errTest1, errTest2, errTest3, errTest4
+    };
+    size_t lengths[] = {
+        sizeof(rwTest1)-1, sizeof(rwTest2)-1, sizeof(rwTest3)-1, sizeof(rwTest4)-1,
+        sizeof(dataPTest1)-1, sizeof(dataPTest2)-1, sizeof(dataPTest3)-1, sizeof(dataPTest4)-1, sizeof(dataPTest5)-1,
+        sizeof(ackPTest1)-1, sizeof(ackPTest2)-1, sizeof(ackPTest3)-1, sizeof(ackPTest4)-1,
+        sizeof(errTest1)-1, sizeof(errTest2)-1, sizeof(errTest3)-1, sizeof(errTest4)-1
+    };
 
-    HParseResult *result5 = h_parse(Parser, dataPTest1, inputLength5-1);
-    HParseResult *result6 = h_parse(Parser, dataPTest2, inputLength6-1);
-    HParseResult *result7 = h_parse(Parser, dataPTest3, inputLength7-1);
-    HParseResult *result8 = h_parse(Parser, dataPTest4, inputLength8-1);
-    HParseResult *result9 = h_parse(Parser, dataPTest5, inputLength9-1);
-
-    HParseResult *result10  = h_parse(Parser, ackPTest1, inputLength10-1);
-    HParseResult *result11 = h_parse(Parser, ackPTest2, inputLength11-1);
-    HParseResult *result12 = h_parse(Parser, ackPTest3, inputLength12-1);
-    HParseResult *result13 = h_parse(Parser, ackPTest4, inputLength13-1);
-
-    HParseResult *result14 = h_parse(Parser, errTest1, inputLength14-1);
-    HParseResult *result15 = h_parse(Parser, errTest2, inputLength15-1);
-    HParseResult *result16 = h_parse(Parser, errTest3, inputLength16-1);
-    HParseResult *result17 = h_parse(Parser, errTest4, inputLength17-1);
-
-    HParseResult *resultArr[] = {result, result2, result3, result4,
-                                result5, result6, result7, result8,
-                                result9, result10, result11, result12,
-                                result13, result14, result15, result16,
-                                result17};
-    
-    for(int i = 0; i < 17; i++){
-        if (resultArr[i] != NULL){
+    for (int i = 0; i < 17; i++) {
+        HParseResult *result = h_parse(Parser, tests[i], lengths[i]);
+        if (result != NULL) {
             printf(">test %d parsed.<\n", (i + 1));
         } else {
             printf("[parse %d died]\n", (i + 1));

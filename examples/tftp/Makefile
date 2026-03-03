@@ -2,7 +2,7 @@ CC = gcc
 CFLAGS = -g $(shell pkg-config --cflags libhammer)
 LDFLAGS = $(shell pkg-config --libs libhammer)
 TARGET = tftp
-SRC = main.c
+SRC = main.c tftp.c
 
 all: $(TARGET)
 
