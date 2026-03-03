@@ -7,10 +7,10 @@ int main(int argc, char *argv[]) {
     FILE *f_input = stdin;
 
     if (argc > 1) {
-        f_input = fopen(argv[1], "rx");
+        f_input = fopen(argv[1], "rb");
         if (!f_input) {
             puts("ERR: cannot open file");
-            return 0;
+            return 1;
         }
     } else {
         puts("Reading from stdin");
