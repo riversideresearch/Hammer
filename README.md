@@ -49,6 +49,15 @@ For a debug build, add `--variant=debug`.
 
 To make Hammer available system-wide, use `scons install`. This places include files in `/usr/local/include/hammer` and library files in `/usr/local/lib` by default; to install elsewhere, add a `prefix=<destination>` argument, e.g. `scons install prefix=$HOME`.
 
+To remove installed files, use `scons uninstall` (with the same `prefix` if non-default).
+
+To check which variant and version of Hammer is currently installed:
+
+```bash
+PKG_CONFIG_PATH=/usr/local/lib/pkgconfig pkg-config --variable=variant libhammer
+PKG_CONFIG_PATH=/usr/local/lib/pkgconfig pkg-config --modversion libhammer
+```
+
 ## Usage
 
 Just `#include <hammer/hammer.h>` (also `#include <hammer/glue.h>` if you plan to use any of the convenience macros) and link with `-lhammer`.

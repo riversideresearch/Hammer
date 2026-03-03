@@ -237,3 +237,49 @@ if os.path.exists(build_base):
     env.Command("gcov", [], "python -c %s" % repr(gcov_script))
 
 env.Alias("install", targets)
+
+
+def uninstall_action(target, source, env):
+    import glob as _glob
+
+    lib_files = (
+        _glob.glob(os.path.join(env["libpath"], "libhammer.so*"))
+        + [os.path.join(env["libpath"], "libhammer.a")]
+    )
+
+    inc_files = [
+        os.path.join(env["incpath"], h)
+        for h in [
+            "hammer.h",
+            "allocator.h",
+            "compiler_specifics.h",
+            "glue.h",
+            "internal.h",
+            "platform.h",
+        ]
+    ] + [
+        os.path.join(env["parsersincpath"], "parser_internal.h"),
+        os.path.join(env["backendsincpath"], "missing.h"),
+        os.path.join(env["backendsincpath"], "params.h"),
+    ]
+
+    pc_file = [os.path.join(env["pkgconfigpath"], "libhammer.pc")]
+
+    for path in lib_files + inc_files + pc_file:
+        if os.path.exists(path) or os.path.islink(path):
+            os.remove(path)
+            print("Removed: %s" % path)
+        else:
+            print("Not found (skipping): %s" % path)
+
+    for d in [env["backendsincpath"], env["parsersincpath"], env["incpath"]]:
+        try:
+            os.rmdir(d)
+            print("Removed directory: %s" % d)
+        except OSError:
+            pass
+
+
+uninstall = env.Command("uninstall", [], uninstall_action)
+env.Alias("uninstall", uninstall)
+AlwaysBuild(uninstall)
