@@ -22,10 +22,10 @@ HParser *ntpParser() {
     H_RULE(root_delay, h_sequence(h_int16(), h_int16(), NULL)); // 32 bits
     H_RULE(root_disp, h_sequence(h_int16(), h_int16(), NULL));  // 32 bits
     H_RULE(ref_id, h_uint32());                                 // 32 bits
-    H_RULE(ref_ts, h_sequence(h_uint32(), h_int32(), NULL));    // 64 bits
-    H_RULE(org_ts, h_sequence(h_uint32(), h_int32(), NULL));    // 64 bits
-    H_RULE(rec_ts, h_sequence(h_uint32(), h_int32(), NULL));    // 64 bits
-    H_RULE(xmt_ts, h_sequence(h_uint32(), h_int32(), NULL));    // 64 bits
+    H_RULE(ref_ts, h_sequence(h_uint32(), h_uint32(), NULL));   // 64 bits
+    H_RULE(org_ts, h_sequence(h_uint32(), h_uint32(), NULL));   // 64 bits
+    H_RULE(rec_ts, h_sequence(h_uint32(), h_uint32(), NULL));   // 64 bits
+    H_RULE(xmt_ts, h_sequence(h_uint32(), h_uint32(), NULL));   // 64 bits
 
     H_RULE(essential_fields,
            h_sequence(header, root_delay, root_disp, ref_id, ref_ts, org_ts, rec_ts, xmt_ts, NULL));
@@ -50,7 +50,7 @@ HParser *ntpParser() {
     H_RULE(type2, h_sequence(essential_fields, ext_fields, mac, h_end_p(), NULL));
 
     // Matches the first parser that succeeds in sequential order
-    HParser *ntp = h_left(h_choice(type1, type2, NULL), h_end_p());
+    HParser *ntp = h_choice(type1, type2, NULL);
 
     // Return the parser
     return ntp;
