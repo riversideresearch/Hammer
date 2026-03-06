@@ -55,3 +55,9 @@ debian/debhelper-build-stamp
 debian/files
 debian/libhammer.substvars
 debian/libmicrohammer.substvars
+
+# Examples
+examples/tftp/tftp
+examples/tftp/tests
+examples/ntp/ntp_parser
+examples/ntp/packet/test_packets/
