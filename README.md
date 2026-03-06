@@ -5,6 +5,7 @@ Hammer is a parsing library. Like many modern parsing libraries, it provides a p
 Hammer is written in C and provides a packrat parsing backend.
 
 ## MicroHammer
+
 MicroHammer is a slimmed-down version of Hammer with the goal of providing a lightweight, Linux-focused version of Hammer with a minimal, clean codebase. [Link to public release.](https://github.com/riversideresearch/hammer/releases/)
 
 The main feature of MicroHammer is its significantly smaller codebase, allowing for easier maintenance and onboarding. Key differences from the full Hammer library include:
@@ -14,7 +15,6 @@ The main feature of MicroHammer is its significantly smaller codebase, allowing 
 - Windows / macOS not supported
 - Packrat parsing backend only
 - No bindings for other languages
-
 
 ## Features
 
@@ -74,12 +74,12 @@ For information on contributing to Hammer, including development setup, code for
 
 ## Contact
 
-Send an email to parsing@riversideresearch.org
+Send an email to <parsing@riversideresearch.org>
 
 ## Acknowledgment
 
 This material is based upon work supported by the Defense Advanced Research Projects Agency (DARPA) under Prime Contract No. HR001119C0077. Any opinions, findings, and conclusions or recommendations expressed in this material are those of the author(s) and do not necessarily reflect the views of the Defense Advanced Research Projects Agency (DARPA).
 
-This work is a fork of the repository found at: https://gitlab.special-circumstanc.es/hammer/hammer
+This work is a fork of the repository found at: <https://gitlab.special-circumstanc.es/hammer/hammer>
 
 Distribution A: Approved for Public Release

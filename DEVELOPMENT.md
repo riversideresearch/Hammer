@@ -6,29 +6,27 @@ Tested on Ubuntu 22.04 and 24.04 (VM and WSL).
 
 ## Contributor Setup
 
-### Formatting and pre-commit
+### Formatting
 
 Install formatting tools:
 
 ```bash
-sudo apt install -y clang-format pre-commit
+sudo apt install -y clang-format
 ```
 
 Use `clang-format` to keep C code consistent.
 Examples:
 
 - Format all C sources and headers:
+
 ```bash
 clang-format -i **/*.c **/*.h
 ```
+
 - Format a single file:
+
 ```bash
 clang-format -i path/to/file.c
-```
-
-Install the pre-commit hooks defined in `.pre-commit-config.yaml` to run formatting automatically:
-```bash
-pre-commit install
 ```
 
 ### Version management
@@ -44,16 +42,19 @@ The repository centralizes the semantic version in the `VERSION` file. Update th
 ### Test coverage
 
 Install coverage tools:
+
 ```bash
 sudo apt install lcov xdg-utils
 ```
 
 Generate coverage and open the HTML report:
+
 ```bash
 scons -c --variant=debug && scons --coverage --variant=debug test && mkdir -p coverage && lcov --directory build/debug/src --zerocounters && lcov --ignore-errors gcov --capture --initial --directory build/debug/src --output-file coverage/base.info && scons --coverage --variant=debug test && lcov --ignore-errors gcov --capture --directory build/debug/src --output-file coverage/test.info && lcov --add-tracefile coverage/base.info --add-tracefile coverage/test.info --output-file coverage/coverage.info && genhtml coverage/coverage.info --output-directory coverage/html && xdg-open coverage/html/index.html
 ```
 
 Notes:
+
 - On WSL, replace `xdg-open` with `wslview` (from the `wslu` package).
 - Coverage and object files (`.gcov`, `.gcno`, `.gcda`, `.o`) are generated under `build/debug/` or `build/opt/`.
 - To generate `.gcov` files manually: `scons --coverage --variant=debug gcov`.
@@ -61,32 +62,36 @@ Notes:
 ### Linting Python and SCons files
 
 Install `ruff`:
+
 ```bash
 sudo apt install pipx
 pipx install ruff
 ```
 
 Lint all Python and SCons files with:
+
 ```bash
 ruff check $(find . -name "*.py" -o -name "SConstruct" -o -name "SConscript")
 ```
 
-Notes:
-- `ruff` configuration lives in `ruff.toml`.
+> Note: `ruff` configuration lives in `ruff.toml`.
 
 ### Generating documentation (Doxygen)
 
 Install Doxygen:
+
 ```bash
 sudo apt install doxygen
 ```
 
 Build the documentation:
+
 ```bash
 doxygen Doxyfile
 ```
 
 Output will be in `docs/html/`. Open the main page:
+
 ```bash
 xdg-open docs/html/index.html
 ```
@@ -138,19 +143,15 @@ In other words, don't let the (memory manager) streams cross.
 ### Parse Result Behavior
 
 **Regarding parse_result_t:**
+
 - If a parse fails, the parse_result_t will be NULL.
 - If a parse is successful but there's nothing there (i.e., if end_p succeeds), then there's a parse_result_t but its ast is NULL.
 
 **Regarding input location:**
+
 - If parse is successful, input is left at beginning of next thing to be read.
 - If parse fails, location is UNPREDICTABLE.
 
 ### Compile-Time Options
 
 If `CONSISTENCY_CHECK` is defined, enable a bunch of additional internal consistency checks.
-
-### Parser Combinator Implementation Notes
-
-**Regarding butnot and difference:**
-
-There's a "do what I say, not what I do" variation in how we implemented these (versus how jsparse did it). His `butnot` succeeds if p1 and p2 both match and p1's result is longer than p2's, though the comments say it should succeed if p2's result is longer than p1's. Also, his `difference` succeeds if p1 and p2 both match, full stop, returning the result of p2 if p2's result is shorter than p1's or the result of p1 otherwise, though the comments say it should succeed if p2's result is shorter than p1's. Whatever; we're doing what the comments say.
