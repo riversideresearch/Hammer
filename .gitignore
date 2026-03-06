@@ -7,7 +7,8 @@
 *.class
 libhammer.pc
 build/
-examples/dns
+dns_parser
+examples/old/dns
 examples/base64
 examples/base64_sem1
 examples/base64_sem2
@@ -54,3 +55,9 @@ debian/debhelper-build-stamp
 debian/files
 debian/libhammer.substvars
 debian/libmicrohammer.substvars
+
+# Examples
+examples/tftp/tftp
+examples/tftp/tests
+examples/ntp/ntp_parser
+examples/ntp/packet/test_packets/
