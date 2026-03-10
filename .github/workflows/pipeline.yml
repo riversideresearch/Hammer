@@ -1,15 +1,42 @@
-name: Build libmicrohammer .deb
+name: Pipeline
 
 on:
+  pull_request:
   workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
+  clang-format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install clang-format
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-format
+
+      - name: Check formatting
+        run: |
+          find src examples -name '*.c' -o -name '*.h' | xargs clang-format --dry-run --Werror
+
+  scons-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y scons gcc libglib2.0-dev pkg-config
+
+      - name: Run tests
+        run: scons test
+
   build-deb:
     runs-on: ubuntu-latest
-    
     steps:
       - uses: actions/checkout@v4
 
