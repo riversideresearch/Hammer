@@ -6,12 +6,12 @@ Tested on Ubuntu 22.04 and 24.04 (VM and WSL).
 
 ## Contributor Setup
 
-### Formatting and pre-commit
+### Formatting
 
 Install formatting tools:
 
 ```bash
-sudo apt install -y clang-format pre-commit
+sudo apt install -y clang-format
 ```
 
 Use `clang-format` to keep C code consistent.
@@ -24,11 +24,6 @@ clang-format -i **/*.c **/*.h
 - Format a single file:
 ```bash
 clang-format -i path/to/file.c
-```
-
-Install the pre-commit hooks defined in `.pre-commit-config.yaml` to run formatting automatically:
-```bash
-pre-commit install
 ```
 
 ### Version management

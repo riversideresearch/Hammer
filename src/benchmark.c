@@ -8,7 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-static const char *HParserBackendNames[] = {"Packrat", "Regular", "LL(k)", "LALR", "GLR"};
+static const char *HParserBackendNames[] = {"Invalid", "Packrat"};
 
 /*
   Usage:

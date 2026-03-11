@@ -1,3 +1,14 @@
+libmicrohammer (1.1.1-1) unstable; urgency=medium
+
+  * Add scons uninstall target to remove installed libhammer files
+  * Remove version suffix from installed .so files
+  * Add variant=microhammer to pkg-config metadata
+  * Document uninstall and version/variant query in README
+  * Fix crashing scons test compilation from pruned backends
+  * Improve h_in and h_not_in documentation in hammer.h
+
+ -- Mahmoud Elbasiouny <melbasiouny@riversideresearch.org>  Tue, 03 Mar 2026 12:00:00 -0500
+
 libmicrohammer (1.1.0-1) unstable; urgency=medium
 
   * Testing infrastructure overhaul
