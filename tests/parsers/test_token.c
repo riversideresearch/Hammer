@@ -38,7 +38,29 @@ static void test_reshape_token(gconstpointer backend) {
     }
 }
 
+// Test token.c: len not > UINT8_MAX assert
+static void test_token_len_assert(gconstpointer backend) {
+    (void)backend;
+
+    if (g_test_subprocess()) {
+        uint8_t expected[256];
+        memset(expected, 0x41, sizeof(expected));
+
+        HParser *parser = h_token(expected, sizeof(expected));
+
+        // Shouldn't get here
+        (void)parser;
+        return;
+    }
+
+    g_test_trap_subprocess(NULL, 0, 0);
+    g_test_trap_assert_failed();
+}
+
 void register_token_tests(void) {
     g_test_add_data_func("/core/parser/packrat/reshape_token", GINT_TO_POINTER(PB_PACKRAT),
                          test_reshape_token);
+                        
+    g_test_add_data_func("/core/parser/packrat/token_len_assert", GINT_TO_POINTER(PB_PACKRAT),
+                         test_token_len_assert);
 }

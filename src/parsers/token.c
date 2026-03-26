@@ -76,9 +76,11 @@ HParser *h_token(const uint8_t *str, const size_t len) {
     return h_token__m(&system_allocator, str, len);
 }
 HParser *h_token__m(HAllocator *mm__, const uint8_t *str, const size_t len) {
+    // Length has to be <= 255 (uint8) as definied by HToken struct
+    assert(len <= UINT8_MAX);
     HToken *t = h_new(HToken, 1);
     uint8_t *str_cpy = h_new(uint8_t, len);
     memcpy(str_cpy, str, len);
-    t->str = str_cpy, t->len = len;
+    t->str = str_cpy, t->len = (uint8_t)len;
     return h_new_parser(mm__, &token_vt, t);
 }
