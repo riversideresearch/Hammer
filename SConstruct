@@ -22,7 +22,7 @@ vars.Add(
     PathVariable("prefix", "Where to install in the FHS", "/usr/local", PathVariable.PathAccept)
 )
 vars.Add(
-    ListVariable("bindings", "Language bindings to build", "none", ["python", "java"])
+    ListVariable("bindings", "Language bindings to build", "none", ["python", "java", "cpp"])
 )
 vars.Add("python", "Python interpreter", "python3")
 

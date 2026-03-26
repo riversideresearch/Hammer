@@ -64,21 +64,22 @@ Notes:
 Install the required tools:
 
 ```bash
-sudo apt install swig default-jdk
+sudo apt install swig default-jdk libgtest-dev
 pip install setuptools
 ```
 
 Build and test all language bindings:
 
 ```bash
-scons bindings=python,java test
+scons bindings=python,java,cpp test
 ```
 
-To target a specific binding, pass it individually and use its alias (`testpython` or `testjava`):
+To target a specific binding, pass it individually and use its alias (`testpython`, `testjava`, or `testcpp`):
 
 ```bash
 scons bindings=python testpython
 scons bindings=java testjava
+scons bindings=cpp testcpp
 ```
 
 If `JAVA_HOME` is not set, the build locates `javac` via `PATH`. To use a specific JDK:

@@ -14,7 +14,7 @@ The main feature of MicroHammer is its significantly smaller codebase, allowing 
 - More thorough and consistent documentation
 - Windows / macOS not supported
 - Packrat parsing backend only
-- Language bindings for Python and Java (see [Python Bindings](src/bindings/python/README.md), [Java Bindings](src/bindings/java/README.md))
+- Language bindings for Python, Java, and C++ (see [Python Bindings](src/bindings/python/README.md), [Java Bindings](src/bindings/java/README.md), [C++ Bindings](src/bindings/cpp/README.md))
 
 ## Features
 
@@ -95,6 +95,17 @@ scons bindings=java
 ```
 
 See [src/bindings/java/README.md](src/bindings/java/README.md) for the full API reference and usage guide.
+
+### C++
+
+Requires `g++` and `libgtest-dev` (for tests).
+
+```bash
+sudo apt install libgtest-dev
+scons bindings=cpp
+```
+
+See [src/bindings/cpp/README.md](src/bindings/cpp/README.md) for the full API reference and usage guide.
 
 ## Examples
 
