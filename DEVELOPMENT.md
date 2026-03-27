@@ -71,7 +71,7 @@ pip install setuptools
 Build and test all language bindings:
 
 ```bash
-scons bindings=python,java,cpp test
+scons bindings=all test
 ```
 
 To target a specific binding, pass it individually and use its alias (`testpython`, `testjava`, or `testcpp`):
