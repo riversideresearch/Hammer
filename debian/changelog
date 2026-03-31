@@ -1,3 +1,11 @@
+libmicrohammer (1.1.2-1) unstable; urgency=medium
+
+  * Fix token length truncation bug from Issue#3
+  * Document change to prevent confusion over magic number
+  * Add test to check that truncation bug is not possible
+
+ -- Justin Jones <jhjones@riversideresearch.org>  Tue, 31 Mar 2026 15:00:00 -0500
+
 libmicrohammer (1.1.1-1) unstable; urgency=medium
 
   * Add scons uninstall target to remove installed libhammer files
