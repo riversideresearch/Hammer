@@ -67,6 +67,18 @@ namespace hammer {
 
     ParseResult(HParseResult *result) : _result(result) {}
 
+    ParseResult(const ParseResult&) = delete;
+    ParseResult& operator=(const ParseResult&) = delete;
+    ParseResult(ParseResult&& other) noexcept : _result(other._result) { other._result = nullptr; }
+    ParseResult& operator=(ParseResult&& other) noexcept {
+      if (this != &other) {
+        h_parse_result_free(_result);
+        _result = other._result;
+        other._result = nullptr;
+      }
+      return *this;
+    }
+
     ParsedToken getAST() {
       return ParsedToken(_result->ast);
     }
