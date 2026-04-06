@@ -5,8 +5,9 @@ from __future__ import absolute_import, division, print_function
 import glob
 import os
 import re
+import sys
 
-Import("env testruns")
+Import("env testruns binding_results binding_test_stamps")
 
 dist_headers = [
     "hammer.h",
@@ -211,18 +212,28 @@ if GetOption("with_tests"):
     if os.path.basename(_libdir) == "build":
         _libdir = os.path.dirname(_libdir)
     _exe = ctestexec[0].path
-    _run_and_summarize = (
-        "tmp=$$(mktemp); env LD_LIBRARY_PATH="
-        + _libdir
-        + " "
-        + _exe
-        + ' > "$$tmp"; status=$$?; cat "$$tmp"; rm "$$tmp"; exit $$status'
+    reporter = os.path.join(Dir("#").abspath, "tools", "test_reporter.py")
+    core_results_dir = os.path.join(Dir("#").abspath, env.subst("$BUILD_BASE"), "src")
+    core_results_file = os.path.join(core_results_dir, "hammer_core.results")
+    ctestexec_stamp = testenv.Command(
+        "core_tests.stamp",
+        [ctestexec],
+        [
+            "LD_LIBRARY_PATH=%s %s %s --binding Core --results-file %s -- %s"
+            % (_libdir, sys.executable, reporter, core_results_file, _exe),
+            "touch $TARGET",
+        ],
     )
-    ctest = Alias("testc", [ctestexec], _run_and_summarize)
+    AlwaysBuild(ctestexec_stamp)
+    ctest = Alias("testc", [ctestexec_stamp], ctestexec_stamp)
     AlwaysBuild(ctest)
     testruns.append(ctest)
+    binding_results.append(("Core", core_results_file))
+    binding_test_stamps.append(ctestexec_stamp[0])
 
-if libhammer_shared is not None:
-    Export("libhammer_static libhammer_shared")
-else:
-    Export("libhammer_static")
+Export("libhammer_static libhammer_shared")
+
+for b in env.get("bindings", []):
+    if b == "none":
+        continue
+    env.SConscript(["bindings/%s/SConscript" % b])

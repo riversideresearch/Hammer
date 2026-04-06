@@ -21,7 +21,10 @@ vars.Add(
 vars.Add(
     PathVariable("prefix", "Where to install in the FHS", "/usr/local", PathVariable.PathAccept)
 )
-vars.Add("python", "Python interpreter", "python")
+vars.Add(
+    ListVariable("bindings", "Language bindings to build", "none", ["python", "java", "cpp"])
+)
+vars.Add("python", "Python interpreter", "python3")
 
 tools = ["default", "scanreplace"]
 
@@ -188,12 +191,16 @@ env["ENV"].update(x for x in os.environ.items() if x[0].startswith("CCC_"))
 # env.Append(CPPPATH=os.path.join('#', 'hammer'))
 
 testruns = []
+binding_results = []      # [(display_name, results_file_path), ...]
+binding_test_stamps = []  # [SCons node of each binding test stamp, ...]
 
 targets = ["$libpath", "$incpath", "$parsersincpath", "$backendsincpath", "$pkgconfigpath"]
 
 Export("env")
 Export("testruns")
 Export("targets")
+Export("binding_results")
+Export("binding_test_stamps")
 
 if not GetOption("in_place"):
     env["BUILD_BASE"] = "build/$VARIANT"
@@ -208,6 +215,42 @@ else:
 
 for testrun in testruns:
     env.Alias("test", testrun)
+
+if binding_results:
+    _br = list(binding_results)
+
+    def _print_summary(target, source, env, br=_br):
+        rows = []
+        for name, rf in br:
+            try:
+                parts = open(env.subst(rf)).read().strip().split()
+                rows.append((name, int(parts[1]), int(parts[2])))
+            except Exception:
+                pass
+        if not rows:
+            return 0
+        w = max(len(r[0]) for r in rows)
+        tp = sum(r[1] for r in rows)
+        tf = sum(r[2] for r in rows)
+        print("\nTest Results:")
+        for name, p, f in rows:
+            t = p + f
+            status = "passed" if not f else "FAILED"
+            print(f"  {name:<{w}} : {p}/{t} {status}")
+        print("  " + "\u2500" * (w + 18))
+        total = tp + tf
+        status = "passed" if not tf else "FAILED"
+        print(f"  {'Total':<{w}} : {tp}/{total} {status}\n")
+        return 0
+
+    build_base = env.subst("$BUILD_BASE")
+    summary = env.Command(
+        os.path.join(build_base, "src", "binding_tests_summary.stamp"),
+        binding_test_stamps,
+        Action(_print_summary, strfunction=lambda *a: ""),
+    )
+    AlwaysBuild(summary)
+    env.Alias("test", summary)
 
 # Add gcov target to generate coverage files in build directory
 if GetOption("coverage"):

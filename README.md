@@ -5,6 +5,7 @@ Hammer is a parsing library. Like many modern parsing libraries, it provides a p
 Hammer is written in C and provides a packrat parsing backend.
 
 ## MicroHammer
+
 MicroHammer is a slimmed-down version of Hammer with the goal of providing a lightweight, Linux-focused version of Hammer with a minimal, clean codebase. [Link to public release.](https://github.com/riversideresearch/hammer/releases/)
 
 The main feature of MicroHammer is its significantly smaller codebase, allowing for easier maintenance and onboarding. Key differences from the full Hammer library include:
@@ -13,8 +14,7 @@ The main feature of MicroHammer is its significantly smaller codebase, allowing 
 - More thorough and consistent documentation
 - Windows / macOS not supported
 - Packrat parsing backend only
-- No bindings for other languages
-
+- Language bindings for Python, Java, and C++ (see [Python Bindings](src/bindings/python/README.md), [Java Bindings](src/bindings/java/README.md), [C++ Bindings](src/bindings/cpp/README.md))
 
 ## Features
 
@@ -70,6 +70,43 @@ To learn about hammer, check:
 - [Hammer Primer](https://github.com/sergeybratus/HammerPrimer) (outdated in terms of code, but good to get the general thinking)
 - [Try Hammer](https://github.com/sboesen/TryHammer)
 
+## Language Bindings
+
+Hammer provides bindings for use from languages other than C.
+
+### Python
+
+Requires [SWIG](https://www.swig.org/) 4.x, Python 3.8+, and `setuptools`.
+
+```bash
+sudo apt install swig
+scons bindings=python
+```
+
+See [src/bindings/python/README.md](src/bindings/python/README.md) for the full API reference and usage guide.
+
+### Java
+
+Requires [SWIG](https://www.swig.org/) 4.x and JDK 11+.
+
+```bash
+sudo apt install swig default-jdk
+scons bindings=java
+```
+
+See [src/bindings/java/README.md](src/bindings/java/README.md) for the full API reference and usage guide.
+
+### C++
+
+Requires `g++` and `libgtest-dev` (for tests).
+
+```bash
+sudo apt install libgtest-dev
+scons bindings=cpp
+```
+
+See [src/bindings/cpp/README.md](src/bindings/cpp/README.md) for the full API reference and usage guide.
+
 ## Examples
 
 The `examples/` directory contains some simple examples, currently including:
@@ -83,12 +120,12 @@ For information on contributing to Hammer, including development setup, code for
 
 ## Contact
 
-Send an email to parsing@riversideresearch.org
+Send an email to <parsing@riversideresearch.org>
 
 ## Acknowledgment
 
 This material is based upon work supported by the Defense Advanced Research Projects Agency (DARPA) under Prime Contract No. HR001119C0077. Any opinions, findings, and conclusions or recommendations expressed in this material are those of the author(s) and do not necessarily reflect the views of the Defense Advanced Research Projects Agency (DARPA).
 
-This work is a fork of the repository found at: https://gitlab.special-circumstanc.es/hammer/hammer
+This work is a fork of the repository found at: <https://gitlab.special-circumstanc.es/hammer/hammer>
 
 Distribution A: Approved for Public Release

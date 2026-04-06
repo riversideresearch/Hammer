@@ -1,0 +1,130 @@
+# Copyright (c) 2026 Riverside Research
+# -*- python -*-
+
+from __future__ import absolute_import, division, print_function
+
+import os
+import sys
+import shutil
+
+Import("env libhammer_shared testruns targets binding_results binding_test_stamps")
+
+if libhammer_shared is None:
+    print("Warning: Java bindings require the shared library (not available in coverage/gprof builds). Skipping.")
+    Return()
+
+if not shutil.which("swig"):
+    print("Warning: SWIG not found. Install swig to build Java bindings. Skipping.")
+    Return()
+
+# Locate javac, falling back to JAVA_HOME if not on PATH.
+javac = shutil.which("javac")
+if not javac:
+    java_home_env = os.environ.get("JAVA_HOME", "")
+    if java_home_env:
+        candidate = os.path.join(java_home_env, "bin", "javac")
+        if os.path.isfile(candidate):
+            javac = candidate
+if not javac:
+    print("Warning: javac not found. Install a JDK to build Java bindings. Skipping.")
+    Return()
+
+java_home = os.path.dirname(os.path.dirname(os.path.realpath(javac)))
+jni_include = os.path.join(java_home, "include")
+if sys.platform.startswith("linux"):
+    jni_platform_include = os.path.join(jni_include, "linux")
+elif sys.platform.startswith("darwin"):
+    jni_platform_include = os.path.join(jni_include, "darwin")
+else:
+    jni_platform_include = jni_include
+
+if not os.path.isdir(jni_include):
+    print("Warning: JNI headers not found at %s. Skipping Java bindings." % jni_include)
+    Return()
+
+javaenv = env.Clone(IMPLICIT_COMMAND_DEPENDENCIES=0)
+
+project_root = Dir("#").abspath
+javadir = os.path.join(project_root, env["BUILD_BASE"], "src/bindings/java")
+java_src_dir = os.path.join(javadir, "javasrc")
+java_classes_dir = os.path.join(javadir, "classes")
+src_build_dir = os.path.join(project_root, env["BUILD_BASE"], "src")
+hammer_lib_dir = os.path.dirname(str(libhammer_shared[0]))
+
+# Copy hammer.i to the build directory so SWIG can be invoked from there.
+swig_iface = javaenv.Command(
+    "hammer.i", "#src/bindings/swig/hammer.i", Copy("$TARGET", "$SOURCE")
+)
+
+# Run SWIG: generates hammer_wrap.c (primary tracked output) and Java sources in java_src_dir.
+swig_out = javaenv.Command(
+    "hammer_wrap.c",
+    swig_iface,
+    [
+        "mkdir -p " + java_src_dir,
+        "swig -java -package com.riversideresearch.hammer"
+        " -DHAMMER_INTERNAL__NO_STDARG_H"
+        " -I" + src_build_dir +
+        " -outdir " + java_src_dir +
+        " -o $TARGET $SOURCE",
+    ],
+)
+
+# Compile the JNI shared library from the SWIG-generated wrapper.
+jnienv = javaenv.Clone()
+jnienv.Append(CPPPATH=[jni_include, jni_platform_include, src_build_dir])
+jnienv.Append(CCFLAGS=["-fPIC", "-DSWIG", "-std=gnu99", "-Wno-strict-aliasing"])
+jni_lib = jnienv.SharedLibrary(
+    "hammer_jni",
+    swig_out,
+    LIBS=["hammer"],
+    LIBPATH=[hammer_lib_dir],
+)
+Default(jni_lib)
+
+# Compile all generated Java sources and package them into a jar.
+jar_file = javaenv.Command(
+    "hammer.jar",
+    swig_out,
+    [
+        "mkdir -p " + java_classes_dir,
+        "javac -d " + java_classes_dir + " " + java_src_dir + "/*.java",
+        "jar cf $TARGET -C " + java_classes_dir + " .",
+    ],
+)
+javaenv.Depends(jar_file, jni_lib)
+Default(jar_file)
+
+# Run the Java test suite.
+reporter = os.path.join(Dir("#").abspath, "tools", "test_reporter.py")
+results_file = os.path.join(javadir, "hammer_java.results")
+
+javatestenv = javaenv.Clone()
+javatestenv["ENV"]["LD_LIBRARY_PATH"] = hammer_lib_dir + ":" + javadir
+javatestexec = javatestenv.Command(
+    "hammer_tests.stamp",
+    ["#src/bindings/java/HammerTests.java"] + list(jar_file),
+    [
+        "javac -cp " + os.path.join(javadir, "hammer.jar") +
+        " -d " + java_classes_dir + " $SOURCE",
+        "LD_LIBRARY_PATH=" + hammer_lib_dir + ":" + javadir +
+        " " + sys.executable + " " + reporter +
+        " --binding Java --results-file " + results_file +
+        " -- java"
+        " -Djava.library.path=" + javadir +
+        " -cp " + java_classes_dir + ":" + os.path.join(javadir, "hammer.jar") +
+        " HammerTests",
+        "touch $TARGET",
+    ],
+)
+javatest = Alias("testjava", [javatestexec], javatestexec)
+AlwaysBuild(javatestexec)
+testruns.append(javatest)
+binding_results.append(("Java", results_file))
+binding_test_stamps.append(javatestexec[0])
+
+jar_install = javaenv.Install('$prefix/share/java', jar_file)
+jni_install = javaenv.Install('$prefix/lib', jni_lib)
+
+javainstall = Alias("installjava", [jar_install, jni_install])
+targets.append(javainstall)
