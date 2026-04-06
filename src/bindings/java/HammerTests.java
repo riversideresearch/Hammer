@@ -1,7 +1,7 @@
 import com.riversideresearch.hammer.*;
 
 /**
- * Basic smoke tests for the Hammer Java bindings, mirroring hammer_tests.py.
+ * Functional tests for the Hammer Java (JNI) bindings covering all exposed combinators.
  *
  * The JNI library must be loadable via java.library.path. The SConscript sets
  * this up automatically when running through the build system.
@@ -569,6 +569,22 @@ public class HammerTests {
         assertNotNull("rightrec:aaa", p.parse(new byte[]{(byte)'a', (byte)'a', (byte)'a'}));
     }
 
+    static void testSeek() {
+        // h_seek repositions the input stream; seek to 0 (beginning) re-parses from start
+        HParser p = hammer.h_sequence__a(new HParser[]{
+            hammer.h_ch((short)'a'),
+            hammer.h_seek(0, 0), // SEEK_SET = 0; rewind to bit 0
+            hammer.h_ch((short)'a'),
+        });
+
+        HParseResult r = p.parse(new byte[]{(byte)'a'});
+        assertNotNull("seek:success", r);
+        // seek TT_UINT offset is included, then the re-parsed 'a'
+        assertEqual("seek:length", 3L, r.getAst().seqLength());
+        assertEqual("seek:elem0", 'a', r.getAst().seqElement(0).uintValue());
+        assertEqual("seek:elem2", 'a', r.getAst().seqElement(2).uintValue());
+    }
+
     static void testWithEndianness() {
         // BYTE_LITTLE_ENDIAN | BIT_BIG_ENDIAN = 0 | 2 = 2
         // In little-endian byte order, {0x01, 0x00} = 0x0001 = 1
@@ -691,6 +707,7 @@ public class HammerTests {
         testAnd();
         testNot();
         testRightrec();
+        testSeek();
         testWithEndianness();
         testPutGetValue();
         testFreeValue();

@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 #include <hammer/hammer.hpp>
 #include <hammer/hammer_test.hpp>
+#include <ctype.h>
 
 // internal.h is not C++-compatible; forward-declare only what the tests need.
 extern "C" {
@@ -34,6 +35,7 @@ namespace {
     Parser p = Int64();
     EXPECT_TRUE(ParsesTo(p, std::string("\xff\xff\xff\xfe\x00\x00\x00\x00", 8), "s-0x200000000"));
     EXPECT_TRUE(ParseFails(p, std::string("\xff\xff\xff\xfe\x00\x00\x00", 7)));
+    EXPECT_TRUE(ParseFails(p, ""));
   }
 
   TEST(ParserTypes, Int32) {
@@ -62,23 +64,27 @@ namespace {
     Parser p = Uint64();
     EXPECT_TRUE(ParsesTo(p, std::string("\x00\x00\x00\x02\x00\x00\x00\x00", 8), "u0x200000000"));
     EXPECT_TRUE(ParseFails(p, std::string("\x00\x00\x00\x02\x00\x00\x00", 7)));
+    EXPECT_TRUE(ParseFails(p, ""));
   }
 
   TEST(ParserTypes, Uint32) {
     Parser p = Uint32();
     EXPECT_TRUE(ParsesTo(p, std::string("\x00\x02\x00\x00", 4), "u0x20000"));
     EXPECT_TRUE(ParseFails(p, std::string("\x00\x02\x00", 3)));
+    EXPECT_TRUE(ParseFails(p, ""));
   }
 
   TEST(ParserTypes, Uint16) {
     Parser p = Uint16();
     EXPECT_TRUE(ParsesTo(p, std::string("\x02\x00", 2), "u0x200"));
     EXPECT_TRUE(ParseFails(p, "\x02"));
+    EXPECT_TRUE(ParseFails(p, ""));
   }
 
   TEST(ParserTypes, Uint8) {
     Parser p = Uint8();
     EXPECT_TRUE(ParsesTo(p, "\x78", "u0x78"));
+    EXPECT_TRUE(ParsesTo(p, "\x00", "u0x0"));
     EXPECT_TRUE(ParseFails(p, ""));
   }
 
@@ -128,8 +134,6 @@ namespace {
     EXPECT_TRUE(ParseFails(p, "ba "));
     EXPECT_TRUE(ParseFails(p, " ab"));
   }
-
-#include <ctype.h>
 
   HParsedToken* upcase(const HParseResult *p, void* user_data) {
     switch(p->ast->token_type) {

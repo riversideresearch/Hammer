@@ -62,7 +62,6 @@
 
 %typemap(in) void*[] {
   if (PyList_Check($input)) {
-    Py_INCREF($input);
     int size = PyList_Size($input);
     int i = 0;
     int res = 0;
@@ -80,6 +79,7 @@
     return NULL;
   }
  }
+%typemap(freearg) void*[] { free($1); }
 %typemap(in) uint8_t {
   if (PyLong_Check($input)) {
     $1 = (uint8_t)PyLong_AsLong($input);
@@ -88,7 +88,15 @@
     PyErr_SetString(PyExc_ValueError, "Expecting an integer or bytes");
     return NULL;
   } else {
-    $1 = *(uint8_t*)PyBytes_AsString($input);
+    if (PyBytes_Size($input) != 1) {
+      PyErr_SetString(PyExc_ValueError, "Expecting a single byte");
+      return NULL;
+    }
+    const char *buf = PyBytes_AsString($input);
+    if (buf == NULL) {
+      return NULL;
+    }
+    $1 = (uint8_t)(unsigned char)buf[0];
   }
  }
 %typemap(out) HBytes* {
@@ -105,7 +113,7 @@
  }
 %typemap(out) struct HParseResult_* {
   if ($1 == NULL) {
-    // TODO: raise parse failure
+    // Parse failure: return None (the documented Python binding behavior).
     Py_INCREF(Py_None);
     $result = Py_None;
   } else {
@@ -445,6 +453,9 @@ def int16(): return _h_int16()
 def int32(): return _h_int32()
 def int64(): return _h_int64()
 
+def put_value(p, name): return _h_put_value(p, name)
+def get_value(name): return _h_get_value(name)
+def free_value(name): return _h_free_value(name)
 
 %}
 

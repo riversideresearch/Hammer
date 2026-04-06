@@ -48,7 +48,7 @@ namespace hammer {
     void* getUser() const {return token->user;}
     uint64_t getUint() const {return token->uint;}
     int64_t getSint() const {return token->sint;}
-    // TODO: Sequence getSeq() const {return Sequence(token->seq);}
+    // getSeq() is not provided; access token_data.seq directly via the HParsedToken* if needed.
     std::string getBytes() const {return std::string((char*)token->bytes.token, token->bytes.len); }
 
 

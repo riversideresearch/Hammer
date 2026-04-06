@@ -55,6 +55,21 @@ import hammer as h
 
 If you ran `scons install` (or `scons bindings=python installpython`), the package is available system-wide without any path manipulation.
 
+#### Virtual Environments
+
+If you are using a Python virtual environment, activate it before building and installing so that `setup.py` installs into the venv's site-packages rather than the system Python:
+
+```bash
+source /path/to/venv/bin/activate
+scons bindings=python installpython
+```
+
+Alternatively, pass the venv interpreter explicitly so SCons uses it throughout:
+
+```bash
+scons bindings=python python=/path/to/venv/bin/python installpython
+```
+
 ### Basic Example
 
 ```python
@@ -107,6 +122,9 @@ print(result)  # (b'GET ', (b'/', b'i', b'n', ...))
 | `h.epsilon_p()`      | Always succeed, consuming no input                       |
 | `h.end_p()`          | Succeed only at end of input                             |
 | `h.nothing_p()`      | Always fail                                              |
+| `h.put_value(p, name)` | Parse `p` and store the result under `name`            |
+| `h.get_value(name)`  | Retrieve a previously stored value by `name`             |
+| `h.free_value(name)` | Retrieve and free a previously stored value by `name`    |
 
 ### Integer Parsers
 

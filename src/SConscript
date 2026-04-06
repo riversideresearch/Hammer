@@ -234,4 +234,6 @@ if GetOption("with_tests"):
 Export("libhammer_static libhammer_shared")
 
 for b in env.get("bindings", []):
+    if b == "none":
+        continue
     env.SConscript(["bindings/%s/SConscript" % b])

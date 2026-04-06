@@ -90,8 +90,17 @@ if not gtest_found:
             gtest_found = True
             break
 
+cppinstall = Alias(
+    "installcpp",
+    env.Install("$incpath", [
+        "#src/bindings/cpp/hammer/hammer.hpp",
+        "#src/bindings/cpp/hammer/hammer_test.hpp",
+    ]),
+)
+targets.append(cppinstall)
+
 if not gtest_found:
-    print("Warning: gtest not found. Install libgtest-dev to build C++ bindings. Skipping.")
+    print("Warning: gtest not found. Install libgtest-dev to run C++ binding tests. Skipping tests.")
     Return()
 
 cpp_test = cppenv.Program(
@@ -118,12 +127,3 @@ AlwaysBuild(cpptestexec)
 testruns.append(cpptest)
 binding_results.append(("C++", results_file))
 binding_test_stamps.append(cpptestexec[0])
-
-cppinstall = Alias(
-    "installcpp",
-    env.Install("$incpath", [
-        "#src/bindings/cpp/hammer/hammer.hpp",
-        "#src/bindings/cpp/hammer/hammer_test.hpp",
-    ]),
-)
-targets.append(cppinstall)

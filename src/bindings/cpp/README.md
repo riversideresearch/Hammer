@@ -95,18 +95,30 @@ All combinators live in the `hammer` namespace.
 | `Nothing()`                       | Always fail                                            |
 | `Action(p, fn)`                   | Apply action function `fn` to parse result of `p`      |
 | `AttrBool(p, pred)`               | Accept result of `p` only if predicate `pred` is true  |
+| `LengthValue(length, value)`      | Parse a length field then that many repetitions of `value` |
+| `Permutation(p, ..., NULL)`       | Match all parsers in any order; result in argument order |
+| `DropFrom(seq, idx, ..., -1)`     | Drop indexed elements from a sequence result           |
+| `WithEndianness(flags, p)`        | Override byte/bit endianness for `p`                   |
+| `PutValue(p, name)`               | Parse `p` and store the result under `name`            |
+| `GetValue(name)`                  | Retrieve a previously stored value by `name`           |
+| `FreeValue(name)`                 | Retrieve and free a previously stored value by `name`  |
+| `Bind(p, k)`                      | Monadic bind: pass result of `p` to continuation `k`  |
+| `Skip(n)`                         | Consume `n` bits without producing a result            |
+| `Seek(offset, whence)`            | Reposition the input stream (like `fseek`)             |
+| `Tell()`                          | Produce the current bit position as a `TT_UINT` token  |
 
 ### Integer Parsers
 
 ```cpp
-hammer::Uint8()    // unsigned 8-bit
-hammer::Uint16()   // unsigned 16-bit, big-endian
-hammer::Uint32()   // unsigned 32-bit, big-endian
-hammer::Uint64()   // unsigned 64-bit, big-endian
-hammer::Int8()     // signed 8-bit
-hammer::Int16()    // signed 16-bit, big-endian
-hammer::Int32()    // signed 32-bit, big-endian
-hammer::Int64()    // signed 64-bit, big-endian
+hammer::Uint8()          // unsigned 8-bit
+hammer::Uint16()         // unsigned 16-bit, big-endian
+hammer::Uint32()         // unsigned 32-bit, big-endian
+hammer::Uint64()         // unsigned 64-bit, big-endian
+hammer::Int8()           // signed 8-bit
+hammer::Int16()          // signed 16-bit, big-endian
+hammer::Int32()          // signed 32-bit, big-endian
+hammer::Int64()          // signed 64-bit, big-endian
+hammer::Bits(len, sign)  // arbitrary-width integer, `sign` selects signed/unsigned
 ```
 
 ### Inspecting Parse Results
