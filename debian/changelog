@@ -1,3 +1,16 @@
+libmicrohammer (2.0.1-1) unstable; urgency=medium
+
+  * Widen HToken.len and bits_env.length from uint8_t to size_t, fixing silent
+    integer truncation for tokens and bit counts exceeding 255 (closes #3)
+  * Replace assert()-based input validation with explicit guards in bitwriter.c,
+    glue.c, glue.h, datastructures.c, and sloballoc.c so checks survive -DNDEBUG
+    (closes #6)
+  * Update h_assert_type macro to return NULL on type mismatch unconditionally
+  * Update token length test to verify 256-byte tokens parse correctly
+  * Add ruff linting of Python and SCons files to CI pipeline
+
+ -- Mahmoud Elbasiouny <melbasiouny@riversideresearch.org>  Thu, 16 Apr 2026 12:00:00 -0400
+
 libmicrohammer (2.0.0-1) unstable; urgency=medium
 
   * Reintroduce Python, Java/JNI, and C++ language bindings
