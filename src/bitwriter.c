@@ -92,11 +92,7 @@ void h_bit_writer_put(HBitWriter *w, uint64_t data, size_t nbits) {
 const uint8_t *h_bit_writer_get_buffer(HBitWriter *w, size_t *len) {
     HAMMER_ASSERT(w != NULL);
     HAMMER_ASSERT(len != NULL);
-    // Non-byte-boundary writes are unsupported; partial final bytes are not returned.
-    if (w->bit_offset != 0) {
-        w->error = 1;
-        return NULL;
-    }
+    HAMMER_ASSERT(w->bit_offset == 0);
 
     *len = w->index;
     return w->buf;
