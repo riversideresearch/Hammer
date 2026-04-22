@@ -1,3 +1,50 @@
+libmicrohammer (2.0.1-1) unstable; urgency=medium
+
+  * Widen HToken.len and bits_env.length from uint8_t to size_t, fixing silent
+    integer truncation for tokens and bit counts exceeding 255 (closes #3)
+  * Introduce HAMMER_ASSERT in internal.h: unconditional abort for programmer
+    errors that survives -DNDEBUG; replaces assert()-based guards in bitwriter.c,
+    glue.c, glue.h, and datastructures.c (closes #6)
+  * Update h_assert_type macro to abort on type mismatch via HAMMER_ASSERT
+  * Update token length test to verify 256-byte tokens parse correctly
+  * Add ruff linting of Python and SCons files to CI pipeline
+
+ -- Mahmoud Elbasiouny <melbasiouny@riversideresearch.org>  Fri, 17 Apr 2026 12:00:00 -0400
+
+libmicrohammer (2.0.0-1) unstable; urgency=medium
+
+  * Reintroduce Python, Java/JNI, and C++ language bindings
+  * Add SWIG-based Python bindings with unittest smoke tests
+  * Add SWIG-based Java/JNI bindings with standalone smoke tests and hammer.jar packaging
+  * Add header-only C++ wrapper (hammer.hpp) with gtest-based tests and assertion helpers
+  * Add tools/test_reporter.py to aggregate per-binding pass/fail counts into a summary table
+  * Add scons bindings= option and per-binding install targets (installpython, installjava, installcpp)
+  * Extend CI pipeline with binding dependency installation and binding test step
+  * Update org/package namespace from upstandinghackers to riversideresearch
+  * Fix ParseResult double-free by making it move-only
+  * Fix Python SWIG void*[] typemap memory leak and uint8_t single-byte validation
+
+ -- Mahmoud Elbasiouny <melbasiouny@riversideresearch.org>  Mon, 06 Apr 2026 12:00:00 -0400
+
+libmicrohammer (1.1.2-1) unstable; urgency=medium
+
+  * Fix token length truncation bug from Issue#3
+  * Document change to prevent confusion over magic number
+  * Add test to check that truncation bug is not possible
+
+ -- Justin Jones <jhjones@riversideresearch.org>  Tue, 31 Mar 2026 15:00:00 -0500
+
+libmicrohammer (1.1.1-1) unstable; urgency=medium
+
+  * Add scons uninstall target to remove installed libhammer files
+  * Remove version suffix from installed .so files
+  * Add variant=microhammer to pkg-config metadata
+  * Document uninstall and version/variant query in README
+  * Fix crashing scons test compilation from pruned backends
+  * Improve h_in and h_not_in documentation in hammer.h
+
+ -- Mahmoud Elbasiouny <melbasiouny@riversideresearch.org>  Tue, 03 Mar 2026 12:00:00 -0500
+
 libmicrohammer (1.1.0-1) unstable; urgency=medium
 
   * Testing infrastructure overhaul

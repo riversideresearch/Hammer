@@ -1,15 +1,16 @@
+/* Copyright (c) 2026 Riverside Research */
 #include "parser_internal.h"
 
 #include <assert.h>
 
 typedef struct {
     uint8_t *str;
-    uint8_t len;
+    size_t len;
 } HToken;
 
 static HParseResult *parse_token(void *env, HParseState *state) {
     HToken *t = (HToken *)env;
-    for (int i = 0; i < t->len; ++i) {
+    for (size_t i = 0; i < t->len; ++i) {
         uint8_t chr = (uint8_t)h_read_bits(&state->input_stream, 8, false);
         if (t->str[i] != chr) {
             return NULL;

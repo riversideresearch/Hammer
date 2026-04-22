@@ -1,3 +1,4 @@
+/* Copyright (c) 2026 Riverside Research */
 #include "dns_common.h"
 
 #include "../src/hammer.h"

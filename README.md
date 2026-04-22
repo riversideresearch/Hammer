@@ -14,7 +14,7 @@ The main feature of MicroHammer is its significantly smaller codebase, allowing 
 - More thorough and consistent documentation
 - Windows / macOS not supported
 - Packrat parsing backend only
-- No bindings for other languages
+- Language bindings for Python, Java, and C++ (see [Python Bindings](src/bindings/python/README.md), [Java Bindings](src/bindings/java/README.md), [C++ Bindings](src/bindings/cpp/README.md))
 
 ## Features
 
@@ -49,6 +49,15 @@ For a debug build, add `--variant=debug`.
 
 To make Hammer available system-wide, use `scons install`. This places include files in `/usr/local/include/hammer` and library files in `/usr/local/lib` by default; to install elsewhere, add a `prefix=<destination>` argument, e.g. `scons install prefix=$HOME`.
 
+To remove installed files, use `scons uninstall` (with the same `prefix` if non-default).
+
+To check which variant and version of Hammer is currently installed:
+
+```bash
+PKG_CONFIG_PATH=/usr/local/lib/pkgconfig pkg-config --variable=variant libhammer
+PKG_CONFIG_PATH=/usr/local/lib/pkgconfig pkg-config --modversion libhammer
+```
+
 ## Usage
 
 Just `#include <hammer/hammer.h>` (also `#include <hammer/glue.h>` if you plan to use any of the convenience macros) and link with `-lhammer`.
@@ -60,6 +69,43 @@ To learn about hammer, check:
 - the [user guide](https://github.com/UpstandingHackers/hammer/wiki/User-guide)
 - [Hammer Primer](https://github.com/sergeybratus/HammerPrimer) (outdated in terms of code, but good to get the general thinking)
 - [Try Hammer](https://github.com/sboesen/TryHammer)
+
+## Language Bindings
+
+Hammer provides bindings for use from languages other than C.
+
+### Python
+
+Requires [SWIG](https://www.swig.org/) 4.x, Python 3.8+, and `setuptools`.
+
+```bash
+sudo apt install swig
+scons bindings=python
+```
+
+See [src/bindings/python/README.md](src/bindings/python/README.md) for the full API reference and usage guide.
+
+### Java
+
+Requires [SWIG](https://www.swig.org/) 4.x and JDK 11+.
+
+```bash
+sudo apt install swig default-jdk
+scons bindings=java
+```
+
+See [src/bindings/java/README.md](src/bindings/java/README.md) for the full API reference and usage guide.
+
+### C++
+
+Requires `g++` and `libgtest-dev` (for tests).
+
+```bash
+sudo apt install libgtest-dev
+scons bindings=cpp
+```
+
+See [src/bindings/cpp/README.md](src/bindings/cpp/README.md) for the full API reference and usage guide.
 
 ## Examples
 

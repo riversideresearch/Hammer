@@ -1,3 +1,4 @@
+/* Copyright (c) 2026 Riverside Research */
 #ifndef HAMMER_DNS_RR__H
 #define HAMMER_DNS_RR__H
 

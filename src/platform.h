@@ -1,3 +1,4 @@
+/* Copyright (c) 2026 Riverside Research */
 #ifndef HAMMER_PLATFORM__H
 #define HAMMER_PLATFORM__H
 

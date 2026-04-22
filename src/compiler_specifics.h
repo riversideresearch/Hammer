@@ -1,3 +1,4 @@
+/* Copyright (c) 2026 Riverside Research */
 #ifndef HAMMER_COMPILER_SPECIFICS__H
 #define HAMMER_COMPILER_SPECIFICS__H
 

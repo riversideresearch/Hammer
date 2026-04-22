@@ -1,3 +1,4 @@
+/* Copyright (c) 2026 Riverside Research */
 #include "internal.h"
 
 #include <stdlib.h>

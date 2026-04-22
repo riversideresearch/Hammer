@@ -1,3 +1,4 @@
+/* Copyright (c) 2026 Riverside Research */
 /*
  * NOTE: This is an internal header and installed for use by extensions. The
  * API is not guaranteed stable.

@@ -1,0 +1,61 @@
+# Copyright (c) 2026 Riverside Research
+# -*- python -*-
+
+from __future__ import absolute_import, division, print_function
+
+import os
+import shutil
+import sys
+
+Import("env libhammer_shared testruns targets binding_results binding_test_stamps")
+
+if libhammer_shared is None:
+    print("Warning: Python bindings require the shared library (not available in coverage/gprof builds). Skipping.")
+    Return()
+
+if not shutil.which("swig"):
+    print("Warning: SWIG not found. Install swig to build Python bindings. Skipping.")
+    Return()
+
+pythonenv = env.Clone(IMPLICIT_COMMAND_DEPENDENCIES=0)
+
+swig = pythonenv.Command("hammer.i", "#src/bindings/swig/hammer.i", Copy("$TARGET", "$SOURCE"))
+setup = ["setup.py"]
+pydir = os.path.join(env["BUILD_BASE"], "src/bindings/python")
+pysetup = os.path.join(pydir, "setup.py")
+libhammer_python = pythonenv.Command(
+    ["hammer.py", "hammer_wrap.c"],
+    [swig, setup],
+    "%s %s build_ext --inplace" % (env["python"], pysetup),
+)
+Default(libhammer_python)
+
+reporter = os.path.join(Dir("#").abspath, "tools", "test_reporter.py")
+project_root = Dir("#").abspath
+abs_pydir = os.path.join(project_root, env["BUILD_BASE"], "src/bindings/python")
+results_file = os.path.join(abs_pydir, "hammer_python.results")
+lib_dir = os.path.dirname(str(libhammer_shared[0]))
+
+pytestenv = pythonenv.Clone()
+pytests = ["hammer_tests.py"]
+pytestexec = pytestenv.Command(
+    "hammer_tests.stamp",
+    pytests + list(libhammer_python),
+    [
+        "LD_LIBRARY_PATH=%s PYTHONPATH=%s %s %s --binding Python --results-file %s"
+        " -- %s -m unittest discover -s %s -p 'hammer_tests.py'"
+        % (lib_dir, abs_pydir, sys.executable, reporter, results_file, env["python"], abs_pydir),
+        "touch $TARGET",
+    ],
+)
+pytest = Alias("testpython", [pytestexec], pytestexec)
+AlwaysBuild(pytestexec)
+testruns.append(pytest)
+binding_results.append(("Python", results_file))
+binding_test_stamps.append(pytestexec[0])
+
+pyinstallexec = pythonenv.Command(
+    None, libhammer_python, "%s %s install" % (env["python"], pysetup)
+)
+pyinstall = Alias("installpython", [pyinstallexec], pyinstallexec)
+targets.append(pyinstall)

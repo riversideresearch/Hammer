@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Copyright (c) 2026 Riverside Research
 # Wrapper script for cppcheck
 # Usage:
 #   ./tools/cppcheck/run.sh           # console output

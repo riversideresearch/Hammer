@@ -1,3 +1,4 @@
+# Copyright (c) 2026 Riverside Research
 from __future__ import absolute_import, division, print_function
 
 Import("env")

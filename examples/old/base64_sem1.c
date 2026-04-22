@@ -1,3 +1,4 @@
+/* Copyright (c) 2026 Riverside Research */
 // Example parser: Base64, with fine-grained semantic actions
 //
 // Demonstrates how to attach semantic actions to grammar rules and piece by

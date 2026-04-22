@@ -420,8 +420,7 @@ HParseResult *h_parse__m(HAllocator *mm__, const HParser *parser, const uint8_t 
                          size_t length);
 
 /**
- * @brief Initialize a parser for iteratively consuming an input stream in chunks. This is only
- * supported by some backends.
+ * @brief Initialize a parser for iteratively consuming an input stream in chunks.
  *
  * @param parser Parser to use
  * @return Result is NULL if not supported by the backend.
@@ -517,7 +516,7 @@ HParser *h_bits(size_t len, _Bool sign);
 HParser *h_bits__m(HAllocator *mm__, size_t len, _Bool sign);
 
 /**
- * @brief Returns a parser that parses the specified number of octets. The input does not have to be
+ * @brief Returns a parser that parses the specified number of bytes. The input does not have to be
  * aligned to a byte boundary.
  *
  * @param len Number of bytes
@@ -657,19 +656,27 @@ HParser *h_action(const HParser *p, const HAction a, void *user_data);
 HParser *h_action__m(HAllocator *mm__, const HParser *p, const HAction a, void *user_data);
 
 /**
- * @brief Parse a single character in the given charset
- * @param charset Character set
- * @param length Charset length
+ * @brief Parse a single byte that is in the given charset. Always attempts to
+ * consume exactly one byte from the input; advances the cursor by one byte on
+ * success. Fails (and does not advance the cursor) if the byte is not in the
+ * charset.
+ * @param charset Array of accepted byte values
+ * @param length Number of bytes in charset
  * @return Result token type: TT_UINT
+ * @note Consumes 1 byte (8 bits) from the input stream on success
  */
 HParser *h_in(const uint8_t *charset, size_t length);
 HParser *h_in__m(HAllocator *mm__, const uint8_t *charset, size_t length);
 
 /**
- * @brief Parse a single character *NOT* in the given charset
- * @param charset Character set to exclude
- * @param length Charset length
+ * @brief Parse a single byte that is *NOT* in the given charset. Always
+ * attempts to consume exactly one byte from the input; advances the cursor by
+ * one byte on success. Fails (and does not advance the cursor) if the byte is
+ * in the charset.
+ * @param charset Array of excluded byte values
+ * @param length Number of bytes in charset
  * @return Result token type: TT_UINT
+ * @note Consumes 1 byte (8 bits) from the input stream on success
  */
 HParser *h_not_in(const uint8_t *charset, size_t length);
 HParser *h_not_in__m(HAllocator *mm__, const uint8_t *charset, size_t length);
@@ -878,8 +885,7 @@ HParser *h_epsilon_p__m(HAllocator *mm__);
 /**
  * @brief This parser applies its first argument to read an unsigned integer value, then applies its
  * second argument that many times. length should parse an unsigned integer value; this is checked
- * at runtime. Specifically, the token_type of the returned token must be TT_UINT. In future we
- * might relax this to include TT_USER but don't count on it.
+ * at runtime. Specifically, the token_type of the returned token must be TT_UINT.
  *
  * @param length Parser to read length
  * @param value Parser to apply length times

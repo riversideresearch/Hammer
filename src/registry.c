@@ -1,3 +1,4 @@
+/* Copyright (c) 2026 Riverside Research */
 /* Parser combinators for binary formats.
  * Copyright (C) 2012  Meredith L. Patterson, Dan "TQ" Hirsch
  *

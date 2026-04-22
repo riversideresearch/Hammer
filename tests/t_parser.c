@@ -1,3 +1,4 @@
+/* Copyright (c) 2026 Riverside Research */
 #include "glue.h"
 #include "hammer.h"
 #include "internal.h"

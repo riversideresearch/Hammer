@@ -234,4 +234,3 @@ void register_bitreader_tests(void) {
     g_test_add_func("/core/bitreader/byte_le_fast_path", test_read_bits_byte_le_fast_path);
     g_test_add_func("/core/bitreader/byte_le_slow_path", test_read_bits_byte_le_slow_path);
 }
-

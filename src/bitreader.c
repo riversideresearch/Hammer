@@ -1,3 +1,4 @@
+/* Copyright (c) 2026 Riverside Research */
 /* Bit-parsing operations for Hammer.
  * Copyright (C) 2012  Meredith L. Patterson, Dan "TQ" Hirsch
  *

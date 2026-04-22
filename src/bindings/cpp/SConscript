@@ -1,0 +1,129 @@
+# Copyright (c) 2026 Riverside Research
+# -*- python -*-
+
+from __future__ import absolute_import, division, print_function
+
+import glob as _glob
+import os
+import shutil
+import subprocess
+import sys
+
+Import("env libhammer_shared testruns targets binding_results binding_test_stamps")
+
+if libhammer_shared is None:
+    print("Warning: C++ bindings require the shared library (not available in coverage/gprof builds). Skipping.")
+    Return()
+
+cxx = str(env.get("CXX", "g++"))
+if not shutil.which(cxx):
+    print("Warning: C++ compiler (%s) not found. Skipping C++ bindings." % cxx)
+    Return()
+
+project_root = Dir("#").abspath
+src_dir = os.path.join(project_root, "src")
+cpp_src_dir = os.path.join(project_root, "src/bindings/cpp")
+hammer_lib_dir = os.path.dirname(str(libhammer_shared[0]))
+
+cppenv = env.Clone()
+# Strip C-only flags from the cloned env; -std=c99 is invalid for g++.
+# Also drop -Werror so gtest headers don't break the build.
+cppenv["CCFLAGS"] = [
+    f for f in cppenv.get("CCFLAGS", [])
+    if str(f) not in ("-std=c99", "-Werror")
+]
+cppenv.Append(CXXFLAGS=["-std=c++14"])
+cppenv.Append(CPPPATH=[cpp_src_dir, src_dir])
+cppenv.Append(LIBS=["hammer"])
+cppenv.Append(LIBPATH=[hammer_lib_dir])
+cppenv.MergeFlags("-Wno-missing-field-initializers")
+
+# Locate gtest. Try three strategies in order:
+#   1. pkg-config (works when libgtest-dev ships a .pc file)
+#   2. Pre-compiled system libs + headers (Ubuntu 20.04+)
+#   3. Build from system source (fallback for older distros)
+gtest_extra_objs = []
+gtest_found = False
+
+try:
+    flags = subprocess.check_output(
+        ["pkg-config", "--cflags", "--libs", "gtest_main"],
+        stderr=subprocess.DEVNULL,
+    ).decode().strip()
+    cppenv.MergeFlags(flags)
+    gtest_found = True
+except Exception:
+    pass
+
+if not gtest_found:
+    gtest_h = "/usr/include/gtest/gtest.h"
+    gtest_main_libs = (
+        _glob.glob("/usr/lib/*/libgtest_main.a")
+        + _glob.glob("/usr/lib/libgtest_main.a")
+    )
+    if os.path.isfile(gtest_h) and gtest_main_libs:
+        cppenv.Append(
+            LIBPATH=[os.path.dirname(gtest_main_libs[0])],
+            LIBS=["gtest_main", "gtest", "pthread"],
+        )
+        gtest_found = True
+
+if not gtest_found:
+    for gtest_base in [
+        "/usr/src/googletest/googletest",
+        "/usr/src/googletest",
+        "/usr/src/gtest",
+    ]:
+        gtest_h_candidate = os.path.join(gtest_base, "include/gtest/gtest.h")
+        gtest_all_cc = os.path.join(gtest_base, "src/gtest-all.cc")
+        gtest_main_cc = os.path.join(gtest_base, "src/gtest_main.cc")
+        if os.path.isfile(gtest_h_candidate) and os.path.isfile(gtest_all_cc):
+            gtest_inc = os.path.join(gtest_base, "include")
+            genv = cppenv.Clone()
+            genv.Append(CPPPATH=[gtest_inc, gtest_base])
+            genv.MergeFlags("-DGTEST_HAS_PTHREAD=0")
+            gtest_extra_objs = [genv.Object("gtest-all", gtest_all_cc)]
+            if os.path.isfile(gtest_main_cc):
+                gtest_extra_objs.append(genv.Object("gtest-main", gtest_main_cc))
+            cppenv.Append(CPPPATH=[gtest_inc])
+            cppenv.Append(LIBS=["pthread"])
+            gtest_found = True
+            break
+
+cppinstall = Alias(
+    "installcpp",
+    env.Install("$incpath", [
+        "#src/bindings/cpp/hammer/hammer.hpp",
+        "#src/bindings/cpp/hammer/hammer_test.hpp",
+    ]),
+)
+targets.append(cppinstall)
+
+if not gtest_found:
+    print("Warning: gtest not found. Install libgtest-dev to run C++ binding tests. Skipping tests.")
+    Return()
+
+cpp_test = cppenv.Program(
+    "hammer_test",
+    gtest_extra_objs + ["#src/bindings/cpp/cpp_tests.cpp"],
+)
+Default(cpp_test)
+
+reporter = os.path.join(Dir("#").abspath, "tools", "test_reporter.py")
+cppdir = os.path.join(Dir("#").abspath, env["BUILD_BASE"], "src/bindings/cpp")
+results_file = os.path.join(cppdir, "hammer_cpp.results")
+
+cpptestexec = cppenv.Command(
+    "hammer_tests.stamp",
+    [cpp_test],
+    [
+        "LD_LIBRARY_PATH=%s %s %s --binding C++ --results-file %s -- %s"
+        % (hammer_lib_dir, sys.executable, reporter, results_file, cpp_test[0].path),
+        "touch $TARGET",
+    ],
+)
+cpptest = Alias("testcpp", [cpptestexec], cpptestexec)
+AlwaysBuild(cpptestexec)
+testruns.append(cpptest)
+binding_results.append(("C++", results_file))
+binding_test_stamps.append(cpptestexec[0])

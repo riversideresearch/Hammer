@@ -28,6 +28,7 @@
 
 #include <assert.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
 
 /* "Internal" in this case means "we're not ready to commit
@@ -46,6 +47,12 @@
             h_platform_errx(1, "Assertion failed (programmer error): %s", message);                \
     } while (0)
 #endif
+
+/* Unconditional assertion for programmer errors — fires in all builds, including -DNDEBUG. */
+#define HAMMER_ASSERT(cond)                                                                        \
+    ((void)((cond) ||                                                                              \
+            (fprintf(stderr, "Hammer assertion failed: %s (%s:%d)\n", #cond, __FILE__, __LINE__),  \
+             abort(), 0)))
 
 #define HAMMER_FN_IMPL_NOARGS(rtype_t, name)                                                       \
     rtype_t name(void) { return name##__m(system_allocator); }                                     \

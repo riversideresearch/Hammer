@@ -1,3 +1,4 @@
+/* Copyright (c) 2026 Riverside Research */
 /* Pretty-printer for Hammer.
  * Copyright (C) 2012  Meredith L. Patterson, Dan "TQ" Hirsch
  *

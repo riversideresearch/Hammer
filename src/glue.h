@@ -1,3 +1,4 @@
+/* Copyright (c) 2026 Riverside Research */
 /**
  * API additions for writing grammar and semantic actions more concisely
  *
@@ -25,8 +26,7 @@
 #define HAMMER_GLUE__H
 
 #include "hammer.h"
-
-#include <assert.h>
+#include "internal.h"
 
 /**
  * Grammar specification
@@ -217,8 +217,8 @@ HParsedToken *h_make_float(HArena *arena, float val);
 
 /** Extract (cast) type-specific value back from HParsedTokens... */
 
-/** Pass-through assertion that a given token has the expected type. */
-#define h_assert_type(T, P) (assert(P->token_type == (HTokenType)T), P)
+/** Pass-through assertion that a given token has the expected type. Aborts on mismatch. */
+#define h_assert_type(T, P) (HAMMER_ASSERT((P)->token_type == (HTokenType)(T)), (P))
 
 /** Convenience short-hand forms of h_assert_type. */
 #define H_ASSERT(TYP, TOK) h_assert_type(TT_##TYP, TOK)

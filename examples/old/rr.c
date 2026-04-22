@@ -1,3 +1,4 @@
+/* Copyright (c) 2026 Riverside Research */
 #include "rr.h"
 
 #include "../src/hammer.h"

@@ -59,6 +59,35 @@ Notes:
 - Coverage and object files (`.gcov`, `.gcno`, `.gcda`, `.o`) are generated under `build/debug/` or `build/opt/`.
 - To generate `.gcov` files manually: `scons --coverage --variant=debug gcov`.
 
+### Building and testing language bindings
+
+Install the required tools:
+
+```bash
+sudo apt install swig default-jdk libgtest-dev
+pip install setuptools
+```
+
+Build and test all language bindings:
+
+```bash
+scons bindings=all test
+```
+
+To target a specific binding, pass it individually and use its alias (`testpython`, `testjava`, or `testcpp`):
+
+```bash
+scons bindings=python testpython
+scons bindings=java testjava
+scons bindings=cpp testcpp
+```
+
+If `JAVA_HOME` is not set, the build locates `javac` via `PATH`. To use a specific JDK:
+
+```bash
+JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 scons bindings=java
+```
+
 ### Linting Python and SCons files
 
 Install `ruff`:
@@ -71,10 +100,12 @@ pipx install ruff
 Lint all Python and SCons files with:
 
 ```bash
-ruff check $(find . -name "*.py" -o -name "SConstruct" -o -name "SConscript")
+ruff check $(find . -path ./build -prune -o \( -name "*.py" -o -name "SConstruct" -o -name "SConscript" \) -print)
 ```
 
-> Note: `ruff` configuration lives in `ruff.toml`.
+Notes:
+
+- `ruff` configuration lives in `ruff.toml`.
 
 ### Generating documentation (Doxygen)
 

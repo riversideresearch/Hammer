@@ -1,3 +1,4 @@
+/* Copyright (c) 2026 Riverside Research */
 #if defined(_MSC_VER)
 /* find or insert datum into search tree */
 void *tsearch(const void *vkey, void **vrootp, int (*compar)(const void *, const void *));

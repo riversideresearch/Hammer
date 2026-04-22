@@ -1,3 +1,4 @@
+/* Copyright (c) 2026 Riverside Research */
 // Example parser: Base64, syntax only.
 //
 // Demonstrates how to construct a Hammer parser that recognizes valid Base64

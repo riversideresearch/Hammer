@@ -1,3 +1,4 @@
+/* Copyright (c) 2026 Riverside Research */
 /*
  * Example parser that demonstrates the use of user-defined token types.
  *

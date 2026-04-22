@@ -1,3 +1,4 @@
+/* Copyright (c) 2026 Riverside Research */
 #ifndef HAMMER_TSEARCH__H
 #define HAMMER_TSEARCH__H
 

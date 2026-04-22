@@ -1,3 +1,4 @@
+/* Copyright (c) 2026 Riverside Research */
 #include "parser_internal.h"
 
 static HParseResult *parse_end(void *env, HParseState *state) {
