@@ -14,7 +14,7 @@ The main feature of MicroHammer is its significantly smaller codebase, allowing 
 - More thorough and consistent documentation
 - Windows / macOS not supported
 - Packrat parsing backend only
-- Language bindings for Python, Java, and C++ (see [Python Bindings](src/bindings/python/README.md), [Java Bindings](src/bindings/java/README.md), [C++ Bindings](src/bindings/cpp/README.md))
+- Language bindings for Python, Java, C++, and Go (see [Python Bindings](src/bindings/python/README.md), [Java Bindings](src/bindings/java/README.md), [C++ Bindings](src/bindings/cpp/README.md), [Go Bindings](src/bindings/go/README.md))
 
 ## Features
 
@@ -106,6 +106,17 @@ scons bindings=cpp
 ```
 
 See [src/bindings/cpp/README.md](src/bindings/cpp/README.md) for the full API reference and usage guide.
+
+### Go
+
+Requires [SWIG](https://www.swig.org/) 4.x and Go 1.22.2.
+
+```bash
+sudo apt install swig golang
+scons bindings=go
+```
+
+See [src/bindings/go/README.md](src/bindings/go/README.md) for the full API reference and usage guide.
 
 ## Examples
 
