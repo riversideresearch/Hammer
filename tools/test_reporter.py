@@ -45,6 +45,10 @@ def _parse(binding, text):
         mp = re.search(r"\[  PASSED  \] (\d+) test", text)
         mf = re.search(r"\[  FAILED  \] (\d+) test", text)
         return (int(mp.group(1)) if mp else 0, int(mf.group(1)) if mf else 0)
+    elif b == "go":
+        passed = len(re.findall(r"^--- PASS:", text, re.MULTILINE))
+        failed = len(re.findall(r"^--- FAIL:", text, re.MULTILINE))
+        return passed, failed
     return 0, 0
 
 

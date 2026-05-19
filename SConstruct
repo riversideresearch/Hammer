@@ -22,7 +22,7 @@ vars.Add(
     PathVariable("prefix", "Where to install in the FHS", "/usr/local", PathVariable.PathAccept)
 )
 vars.Add(
-    ListVariable("bindings", "Language bindings to build", "none", ["python", "java", "cpp"])
+    ListVariable("bindings", "Language bindings to build", "none", ["python", "java", "cpp", "go"])
 )
 vars.Add("python", "Python interpreter", "python3")
 
@@ -226,7 +226,7 @@ if binding_results:
                 parts = open(env.subst(rf)).read().strip().split()
                 rows.append((name, int(parts[1]), int(parts[2])))
             except Exception:
-                pass
+                rows.append(("N/A", 0, 0))
         if not rows:
             return 0
         w = max(len(r[0]) for r in rows)

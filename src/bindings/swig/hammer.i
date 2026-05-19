@@ -154,8 +154,8 @@
   static struct HParsedToken_* call_action(const struct HParseResult_ *p, void* user_data);
   static bool call_predicate(struct HParseResult_ *p, void* user_data);
  %}
-#elif !defined(SWIGJAVA)
-  #warning no uint8_t* typemaps defined
+// #elif !defined(SWIGJAVA)
+//   #warning no uint8_t* typemaps defined
 #endif
 
 #if defined(SWIGJAVA)
@@ -258,6 +258,12 @@
 #include "glue.h"
 %}
 %include "allocator.h"
+
+%ignore HTokenData;
+%ignore HResultTiming;
+%ignore HCaseResult_::timestamp;
+%ignore HParsedToken_::token_data;
+
 %warnfilter(451) HResultTiming;
 %include "hammer.h"
 
@@ -502,5 +508,81 @@ def free_value(name): return _h_free_value(name)
         return -1;
     }
 }
+
+#endif
+
+
+#ifdef SWIGGO
+
+%extend HParser_ {
+    struct HParseResult_* parse(const uint8_t* input, size_t length) {
+        return h_parse($self, input, length);
+    }
+    bool compile(HParserBackend backend) {
+        return h_compile($self, backend, NULL) == 0;
+    }
+}
+
+%extend HParsedToken_ {
+  
+    /* Token type as int - compare against TT_NONE, TT_BYTES, TT_SINT, TT_UINT, TT_SEQUENCE. */
+    int tokenType() {
+        return (int)$self->token_type;
+    }
+    long long sintValue() {
+        return (long long)$self->sint;
+    }
+    unsigned long long uintValue() {
+        return (unsigned long long)$self->uint;
+    }
+    size_t seqLength() {
+        return ($self->token_type == TT_SEQUENCE) ? $self->seq->used : 0;
+    }
+    /* Returns the i-th element of a TT_SEQUENCE token, or NULL if out of range. */
+    struct HParsedToken_* seqElement(size_t i) {
+        if ($self->token_type == TT_SEQUENCE && i < $self->seq->used)
+            return $self->seq->elements[i];
+        return NULL;
+    }
+    const uint8_t *bytesData() {
+    return ($self->token_type == TT_BYTES)
+        ? $self->bytes.token
+        : NULL;
+    }
+    size_t bytesLength() {
+        return ($self->token_type == TT_BYTES) ? $self->bytes.len : 0;
+    }
+    /* Returns byte value at index i as a short (0-255), or -1 if out of range. */
+    short byteAt(size_t i) {
+        if ($self->token_type == TT_BYTES && i < $self->bytes.len)
+            return (short)(unsigned short)$self->bytes.token[i];
+        return -1;
+    }
+}
+
+%ignore HCountedArray_;
+
+/*
+ * Base typemap
+ */
+
+%typemap(gotype) (const uint8_t* input, size_t length) "[]byte"
+%typemap(imtype) (const uint8_t* input, size_t length) "[]byte"
+%typemap(goin) (const uint8_t* input, size_t length) "$1"
+
+%typemap(in) (const uint8_t* input, size_t length) {
+    $1 = (const uint8_t*)$input;
+    $2 = (size_t)len($input);
+}
+
+/*
+ * Reuse for equivalent signaturesGetToken_data().GetSint
+ */
+
+%apply (const uint8_t* input, size_t length) {
+    (uint8_t* str, size_t len),
+    (const uint8_t* str, const size_t len),
+    (const uint8_t* charset, size_t length)
+};
 
 #endif

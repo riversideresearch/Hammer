@@ -1,0 +1,135 @@
+from __future__ import absolute_import, division, print_function
+
+import os
+import sys
+import shutil
+
+Import("env libhammer_shared testruns targets binding_results binding_test_stamps")
+
+if libhammer_shared is None:
+    print("Warning: Go bindings require shared library. Skipping.")
+    Return()
+
+if not shutil.which("swig"):
+    print("Warning: SWIG not found. Skipping.")
+    Return()
+
+if not shutil.which("go"):
+    print("Warning: Go toolchain not found. Skipping.")
+    Return()
+
+goenv = env.Clone(IMPLICIT_COMMAND_DEPENDENCIES=0)
+
+project_root = Dir("#").abspath
+src_dir = os.path.join(project_root, "src")
+go_src_dir = os.path.join(project_root, "src/bindings/go")
+build_dir = os.path.join(env["BUILD_BASE"], "src/bindings/go")
+hammer_lib_dir = os.path.dirname(str(libhammer_shared[0]))
+
+#
+# Go toolchain needs HOME/GOCACHE
+#
+
+if "HOME" in os.environ:
+    goenv["ENV"]["HOME"] = os.environ["HOME"]
+
+if "XDG_CACHE_HOME" in os.environ:
+    goenv["ENV"]["XDG_CACHE_HOME"] = os.environ["XDG_CACHE_HOME"]
+
+goenv["ENV"]["GOCACHE"] = os.path.join(
+    project_root,
+    env["BUILD_BASE"],
+    ".gocache",
+)
+
+
+#
+# Copy interface file
+#
+
+swig = goenv.Command(
+    "hammer.i",
+    "#src/bindings/swig/hammer.i",
+    Copy("$TARGET", "$SOURCE"),
+)
+
+#
+# Generate temporary go.mod
+#
+
+gomod = goenv.Command(
+    "go.mod",
+    [],
+    [
+        "echo 'module hammer' > $TARGET",
+        "echo 'go 1.22' >> $TARGET",
+    ],
+)
+
+#
+# Generate Go bindings
+#
+
+gobindings = goenv.Command(
+    [
+        os.path.join(build_dir, "hammer.go"),
+        os.path.join(build_dir, "hammer_wrap.c"),
+        os.path.join(build_dir, "hammer_test.go"),
+    ],
+    [swig, gomod],
+    (
+        "cd %s && "
+        "swig -go -cgo -module hammer "
+        "-I%s/src "
+        "-o hammer_wrap.c "
+        "hammer.i && "
+        "cp %s/hammer_test.go %s/hammer_test.go"
+    ) % (
+        build_dir,
+        project_root,
+        go_src_dir,
+        build_dir,
+    ),
+)
+
+Default(gobindings)
+
+gotests = gobindings
+
+#
+# Run tests via reporter
+#
+
+reporter = os.path.join(project_root, "tools", "test_reporter.py")
+results_file = os.path.join(build_dir, "hammer_go.results")
+
+gotestexec = goenv.Command(
+    "hammer_tests.stamp",
+    gobindings + [libhammer_shared],
+    [
+        (
+            "cd %s && "
+            "LD_LIBRARY_PATH=%s "
+            "CGO_CFLAGS='-I%s/src' "
+            "CGO_LDFLAGS='-L%s -lhammer' "
+            "%s %s --binding Go --results-file %s -- "
+            "go test -v"
+        ) % (
+            build_dir,
+            hammer_lib_dir,
+            project_root,
+            hammer_lib_dir,
+            sys.executable,
+            reporter,
+            results_file,
+        ),
+        "touch $TARGET",
+    ],
+)
+
+goalias = Alias("testgo", [gotestexec], gotestexec)
+AlwaysBuild(gotestexec)
+testruns.append(goalias)
+targets.append(goalias)
+binding_results.append(("Go", os.path.abspath(results_file)))
+binding_test_stamps.append(gotestexec[0])
