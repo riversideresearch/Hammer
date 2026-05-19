@@ -4,7 +4,7 @@ Go bindings for the Hammer parser combinator library, generated with [SWIG](http
 
 ## Prerequisites
 
-* [Go](https://go.dev/) 1.22+
+* [Go](https://go.dev/) 1.22+ (Apt offers Go up to v1.22 (2024), but later versions exist)
 * [SWIG](https://www.swig.org/) 4.x
 * Hammer shared library built (see top-level README)
 
