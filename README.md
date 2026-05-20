@@ -4,18 +4,6 @@ Hammer is a parsing library. Like many modern parsing libraries, it provides a p
 
 Hammer is written in C and provides a packrat parsing backend.
 
-## Hammer
-
-Hammer is a lightweight, Linux-focused parsing library with a minimal, clean codebase. [Link to public release.](https://github.com/riversideresearch/hammer/releases/)
-
-The main feature of Hammer is its small codebase, allowing for easier maintenance and onboarding. Key characteristics include:
-
-- Linux-focused development and deployment
-- More thorough and consistent documentation
-
-- Packrat parsing backend only
-- Language bindings for Python, Java, C++, and Go (see [Python Bindings](src/bindings/python/README.md), [Java Bindings](src/bindings/java/README.md), [C++ Bindings](src/bindings/cpp/README.md), [Go Bindings](src/bindings/go/README.md))
-
 ## Features
 
 - **Bit-oriented** -- grammars can include single-bit flags or multi-bit constructs that span character boundaries with no hassle
