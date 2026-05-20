@@ -6,10 +6,15 @@ import sys
 from setuptools import Extension, setup
 
 invoked = os.getcwd()
-if os.path.dirname(sys.argv[0]) != "":
-    os.chdir(os.path.dirname(sys.argv[0]))
+setup_dir = os.path.dirname(os.path.abspath(__file__))
+if setup_dir:
+    os.chdir(setup_dir)
 
-with open("../../../VERSION", "r") as version_file:
+version_path = os.environ.get(
+    "HAMMER_VERSION_FILE",
+    os.path.join(setup_dir, "..", "..", "..", "VERSION"),
+)
+with open(version_path, "r") as version_file:
     version = version_file.read().strip()
 
 setup(

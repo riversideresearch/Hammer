@@ -24,6 +24,7 @@ project_root = Dir("#").abspath
 src_dir = os.path.join(project_root, "src")
 go_src_dir = os.path.join(project_root, "src/bindings/go")
 build_dir = os.path.join(env["BUILD_BASE"], "src/bindings/go")
+abs_build_dir = os.path.join(project_root, build_dir)
 hammer_lib_dir = os.path.dirname(str(libhammer_shared[0]))
 
 #
@@ -72,9 +73,9 @@ gomod = goenv.Command(
 
 gobindings = goenv.Command(
     [
-        os.path.join(build_dir, "hammer.go"),
-        os.path.join(build_dir, "hammer_wrap.c"),
-        os.path.join(build_dir, "hammer_test.go"),
+        "hammer.go",
+        "hammer_wrap.c",
+        "hammer_test.go",
     ],
     [swig, gomod],
     (
@@ -85,10 +86,10 @@ gobindings = goenv.Command(
         "hammer.i && "
         "cp %s/hammer_test.go %s/hammer_test.go"
     ) % (
-        build_dir,
+        abs_build_dir,
         project_root,
         go_src_dir,
-        build_dir,
+        abs_build_dir,
     ),
 )
 
@@ -101,7 +102,7 @@ gotests = gobindings
 #
 
 reporter = os.path.join(project_root, "tools", "test_reporter.py")
-results_file = os.path.join(build_dir, "hammer_go.results")
+results_file = os.path.join(abs_build_dir, "hammer_go.results")
 
 gotestexec = goenv.Command(
     "hammer_tests.stamp",
@@ -112,13 +113,15 @@ gotestexec = goenv.Command(
             "LD_LIBRARY_PATH=%s "
             "CGO_CFLAGS='-I%s/src' "
             "CGO_LDFLAGS='-L%s -lhammer' "
+            "GOCACHE=%s "
             "%s %s --binding Go --results-file %s -- "
             "go test -v"
         ) % (
-            build_dir,
+            abs_build_dir,
             hammer_lib_dir,
             project_root,
             hammer_lib_dir,
+            goenv["ENV"]["GOCACHE"],
             sys.executable,
             reporter,
             results_file,
