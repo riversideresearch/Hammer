@@ -4,24 +4,24 @@ Hammer is a parsing library. Like many modern parsing libraries, it provides a p
 
 Hammer is written in C and provides a packrat parsing backend.
 
-## MicroHammer
+## Hammer
 
-MicroHammer is a slimmed-down version of Hammer with the goal of providing a lightweight, Linux-focused version of Hammer with a minimal, clean codebase. [Link to public release.](https://github.com/riversideresearch/hammer/releases/)
+Hammer is a lightweight, Linux-focused parsing library with a minimal, clean codebase. [Link to public release.](https://github.com/riversideresearch/hammer/releases/)
 
-The main feature of MicroHammer is its significantly smaller codebase, allowing for easier maintenance and onboarding. Key differences from the full Hammer library include:
+The main feature of Hammer is its small codebase, allowing for easier maintenance and onboarding. Key characteristics include:
 
 - Linux-focused development and deployment
 - More thorough and consistent documentation
-- Windows / macOS not supported
+
 - Packrat parsing backend only
 - Language bindings for Python, Java, C++, and Go (see [Python Bindings](src/bindings/python/README.md), [Java Bindings](src/bindings/java/README.md), [C++ Bindings](src/bindings/cpp/README.md), [Go Bindings](src/bindings/go/README.md))
 
 ## Features
 
-- **Bit-oriented** -- grammars can include single-bit flags or multi-bit constructs that span character boundaries, with no hassle
-- **Thread-safe, reentrant** (for most purposes; see Known Issues for details)
-- **Benchmarking for parsing backends** -- determine empirically which backend will be most time-efficient for your grammar
-- **Parsing backends:** -- currently only Packrat parsing is supported
+- **Bit-oriented** -- grammars can include single-bit flags or multi-bit constructs that span character boundaries with no hassle
+- **Thread-safe, reentrant** (for most purposes)
+- **Parsing backend** -- currently only Packrat parsing is supported
+- Windows and macOS installation is possible but not officially supported
 
 ## Installing
 
