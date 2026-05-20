@@ -9,9 +9,12 @@ invoked = os.getcwd()
 if os.path.dirname(sys.argv[0]) != "":
     os.chdir(os.path.dirname(sys.argv[0]))
 
+with open("../../../VERSION", "r") as version_file:
+    version = version_file.read().strip()
+
 setup(
     name="hammer",
-    version="1.1.1",
+    version=version,
     author="Riverside Research",
     description="The Hammer parser combinator library",
     ext_modules=[
