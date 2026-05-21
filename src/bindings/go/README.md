@@ -149,6 +149,9 @@ func main() {
     requestLine := hammer.Sequence(method, printable)
 
     result := requestLine.Parse([]byte("GET /index.html"))
+    if result != nil {
+        defer hammer.DeleteHParseResult(result)
+    }
 
     fmt.Println(result)
 }
