@@ -50,7 +50,7 @@ HParser *ntpParser() {
     H_RULE(type2, h_sequence(essential_fields, ext_fields, mac, h_end_p(), NULL));
 
     // Matches the first parser that succeeds in sequential order
-    HParser *ntp = h_choice(type1, type2, NULL);
+    HParser *ntp = h_left(h_choice(type1, type2, NULL), h_end_p());
 
     // Return the parser
     return ntp;
