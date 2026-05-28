@@ -61,7 +61,8 @@ swig_out = javaenv.Command(
     "hammer_wrap.c",
     swig_iface,
     [
-        "mkdir -p " + java_src_dir,
+        Delete(java_src_dir),
+        Mkdir(java_src_dir),
         "swig -java -package com.riversideresearch.hammer"
         " -DHAMMER_INTERNAL__NO_STDARG_H"
         " -I" + src_build_dir +
@@ -87,7 +88,8 @@ jar_file = javaenv.Command(
     "hammer.jar",
     swig_out,
     [
-        "mkdir -p " + java_classes_dir,
+        Delete(java_classes_dir),
+        Mkdir(java_classes_dir),
         "javac -d " + java_classes_dir + " " + java_src_dir + "/*.java",
         "jar cf $TARGET -C " + java_classes_dir + " .",
     ],

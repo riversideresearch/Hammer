@@ -18,6 +18,8 @@ if not shutil.which("swig"):
     Return()
 
 pythonenv = env.Clone(IMPLICIT_COMMAND_DEPENDENCIES=0)
+project_root = Dir("#").abspath
+version_file = os.path.join(project_root, "VERSION")
 
 swig = pythonenv.Command("hammer.i", "#src/bindings/swig/hammer.i", Copy("$TARGET", "$SOURCE"))
 setup = ["setup.py"]
@@ -26,12 +28,11 @@ pysetup = os.path.join(pydir, "setup.py")
 libhammer_python = pythonenv.Command(
     ["hammer.py", "hammer_wrap.c"],
     [swig, setup],
-    "%s %s build_ext --inplace" % (env["python"], pysetup),
+    "HAMMER_VERSION_FILE=%s %s %s build_ext --inplace" % (version_file, env["python"], pysetup),
 )
 Default(libhammer_python)
 
 reporter = os.path.join(Dir("#").abspath, "tools", "test_reporter.py")
-project_root = Dir("#").abspath
 abs_pydir = os.path.join(project_root, env["BUILD_BASE"], "src/bindings/python")
 results_file = os.path.join(abs_pydir, "hammer_python.results")
 lib_dir = os.path.dirname(str(libhammer_shared[0]))

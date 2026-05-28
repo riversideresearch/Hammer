@@ -64,7 +64,7 @@ Notes:
 Install the required tools:
 
 ```bash
-sudo apt install swig default-jdk libgtest-dev
+sudo apt install swig default-jdk libgtest-dev golang-go
 pip install setuptools
 ```
 
@@ -74,12 +74,13 @@ Build and test all language bindings:
 scons bindings=all test
 ```
 
-To target a specific binding, pass it individually and use its alias (`testpython`, `testjava`, or `testcpp`):
+To target a specific binding, pass it individually and use its alias (`testpython`, `testjava`, `testcpp`, or `testgo`):
 
 ```bash
 scons bindings=python testpython
 scons bindings=java testjava
 scons bindings=cpp testcpp
+scons bindings=go testgo
 ```
 
 If `JAVA_HOME` is not set, the build locates `javac` via `PATH`. To use a specific JDK:

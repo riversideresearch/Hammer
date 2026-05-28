@@ -1,3 +1,15 @@
+libhammer (2.1.0-1) unstable; urgency=medium
+
+  * Rename MicroHammer packaging and documentation back to Hammer
+  * Update Debian source and binary package names from libmicrohammer to libhammer
+  * Remove obsolete pkg-config variant metadata now that only one Hammer variant ships
+  * Add Go language bindings, tests, and documentation
+  * Clean generated Java binding outputs before regeneration to prevent stale SWIG wrappers
+    from breaking binding builds
+  * Bump project and Python binding package versions to 2.1.0
+
+ -- Mahmoud Elbasiouny <melbasiouny@riversideresearch.org>  Wed, 20 May 2026 12:00:00 -0400
+
 libmicrohammer (2.0.1-1) unstable; urgency=medium
 
   * Widen HToken.len and bits_env.length from uint8_t to size_t, fixing silent
