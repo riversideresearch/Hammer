@@ -57,6 +57,7 @@ debian/libhammer.substvars
 debian/libmicrohammer.substvars
 
 # Examples
+examples/*/.hammer-local/
 examples/tftp/tftp
 examples/tftp/tests
 examples/ntp/ntp_parser

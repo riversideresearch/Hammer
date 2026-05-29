@@ -113,6 +113,10 @@ The `examples/` directory contains some simple examples, currently including:
 
 - [base64](https://en.wikipedia.org/wiki/Base64)
 - [DNS](https://en.wikipedia.org/wiki/Domain_Name_System)
+- [NTP](https://en.wikipedia.org/wiki/Network_Time_Protocol)
+- [TFTP](https://en.wikipedia.org/wiki/Trivial_File_Transfer_Protocol)
+
+See the example-specific READMEs and the wiki for build and walkthrough details.
 
 ## Contributing
 
