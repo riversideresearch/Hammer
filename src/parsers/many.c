@@ -242,3 +242,104 @@ HParser *h_length_value__m(HAllocator *mm__, const HParser *length, const HParse
     env->value = value;
     return h_new_parser(mm__, &length_value_vt, env);
 }
+
+typedef struct {
+    const HParser *p;
+    size_t count;
+}  HRepeatCap;
+
+static HParseResult *parse_cap(void *env, HParseState *state) {
+    HRepeatCap *env_ = (HRepeatCap *)env;
+    size_t size = env_->count;
+    if (size <= 0)
+        size = 4;
+    if (size > 1024)
+        size = 1024; // let's try parsing some elements first...
+    HCountedArray *seq = h_carray_new_sized(state->arena, size);
+    size_t count = 0;
+    HInputStream bak;
+    while (env_->count > count) {
+        bak = state->input_stream;
+        HParseResult *elem = h_do_parse(env_->p, state);
+        if (!elem)
+            goto stop;
+        if (elem->ast)
+            h_carray_append(seq, (void *)elem->ast);
+        count++;
+    }
+succ:; // necessary for the label to be here...
+    HParsedToken *res = a_new(HParsedToken, 1);
+    res->token_type = TT_SEQUENCE;
+    res->seq = seq;
+    res->index = 0;
+    res->bit_length = 0;
+    res->bit_offset = 0;
+    return make_result(state->arena, res);
+stop:
+    if (want_suspend(state))
+        return NULL; // bail out early, leaving overrun flag
+    else {
+        state->input_stream = bak;
+        goto succ;
+    }
+    //return NULL;
+}
+
+static bool cap_isValidRegular(void *env) {
+    HRepeatCap *until = (HRepeatCap *)env;
+    return (until->p->vtable->isValidRegular(until->p->env));
+}
+
+static bool cap_isValidCF(void *env) {
+    HRepeatCap *until = (HRepeatCap *)env;
+    return (until->p->vtable->isValidCF(until->p->env));
+}
+
+static void desugar_cap(HAllocator *mm__, HCFStack *stk__, void *env) {
+    //mostly unchanged from desguar_many. Also TODO: refactor this.
+    HRepeatCap *cap = (HRepeatCap *)env;
+
+    HCFS_BEGIN_CHOICE() {
+        HCFS_BEGIN_SEQ() {
+            HCFS_DESUGAR(cap->p);
+            HCFS_BEGIN_CHOICE() { // Mar
+                HCFS_BEGIN_SEQ() {
+                    // stk__->last_completed->reshape = h_act_ignore; // BUG: This modifies a
+                    // memoized entry.
+                    HCFS_DESUGAR(cap->p);
+                    HCFS_APPEND(HCFS_THIS_CHOICE);
+                }
+                HCFS_END_SEQ();
+                HCFS_BEGIN_SEQ() {}
+                HCFS_END_SEQ();
+            }
+            HCFS_END_CHOICE(); // Mar
+        }
+        
+        HCFS_BEGIN_SEQ() {
+            // HCFS_DESUGAR(h_ignore__m(mm__, h_epsilon_p()));
+        }
+        HCFS_END_SEQ();
+        
+        HCFS_THIS_CHOICE->reshape = reshape_many;
+    }
+    HCFS_END_CHOICE();
+}
+
+static const HParserVtable cap_vt = {
+    .parse = parse_cap,
+    .isValidRegular = cap_isValidRegular, 
+    .isValidCF = cap_isValidCF, 
+    .desugar = desugar_cap, 
+    .higher = true,
+};
+
+HParser *h_many_cap(const HParser *p, const size_t n) {
+    return h_many_cap__m(&system_allocator, p, n);
+}
+HParser *h_many_cap__m(HAllocator *mm__, const HParser *p, const size_t n) {
+    HRepeatCap *env = h_new(HRepeatCap, 1);
+    env->p = p;
+    env->count = n;
+    return h_new_parser(mm__, &cap_vt, env);
+}
