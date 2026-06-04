@@ -280,16 +280,6 @@ stop:
     else return NULL;
 }
 
-static bool cap_isValidRegular(void *env) {
-    HRepeat *until = (HRepeat *)env;
-    return (until->p->vtable->isValidRegular(until->p->env));
-}
-
-static bool cap_isValidCF(void *env) {
-    HRepeat *until = (HRepeat *)env;
-    return (until->p->vtable->isValidCF(until->p->env));
-}
-
 static void desugar_cap(HAllocator *mm__, HCFStack *stk__, void *env) {
     //mostly unchanged from desguar_many. Also TODO: refactor this.
     HRepeat *cap = (HRepeat *)env;
