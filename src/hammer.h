@@ -1245,7 +1245,7 @@ struct result_buf;
 
 bool h_append_buf(struct result_buf *buf, const char *input, int len);
 bool h_append_buf_c(struct result_buf *buf, char v);
-bool h_append_buf_formatted(struct result_buf *buf, char *format, ...);
+bool h_append_buf_formatted(struct result_buf *buf, const char *format, ...);
 
 /** @} */
 
