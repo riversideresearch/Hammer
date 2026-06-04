@@ -20,7 +20,7 @@ static uint32_t cache_key_hash(const void *key);
 static HParserCacheValue *cached_result(HParseState *state, HParseResult *result) {
     HParserCacheValue *ret = a_new(HParserCacheValue, 1);
     ret->value_type = PC_RIGHT;
-    ret->right = result;
+    ret->value.right = result;
     ret->input_stream = state->input_stream;
     return ret;
 }
@@ -29,7 +29,7 @@ static HParserCacheValue *cached_result(HParseState *state, HParseResult *result
 static HParserCacheValue *cached_lr(HParseState *state, HLeftRec *lr) {
     HParserCacheValue *ret = a_new(HParserCacheValue, 1);
     ret->value_type = PC_LEFT;
-    ret->left = lr;
+    ret->value.left = lr;
     ret->input_stream = state->input_stream;
     return ret;
 }
@@ -95,7 +95,7 @@ HParserCacheValue *recall(HParserCacheKey *k, HParseState *state, HHashValue key
                 h_hashtable_put_precomp(state->cache, k, cached, keyhash);
             } else {
                 cached->value_type = PC_RIGHT;
-                cached->right = tmp_res;
+                cached->value.right = tmp_res;
                 cached->input_stream = state->input_stream;
             }
         }
@@ -146,7 +146,7 @@ HParseResult *grow(HParserCacheKey *k, HParseState *state, HRecursionHead *head)
     HParserCacheValue *old_cached = h_hashtable_get(state->cache, k);
     if (!old_cached || PC_LEFT == old_cached->value_type)
         h_platform_errx(1, "impossible match");
-    HParseResult *old_res = old_cached->right;
+    HParseResult *old_res = old_cached->value.right;
 
     // rewind the input
     state->input_stream = k->input_pos;
@@ -165,7 +165,7 @@ HParseResult *grow(HParserCacheKey *k, HParseState *state, HRecursionHead *head)
             HParserCacheValue *cached = h_hashtable_get(state->cache, k);
             if (cached && PC_RIGHT == cached->value_type) {
                 state->input_stream = cached->input_stream;
-                return cached->right;
+                return cached->value.right;
             } else {
                 h_platform_errx(1, "impossible match");
             }
@@ -255,10 +255,10 @@ HParseResult *h_do_parse(const HParser *parser, HParseState *state) {
         /* it exists! */
         state->input_stream = m->input_stream;
         if (PC_LEFT == m->value_type) {
-            setupLR(parser, state, m->left);
-            return m->left->seed;
+            setupLR(parser, state, m->value.left);
+            return m->value.left->seed;
         } else {
-            return m->right;
+            return m->value.right;
         }
     }
 }
@@ -391,7 +391,7 @@ bool h_packrat_parse_chunk(HSuspendedParser *s, HInputStream *input) {
         h_platform_errx(1, "input length would overflow");
     newlen = cat->length + input->length;
     cat->input = h_realloc(mm__, (void *)cat->input, newlen);
-    memcpy((void *)cat->input + cat->length, input->input, input->length);
+    memcpy((void *)((uint8_t *)cat->input + cat->length), input->input, input->length);
     cat->length = newlen;
     cat->last_chunk = input->last_chunk;
 

@@ -24,7 +24,7 @@ static HParseResult *parse_sequence(void *env, HParseState *state) {
     }
     HParsedToken *tok = a_new(HParsedToken, 1);
     tok->token_type = TT_SEQUENCE;
-    tok->seq = seq;
+    tok->token_data.seq = seq;
     tok->index = 0;
     tok->bit_offset = 0;
     tok->bit_length = 0;
@@ -56,14 +56,14 @@ static HParsedToken *reshape_sequence(const HParseResult *p, void *user_data) {
     HCountedArray *seq = h_carray_new(p->arena);
 
     // drop all elements that are NULL
-    for (size_t i = 0; i < p->ast->seq->used; i++) {
-        if (p->ast->seq->elements[i] != NULL)
-            h_carray_append(seq, p->ast->seq->elements[i]);
+    for (size_t i = 0; i < p->ast->token_data.seq->used; i++) {
+        if (p->ast->token_data.seq->elements[i] != NULL)
+            h_carray_append(seq, p->ast->token_data.seq->elements[i]);
     }
 
     HParsedToken *res = a_new_(p->arena, HParsedToken, 1);
     res->token_type = TT_SEQUENCE;
-    res->seq = seq;
+    res->token_data.seq = seq;
     res->index = p->ast->index;
     res->bit_offset = p->ast->bit_offset;
     res->bit_length = p->bit_length;

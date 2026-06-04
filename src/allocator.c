@@ -285,12 +285,12 @@ void *h_arena_realloc(HArena *arena, void *ptr, size_t n) {
     // much data from the old block as there could have been.
 
     for (link = arena->head; link; link = link->next) {
-        if (ptr >= (void *)link->rest && ptr <= (void *)link->rest + link->used)
+        if (ptr >= (void *)link->rest && ptr <= (void *)(link->rest + link->used))
             break; /* found it */
     }
     assert(link != NULL);
 
-    ncopy = (void *)link->rest + link->used - ptr;
+    ncopy = link->used - ((uint8_t *)ptr - link->rest);
     if (n < ncopy)
         ncopy = n;
 

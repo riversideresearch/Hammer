@@ -18,8 +18,8 @@ static HParseResult *parse_token(void *env, HParseState *state) {
     }
     HParsedToken *tok = a_new(HParsedToken, 1);
     tok->token_type = TT_BYTES;
-    tok->bytes.token = t->str;
-    tok->bytes.len = t->len;
+    tok->token_data.bytes.token = t->str;
+    tok->token_data.bytes.len = t->len;
     tok->index = 0;
     tok->bit_offset = 0;
     tok->bit_length = 0;
@@ -30,7 +30,7 @@ static HParsedToken *reshape_token(const HParseResult *p, void *user_data) {
     // fetch sequence of uints from p
     assert(p->ast);
     assert(p->ast->token_type == TT_SEQUENCE);
-    HCountedArray *seq = p->ast->seq;
+    HCountedArray *seq = p->ast->token_data.seq;
 
     // extract byte string
     uint8_t *arr = h_arena_malloc(p->arena, seq->used);
@@ -38,14 +38,14 @@ static HParsedToken *reshape_token(const HParseResult *p, void *user_data) {
     for (i = 0; i < seq->used; i++) {
         HParsedToken *t = seq->elements[i];
         assert(t->token_type == TT_UINT);
-        arr[i] = t->uint;
+        arr[i] = t->token_data.uint;
     }
 
     // create result token
     HParsedToken *tok = h_arena_malloc(p->arena, sizeof(HParsedToken));
     tok->token_type = TT_BYTES;
-    tok->bytes.len = seq->used;
-    tok->bytes.token = arr;
+    tok->token_data.bytes.len = seq->used;
+    tok->token_data.bytes.token = arr;
 
     return tok;
 }

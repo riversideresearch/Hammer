@@ -33,8 +33,8 @@ static HParsedToken *reshape_optional(const HParseResult *p, void *user_data) {
     assert(p->ast);
     assert(p->ast->token_type == TT_SEQUENCE);
 
-    if (p->ast->seq->used > 0) {
-        HParsedToken *res = p->ast->seq->elements[0];
+    if (p->ast->token_data.seq->used > 0) {
+        HParsedToken *res = p->ast->token_data.seq->elements[0];
         if (res)
             return res;
     }

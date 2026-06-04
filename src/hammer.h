@@ -146,7 +146,7 @@ typedef struct HParsedToken_ {
         float flt;
         HCountedArray *seq; /**< a sequence of HParsedToken's */
         void *user;
-    };
+    } token_data;
 #else
     HTokenData token_data;
 #endif
@@ -290,7 +290,7 @@ typedef struct HCaseResult_ {
         const char
             *actual_results; /**< on failure, filled in with the results of h_write_result_unamb */
         size_t parse_time;   /**< on success, filled in with time for a single parse, in nsec */
-    };
+    } timestamp;
 #else
     HResultTiming timestamp;
 #endif

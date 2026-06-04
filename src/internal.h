@@ -237,7 +237,7 @@ struct HSuspendedParser_ {
     uint8_t endianness;
 };
 
-typedef struct HParserBackendVTable_ {
+struct HParserBackendVTable_ {
     int (*compile)(HAllocator *mm__, HParser *parser, const void *params);
     HParseResult *(*parse)(HAllocator *mm__, const HParser *parser, HInputStream *stream);
     void (*free)(HParser *parser);
@@ -275,7 +275,7 @@ typedef struct HParserBackendVTable_ {
     /* extract params from the input string */
     int (*extract_params)(HParserBackendWithParams *be_with_params,
                           backend_with_params_t *be_with_params_t);
-} HParserBackendVTable;
+};
 
 /* The (location, parser) tuple used to key the cache.
  */
@@ -328,7 +328,7 @@ typedef struct HParserCacheValue_t {
     union {
         HLeftRec *left;
         HParseResult *right;
-    };
+    } value;
     HInputStream input_stream;
 } HParserCacheValue;
 
@@ -461,7 +461,6 @@ void *h_symbol_get(HParseState *state, const char *key);
 void *h_symbol_free(HParseState *state, const char *key);
 
 typedef struct HCFSequence_ HCFSequence;
-typedef struct HCFStack_ HCFStack;
 
 struct HCFChoice_ {
     enum HCFChoiceType { HCF_END, HCF_CHOICE, HCF_CHARSET, HCF_CHAR } type;
@@ -469,7 +468,7 @@ struct HCFChoice_ {
         HCharset charset;
         HCFSequence **seq;
         uint8_t chr;
-    };
+    } data;
     HAction reshape; // take CFG parse tree to HParsedToken of expected form.
                      // to execute before action and pred are applied.
     HAction action;
@@ -521,20 +520,20 @@ static inline void h_cfstack_add_to_seq(HAllocator *mm__, HCFStack *stk__, HCFCh
 static inline void h_cfstack_add_to_seq(HAllocator *mm__, HCFStack *stk__, HCFChoice *item) {
     HCFChoice *cur_top = stk__->stack[stk__->count - 1];
     assert(cur_top->type == HCF_CHOICE);
-    assert(cur_top->seq[0] != NULL); // There must be at least one sequence...
+    assert(cur_top->data.seq[0] != NULL); // There must be at least one sequence...
     stk__->last_completed = item;
     for (int i = 0;; i++) {
-        if (cur_top->seq[i + 1] == NULL) {
-            assert(cur_top->seq[i]->items != NULL);
+        if (cur_top->data.seq[i + 1] == NULL) {
+            assert(cur_top->data.seq[i]->items != NULL);
             for (int j = 0;; j++) {
-                if (cur_top->seq[i]->items[j] == NULL) {
-                    cur_top->seq[i]->items =
-                        mm__->realloc(mm__, cur_top->seq[i]->items, sizeof(HCFChoice *) * (j + 2));
-                    if (!cur_top->seq[i]->items) {
+                if (cur_top->data.seq[i]->items[j] == NULL) {
+                    cur_top->data.seq[i]->items =
+                        mm__->realloc(mm__, cur_top->data.seq[i]->items, sizeof(HCFChoice *) * (j + 2));
+                    if (!cur_top->data.seq[i]->items) {
                         stk__->error = 1;
                     }
-                    cur_top->seq[i]->items[j] = item;
-                    cur_top->seq[i]->items[j + 1] = NULL;
+                    cur_top->data.seq[i]->items[j] = item;
+                    cur_top->data.seq[i]->items[j + 1] = NULL;
                     assert(!stk__->error);
                     return;
                 }
@@ -562,14 +561,14 @@ static inline HCFChoice *h_cfstack_new_choice_raw(HAllocator *mm__, HCFStack *st
 static inline void h_cfstack_add_charset(HAllocator *mm__, HCFStack *stk__, HCharset charset) {
     HCFChoice *ni = h_cfstack_new_choice_raw(mm__, stk__);
     ni->type = HCF_CHARSET;
-    ni->charset = charset;
+    ni->data.charset = charset;
     stk__->last_completed = ni;
 }
 
 static inline void h_cfstack_add_char(HAllocator *mm__, HCFStack *stk__, uint8_t chr) {
     HCFChoice *ni = h_cfstack_new_choice_raw(mm__, stk__);
     ni->type = HCF_CHAR;
-    ni->chr = chr;
+    ni->data.chr = chr;
     stk__->last_completed = ni;
 }
 
@@ -582,8 +581,8 @@ static inline void h_cfstack_add_end(HAllocator *mm__, HCFStack *stk__) {
 static inline void h_cfstack_begin_choice(HAllocator *mm__, HCFStack *stk__) {
     HCFChoice *choice = h_cfstack_new_choice_raw(mm__, stk__);
     choice->type = HCF_CHOICE;
-    choice->seq = h_new(HCFSequence *, 1);
-    choice->seq[0] = NULL;
+    choice->data.seq = h_new(HCFSequence *, 1);
+    choice->data.seq[0] = NULL;
 
     if (stk__->count + 1 > stk__->cap) {
         assert(stk__->cap > 0);
@@ -600,14 +599,14 @@ static inline void h_cfstack_begin_choice(HAllocator *mm__, HCFStack *stk__) {
 static inline void h_cfstack_begin_seq(HAllocator *mm__, HCFStack *stk__) {
     HCFChoice *top = stk__->stack[stk__->count - 1];
     for (int i = 0;; i++) {
-        if (top->seq[i] == NULL) {
-            top->seq = mm__->realloc(mm__, top->seq, sizeof(HCFSequence *) * (i + 2));
-            if (!top->seq) {
+        if (top->data.seq[i] == NULL) {
+            top->data.seq = mm__->realloc(mm__, top->data.seq, sizeof(HCFSequence *) * (i + 2));
+            if (!top->data.seq) {
                 stk__->error = 1;
                 return;
             }
-            HCFSequence *seq = top->seq[i] = h_new(HCFSequence, 1);
-            top->seq[i + 1] = NULL;
+            HCFSequence *seq = top->data.seq[i] = h_new(HCFSequence, 1);
+            top->data.seq[i + 1] = NULL;
             seq->items = h_new(HCFChoice *, 1);
             seq->items[0] = NULL;
             return;
