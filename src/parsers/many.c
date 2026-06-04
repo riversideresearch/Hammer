@@ -273,7 +273,7 @@ succ:; // necessary for the label to be here...
 stop:
     if (want_suspend(state))
         return NULL; // bail out early, leaving overrun flag
-    else if (!env->min_p || count > 0) { //if min_p is true, at least one parse must succeed.
+    else if (!env_->min_p || count > 0) { //if min_p is true, at least one parse must succeed.
         state->input_stream = bak;
         goto succ;
     }
