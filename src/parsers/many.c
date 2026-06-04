@@ -244,7 +244,7 @@ HParser *h_length_value__m(HAllocator *mm__, const HParser *length, const HParse
 }
 
 static HParseResult *parse_cap(void *env, HParseState *state) {
-    HRepeatCap *env_ = (HRepeatCap *)env;
+    HRepeat *env_ = (HRepeat *)env;
     size_t size = env_->count;
     if (size <= 0)
         size = 4;
@@ -280,9 +280,19 @@ stop:
     else return NULL;
 }
 
+static bool cap_isValidRegular(void *env) {
+    HRepeat *until = (HRepeat *)env;
+    return (until->p->vtable->isValidRegular(until->p->env));
+}
+
+static bool cap_isValidCF(void *env) {
+    HRepeat *until = (HRepeat *)env;
+    return (until->p->vtable->isValidCF(until->p->env));
+}
+
 static void desugar_cap(HAllocator *mm__, HCFStack *stk__, void *env) {
     //mostly unchanged from desguar_many. Also TODO: refactor this.
-    HRepeatCap *cap = (HRepeatCap *)env;
+    HRepeat *cap = (HRepeat *)env;
 
     HCFS_BEGIN_CHOICE() {
         HCFS_BEGIN_SEQ() {
@@ -323,7 +333,7 @@ HParser *h_many_cap(const HParser *p, const size_t n) {
     return h_many_cap__m(&system_allocator, p, n);
 }
 HParser *h_many_cap__m(HAllocator *mm__, const HParser *p, const size_t n) {
-    HRepeatCap *env = h_new(HRepeatCap, 1);
+    HRepeat *env = h_new(HRepeat, 1);
     env->p = p;
     env->sep = NULL; //sep has no functionaliy yet TODO: add sep functionality if we want it.
     env->count = n;
