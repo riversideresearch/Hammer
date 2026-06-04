@@ -243,11 +243,6 @@ HParser *h_length_value__m(HAllocator *mm__, const HParser *length, const HParse
     return h_new_parser(mm__, &length_value_vt, env);
 }
 
-typedef struct {
-    const HParser *p;
-    size_t count;
-}  HRepeatCap;
-
 static HParseResult *parse_cap(void *env, HParseState *state) {
     HRepeatCap *env_ = (HRepeatCap *)env;
     size_t size = env_->count;
@@ -278,21 +273,11 @@ succ:; // necessary for the label to be here...
 stop:
     if (want_suspend(state))
         return NULL; // bail out early, leaving overrun flag
-    else {
+    else if (!env->min_p || count > 0) { //if min_p is true, at least one parse must succeed.
         state->input_stream = bak;
         goto succ;
     }
-    //return NULL;
-}
-
-static bool cap_isValidRegular(void *env) {
-    HRepeatCap *until = (HRepeatCap *)env;
-    return (until->p->vtable->isValidRegular(until->p->env));
-}
-
-static bool cap_isValidCF(void *env) {
-    HRepeatCap *until = (HRepeatCap *)env;
-    return (until->p->vtable->isValidCF(until->p->env));
+    else return NULL;
 }
 
 static void desugar_cap(HAllocator *mm__, HCFStack *stk__, void *env) {
@@ -328,8 +313,8 @@ static void desugar_cap(HAllocator *mm__, HCFStack *stk__, void *env) {
 
 static const HParserVtable cap_vt = {
     .parse = parse_cap,
-    .isValidRegular = cap_isValidRegular, 
-    .isValidCF = cap_isValidCF, 
+    .isValidRegular = many_isValidRegular, 
+    .isValidCF = many_isValidCF, 
     .desugar = desugar_cap, 
     .higher = true,
 };
@@ -340,6 +325,21 @@ HParser *h_many_cap(const HParser *p, const size_t n) {
 HParser *h_many_cap__m(HAllocator *mm__, const HParser *p, const size_t n) {
     HRepeatCap *env = h_new(HRepeatCap, 1);
     env->p = p;
+    env->sep = NULL; //sep has no functionaliy yet TODO: add sep functionality if we want it.
     env->count = n;
+    env->min_p = false; //min_p has different meaning for h_many_cap, but the structs were mostly the same so we can reuse HRepeat
+    return h_new_parser(mm__, &cap_vt, env);
+}
+
+HParser *h_many1_cap(const HParser *p, const size_t n) {
+    return h_many1_cap__m(&system_allocator, p, n);
+}
+HParser *h_many1_cap__m(HAllocator *mm__, const HParser *p, const size_t n) {
+    HRepeat *env = h_new(HRepeat, 1);
+    env->p = p;
+    env->sep = NULL;
+    env->count = n;
+    env->min_p = true;
+
     return h_new_parser(mm__, &cap_vt, env);
 }
