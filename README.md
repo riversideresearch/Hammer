@@ -16,9 +16,10 @@ Hammer is written in C and provides a packrat parsing backend.
 ### Prerequisites
 
 - [SCons](http://scons.org/)
+- gcc
 
 ```bash
-sudo apt install scons
+sudo apt install gcc scons
 ```
 
 ### Optional Dependencies for Testing
