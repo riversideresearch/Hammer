@@ -25,14 +25,10 @@
 #include <sys/types.h>
 
 struct arena_link {
-    // TODO:
-    // For efficiency, we should probably allocate the arena links in
-    // their own slice, and link to a block directly. That can be
-    // implemented later, though, with no change in interface.
     struct arena_link *next;
+    uint8_t *block;  // pointer to the data block
     size_t free;
     size_t used;
-    uint8_t rest[];
 };
 
 struct HArena_ {
@@ -80,10 +76,12 @@ HArena *h_new_arena(HAllocator *mm__, size_t block_size) {
     if (block_size == 0)
         block_size = 4096;
     struct HArena_ *ret = h_new(struct HArena_, 1);
-    struct arena_link *link =
-        (struct arena_link *)h_alloc(mm__, sizeof(struct arena_link) + block_size);
+    struct arena_link *link = (struct arena_link *)h_alloc(mm__, sizeof(struct arena_link));
+    uint8_t *block = (uint8_t *)h_alloc(mm__, block_size);
     assert(ret != NULL);
     assert(link != NULL);
+    assert(block != NULL);
+    link->block = block;
     link->free = block_size;
     link->used = 0;
     link->next = NULL;
@@ -92,7 +90,7 @@ HArena *h_new_arena(HAllocator *mm__, size_t block_size) {
     ret->used = 0;
     ret->mm__ = mm__;
 #ifdef DETAILED_ARENA_STATS
-    ret->mm_malloc_count = 2;
+    ret->mm_malloc_count = 3;
     ret->mm_malloc_bytes = sizeof(*ret) + sizeof(struct arena_link) + block_size;
     ret->memset_count = 0;
     ret->memset_bytes = 0;
@@ -133,7 +131,7 @@ static void *h_arena_malloc_raw(HArena *arena, size_t size, bool need_zero) {
 
     if (size <= arena->head->free) {
         /* fast path.. */
-        ret = arena->head->rest + arena->head->used;
+        ret = arena->head->block + arena->head->used;
         arena->used += size;
         arena->wasted -= size;
         arena->head->used += size;
@@ -170,15 +168,18 @@ static void *h_arena_malloc_raw(HArena *arena, size_t size, bool need_zero) {
          *
          * -- andrea
          */
-        link = alloc_block(arena, size + sizeof(struct arena_link));
+        link = (struct arena_link *)alloc_block(arena, sizeof(struct arena_link));
+        uint8_t *block = (uint8_t *)alloc_block(arena, size);
         assert(link != NULL);
+        assert(block != NULL);
         arena->used += size;
         arena->wasted += sizeof(struct arena_link);
+        link->block = block;
         link->used = size;
         link->free = 0;
         link->next = arena->head->next;
         arena->head->next = link;
-        ret = link->rest;
+        ret = link->block;
 
 #ifdef DETAILED_ARENA_STATS
         ++(arena->arena_malloc_count);
@@ -193,19 +194,22 @@ static void *h_arena_malloc_raw(HArena *arena, size_t size, bool need_zero) {
 #endif
     } else {
         /* we just need to allocate an ordinary new block. */
-        link = alloc_block(arena, sizeof(struct arena_link) + arena->block_size);
+        link = (struct arena_link *)alloc_block(arena, sizeof(struct arena_link));
+        uint8_t *block = (uint8_t *)alloc_block(arena, arena->block_size);
         assert(link != NULL);
+        assert(block != NULL);
 #ifdef DETAILED_ARENA_STATS
-        ++(arena->mm_malloc_count);
+        arena->mm_malloc_count += 2;  /* link and block allocations */
         arena->mm_malloc_bytes += sizeof(struct arena_link) + arena->block_size;
 #endif
+        link->block = block;
         link->free = arena->block_size - size;
         link->used = size;
         link->next = arena->head;
         arena->head = link;
         arena->used += size;
         arena->wasted += sizeof(struct arena_link) + arena->block_size - size;
-        ret = link->rest;
+        ret = link->block;
 
 #ifdef DETAILED_ARENA_STATS
         ++(arena->arena_malloc_count);
@@ -243,9 +247,8 @@ void h_delete_arena(HArena *arena) {
     struct arena_link *link = arena->head;
     while (link) {
         struct arena_link *next = link->next;
-        // Even in the case of a special block, without the full arena
-        // header, this is correct, because the next pointer is the first
-        // in the structure.
+        // Free the block and link separately
+        h_free(link->block);
         h_free(link);
         link = next;
     }
@@ -285,12 +288,12 @@ void *h_arena_realloc(HArena *arena, void *ptr, size_t n) {
     // much data from the old block as there could have been.
 
     for (link = arena->head; link; link = link->next) {
-        if (ptr >= (void *)link->rest && ptr <= (void *)(link->rest + link->used))
+        if (ptr >= (void *)link->block && ptr <= (void *)(link->block + link->used))
             break; /* found it */
     }
     assert(link != NULL);
 
-    ncopy = link->used - ((uint8_t *)ptr - link->rest);
+    ncopy = link->used - (size_t)((uint8_t *)ptr - link->block);
     if (n < ncopy)
         ncopy = n;
 
