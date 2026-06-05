@@ -36,7 +36,7 @@ static HParseResult *parse_bind(void *be_, HParseState *state) {
         return NULL;
 
     // create a wrapper arena allocator for the continuation
-    ArenaAllocator aa = {{aa_alloc, aa_realloc, aa_free}, state->arena};
+    ArenaAllocator aa = {{aa_alloc, aa_realloc, aa_free, NULL, NULL}, state->arena};
 
     HParser *kx = be->k((HAllocator *)&aa, res->ast, be->env);
     if (!kx) {

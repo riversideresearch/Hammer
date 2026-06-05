@@ -72,6 +72,32 @@ void *h_realloc(HAllocator *mm__, void *ptr, size_t size) {
     return p;
 }
 
+/* Wrapper functions that dispatch to a vtable taking an environment pointer. */
+static void *h_allocator_v_alloc(HAllocator *allocator, size_t size) {
+    if (allocator->vt && allocator->vt->alloc)
+        return allocator->vt->alloc(allocator->env, size);
+    return NULL;
+}
+
+static void *h_allocator_v_realloc(HAllocator *allocator, void *ptr, size_t size) {
+    if (allocator->vt && allocator->vt->realloc)
+        return allocator->vt->realloc(allocator->env, ptr, size);
+    return NULL;
+}
+
+static void h_allocator_v_free(HAllocator *allocator, void *ptr) {
+    if (allocator->vt && allocator->vt->free)
+        allocator->vt->free(allocator->env, ptr);
+}
+
+void h_allocator_wrap(HAllocator *out, HAllocatorVtable *vt, void *env) {
+    out->alloc = h_allocator_v_alloc;
+    out->realloc = h_allocator_v_realloc;
+    out->free = h_allocator_v_free;
+    out->vt = vt;
+    out->env = env;
+}
+
 HArena *h_new_arena(HAllocator *mm__, size_t block_size) {
     if (block_size == 0)
         block_size = 4096;
