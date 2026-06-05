@@ -6,6 +6,14 @@ Build
 make
 ```
 
+By default, the Makefile uses a checkout-local Hammer build at `../../build/opt/src` when available. Run this from the repository root first if you want to build against the current checkout instead of an installed Hammer:
+
+```shell
+scons examples
+```
+
+If no checkout-local Hammer library is available, the Makefile falls back to `pkg-config libhammer`.
+
 Testing all packets
 ```shell
 cd tests && python3 runtests.py

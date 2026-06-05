@@ -33,6 +33,8 @@ cscope.out
 
 # SCons
 .sconsign.dblite
+src/core_tests.stamp
+src/hammer_core.results
 
 # Documentation build artifacts
 docs/html
@@ -55,6 +57,7 @@ debian/files
 debian/libhammer.substvars
 
 # Examples
+examples/*/.hammer-local/
 examples/tftp/tftp
 examples/tftp/tests
 examples/ntp/ntp_parser

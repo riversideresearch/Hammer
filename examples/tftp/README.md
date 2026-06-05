@@ -11,10 +11,17 @@ Testing was done with hand typed hex packets, and is not yet comprehensive.
 
 - Prerequisites:
 ```shell
-sudo apt install build-essential
+sudo apt install build-essential scons
+```
+
+- To build against the current checkout, run this once from the repository root:
+```shell
+scons examples
 ```
 
 - One-liner using `make`:
 ```shell
 make clean && make && make run
 ```
+
+By default, the Makefile uses a checkout-local Hammer build at `../../build/opt/src` when available. If no checkout-local Hammer library is available, it falls back to `pkg-config libhammer`.
