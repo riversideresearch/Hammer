@@ -114,13 +114,30 @@ static void test_h_sloballoc_too_small(void) {
     g_check_cmp_ptr(mm, ==, NULL);
 }
 
-static void test_h_slob_realloc(void) {
+static void test_slob_realloc_shrink(void) {
     uint8_t mem[1024];
     SLOB *slob = slobinit(mem, 1024);
-    void *ptr1 = sloballoc(slob, 100);
+    void *ptr = sloballoc(slob, 200);
 
-    void *mm = slobrealloc(slob, ptr1, 200);
+    void *mm = slobrealloc(slob, ptr, 100);
     g_check_cmp_ptr(mm, !=, NULL);
+}
+
+static void test_slob_realloc_expand(void) {
+    uint8_t mem[1024];
+    SLOB *slob = slobinit(mem, 1024);
+    void *ptr = sloballoc(slob, 100);
+
+    void *mm = slobrealloc(slob, ptr, 200);
+    g_check_cmp_ptr(mm, !=, NULL);
+}
+
+static void test_slob_realloc_overflow(void) {
+    uint8_t mem[1024];
+    SLOB *slob = slobinit(mem, 1024);
+    void *ptr = sloballoc(slob, 200);
+    void *mm = slobrealloc(slob, ptr, SIZE_MAX);
+    g_check_cmp_ptr(mm, ==, NULL);
 }
 
 void register_sloballoc_tests(void) {
@@ -136,5 +153,8 @@ void register_sloballoc_tests(void) {
     g_test_add_func("/core/sloballoc/slobcheck", test_slobcheck);
     g_test_add_func("/core/sloballoc/h_sloballoc", test_h_sloballoc);
     g_test_add_func("/core/sloballoc/h_sloballoc_too_small", test_h_sloballoc_too_small);
-    g_test_add_func("/core/sloballoc/h_slob_realloc", test_h_slob_realloc);
+    g_test_add_func("/core/sloballoc/h_slob_realloc_shrink", test_slob_realloc_shrink);
+    g_test_add_func("/core/sloballoc/h_slob_realloc_expand", test_slob_realloc_expand);
+    g_test_add_func("/core/sloballoc/h_slob_realloc_overflow", test_slob_realloc_overflow);
+    g_test_add_func("/core/sloballoc/h_slob_realloc_too_small", test_slob_realloc_too_small);
 }
