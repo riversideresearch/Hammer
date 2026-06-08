@@ -2,13 +2,13 @@
 
 Hammer is a parsing library. Like many modern parsing libraries, it provides a parser combinator interface for writing grammars as inline domain-specific languages, but Hammer also provides a variety of parsing backends. It's also bit-oriented rather than character-oriented, making it ideal for parsing binary data such as images, network packets, audio, and executables.
 
-Hammer is written in C and provides packrat, LL(k), LALR(k), and GLR parsing backends.
+Hammer is written in C and provides packrat, regex/RVM, LL(k), LALR(k), and GLR parsing backends.
 
 ## Features
 
 - **Bit-oriented** -- grammars can include single-bit flags or multi-bit constructs that span character boundaries with no hassle
 - **Thread-safe, reentrant** (for most purposes)
-- **Parsing backends** -- Packrat for general parser-combinator grammars, plus LL(k), LALR(k), and GLR for context-free grammars
+- **Parsing backends** -- Packrat for general parser-combinator grammars, regex/RVM for regular grammars, plus LL(k), LALR(k), and GLR for context-free grammars
 - Windows and macOS installation is possible but not officially supported
 
 ## Installing
@@ -64,12 +64,13 @@ HParseResult *result = h_parse(p, (const uint8_t *)"ab", 2);
 To use another backend, compile the parser before parsing:
 
 ```c
+h_compile(p, PB_REGULAR, NULL);    /* regex/RVM */
 h_compile(p, PB_LL, (void *)2);    /* LL(2) */
 h_compile(p, PB_LALR, NULL);       /* LALR(1), the default k */
 h_compile(p, PB_GLR, NULL);        /* GLR(1), accepts table conflicts */
 ```
 
-Backend names can also be queried with `h_query_backend_by_name("llk")`,
+Backend names can also be queried with `h_query_backend_by_name("regex")`, `h_query_backend_by_name("llk")`,
 `h_query_backend_by_name("lalr")`, or `h_query_backend_by_name("glr")`.
 See [docs/backends.md](docs/backends.md) for backend differences, limitations, and examples.
 

@@ -64,10 +64,22 @@ static void desugar_token(HAllocator *mm__, HCFStack *stk__, void *env) {
     HCFS_END_CHOICE();
 }
 
+static bool token_ctrvm(HRVMProg *prog, void *env) {
+    HToken *t = (HToken *)env;
+    h_rvm_insert_insn(prog, RVM_PUSH, 0);
+    for (size_t i = 0; i < t->len; ++i) {
+        h_rvm_insert_insn(prog, RVM_MATCH, t->str[i] | t->str[i] << 8);
+        h_rvm_insert_insn(prog, RVM_STEP, 0);
+    }
+    h_rvm_insert_insn(prog, RVM_CAPTURE, 0);
+    return true;
+}
+
 const HParserVtable token_vt = {
     .parse = parse_token,
     .isValidRegular = h_true,
     .isValidCF = h_true,
+    .compile_to_rvm = token_ctrvm,
     .desugar = desugar_token,
     .higher = false,
 };

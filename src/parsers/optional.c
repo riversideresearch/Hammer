@@ -63,10 +63,33 @@ static void desugar_optional(HAllocator *mm__, HCFStack *stk__, void *env) {
     HCFS_END_CHOICE();
 }
 
+static bool h_svm_action_optional(HArena *arena, HSVMContext *ctx, void *env) {
+    if (ctx->stack[ctx->stack_count - 1]->token_type == TT_MARK) {
+        ctx->stack[ctx->stack_count - 1]->token_type = TT_NONE;
+    } else {
+        HParsedToken *save = ctx->stack[ctx->stack_count - 1];
+        ctx->stack_count--;
+        ctx->stack[ctx->stack_count - 1] = save;
+    }
+    return true;
+}
+
+static bool opt_ctrvm(HRVMProg *prog, void *env) {
+    h_rvm_insert_insn(prog, RVM_PUSH, 0);
+    uint16_t insn = h_rvm_insert_insn(prog, RVM_FORK, 0);
+    HParser *p = (HParser *)env;
+    if (!h_compile_regex(prog, p))
+        return false;
+    h_rvm_patch_arg(prog, insn, h_rvm_get_ip(prog));
+    h_rvm_insert_insn(prog, RVM_ACTION, h_rvm_create_action(prog, h_svm_action_optional, NULL));
+    return true;
+}
+
 static const HParserVtable optional_vt = {
     .parse = parse_optional,
     .isValidRegular = opt_isValidRegular,
     .isValidCF = opt_isValidCF,
+    .compile_to_rvm = opt_ctrvm,
     .desugar = desugar_optional,
     .higher = true,
 };

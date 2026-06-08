@@ -46,10 +46,38 @@ static bool action_isValidCF(void *env) {
     return a->p->vtable->isValidCF(a->p->env);
 }
 
+static bool h_svm_action_action(HArena *arena, HSVMContext *ctx, void *arg) {
+    HParseResult res;
+    HParseAction *a = arg;
+    assert(ctx->stack_count >= 1);
+    if (ctx->stack[ctx->stack_count - 1]->token_type != TT_MARK) {
+        res.ast = ctx->stack[ctx->stack_count - 1];
+    } else {
+        res.ast = NULL;
+    }
+    res.arena = arena;
+    HParsedToken *action_result = a->action(&res, a->user_data);
+    if (action_result)
+        ctx->stack[ctx->stack_count - 1] = action_result;
+    else
+        ctx->stack_count--;
+    return true;
+}
+
+static bool action_ctrvm(HRVMProg *prog, void *env) {
+    HParseAction *a = (HParseAction *)env;
+    h_rvm_insert_insn(prog, RVM_PUSH, 0);
+    if (!h_compile_regex(prog, a->p))
+        return false;
+    h_rvm_insert_insn(prog, RVM_ACTION, h_rvm_create_action(prog, h_svm_action_action, a));
+    return true;
+}
+
 static const HParserVtable action_vt = {
     .parse = parse_action,
     .isValidRegular = action_isValidRegular,
     .isValidCF = action_isValidCF,
+    .compile_to_rvm = action_ctrvm,
     .desugar = desugar_action,
     .higher = true,
 };

@@ -20,7 +20,7 @@ dist_headers = [
 
 parsers_headers = ["parsers/parser_internal.h"]
 
-backends_headers = ["backends/missing.h", "backends/lr.h", "backends/params.h"]
+backends_headers = ["backends/missing.h", "backends/lr.h", "backends/params.h", "backends/regex.h"]
 
 parsers = [
     "parsers/%s.c" % s
@@ -60,7 +60,7 @@ parsers = [
 
 backends = [
     "backends/%s.c" % s
-    for s in ["missing", "packrat", "params", "lr", "lr0", "lalr", "llk", "glr"]
+    for s in ["missing", "packrat", "params", "regex", "lr", "lr0", "lalr", "llk", "glr"]
 ]
 
 misc_hammer_parts = [

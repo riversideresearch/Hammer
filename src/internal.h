@@ -350,6 +350,7 @@ struct HBitWriter_ {
 // Backends {{{
 extern HParserBackendVTable h__missing_backend_vtable;
 extern HParserBackendVTable h__packrat_backend_vtable;
+extern HParserBackendVTable h__regex_backend_vtable;
 extern HParserBackendVTable h__llk_backend_vtable;
 extern HParserBackendVTable h__lalr_backend_vtable;
 extern HParserBackendVTable h__glr_backend_vtable;
@@ -646,6 +647,7 @@ struct HParserVtable_ {
     HParseResult *(*parse)(void *env, HParseState *state);
     bool (*isValidRegular)(void *env);
     bool (*isValidCF)(void *env);
+    bool (*compile_to_rvm)(HRVMProg *prog, void *env);
     void (*desugar)(HAllocator *mm__, HCFStack *stk__, void *env);
     bool higher; // false if primitive
 };

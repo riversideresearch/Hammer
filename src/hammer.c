@@ -32,6 +32,7 @@
 static HParserBackendVTable *backends[PB_MAX + 1] = {
     &h__missing_backend_vtable, /* For PB_INVALID */
     &h__packrat_backend_vtable, /* For PB_PACKRAT */
+    &h__regex_backend_vtable,   /* For PB_REGULAR */
     &h__llk_backend_vtable,     /* For PB_LL */
     &h__lalr_backend_vtable,    /* For PB_LALR */
     &h__glr_backend_vtable      /* For PB_GLR */
