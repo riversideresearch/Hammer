@@ -38,6 +38,7 @@ extern void register_whitespace_tests();
 extern void register_xor_tests();
 extern void register_missing_tests();
 extern void register_packrat_tests();
+extern void register_contextfree_backend_tests();
 extern void register_hammer_tests();
 extern void register_glue_tests();
 extern void register_registry_tests();
@@ -79,6 +80,7 @@ int main(int argc, char **argv) {
     register_xor_tests();
     register_missing_tests();
     register_packrat_tests();
+    register_contextfree_backend_tests();
     register_hammer_tests();
     register_glue_tests();
     register_registry_tests();
