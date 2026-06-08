@@ -44,16 +44,16 @@ static void test_seq_index_path(void) {
     HParsedToken *tok1 = h_make_uint(arena, 41);
     HParsedToken *tok2 = h_make_uint(arena, 42);
 
-    seq->seq->elements[0] = seq2;
-    seq->seq->used = 1;
-    seq2->seq->elements[0] = tok1;
-    seq2->seq->elements[1] = tok2;
-    seq2->seq->used = 2;
+    seq->token_data.seq->elements[0] = seq2;
+    seq->token_data.seq->used = 1;
+    seq2->token_data.seq->elements[0] = tok1;
+    seq2->token_data.seq->elements[1] = tok2;
+    seq2->token_data.seq->used = 2;
 
     g_check_cmp_int(h_seq_index_path(seq, 0, -1)->token_type, ==, TT_SEQUENCE);
     g_check_cmp_int(h_seq_index_path(seq, 0, 0, -1)->token_type, ==, TT_UINT);
-    g_check_cmp_int64(h_seq_index_path(seq, 0, 0, -1)->uint, ==, 41);
-    g_check_cmp_int64(h_seq_index_path(seq, 0, 1, -1)->uint, ==, 42);
+    g_check_cmp_int64(h_seq_index_path(seq, 0, 0, -1)->token_data.uint, ==, 41);
+    g_check_cmp_int64(h_seq_index_path(seq, 0, 1, -1)->token_data.uint, ==, 42);
 }
 
 #define MK_INPUT_STREAM(buf, len, endianness_)                                                     \
@@ -296,7 +296,7 @@ static void test_flatten_null() {
   HParsedToken *tok = H_INDEX_TOKEN(p->ast, 1);
   assert(tok != NULL);
   assert(tok->token_type == TT_SEQUENCE);
-  assert(tok->seq->used == 0);
+  assert(tok->token_data.seq->used == 0);
   g_check_cmp_size(tok->bit_length, ==, 0);
   g_check_cmp_size(tok->index, ==, 2);
   g_check_cmp_int((int)tok->bit_offset, ==, 0);
