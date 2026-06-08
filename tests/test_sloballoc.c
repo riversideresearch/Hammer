@@ -114,24 +114,14 @@ static void test_h_sloballoc_too_small(void) {
     g_check_cmp_ptr(mm, ==, NULL);
 }
 
-/*
 static void test_h_slob_realloc(void) {
     uint8_t mem[1024];
-    HAllocator *mm = h_sloballoc(mem, 1024);
+    SLOB *slob = slobinit(mem, 1024);
+    void *ptr1 = sloballoc(slob, 100);
+
+    void *mm = slobrealloc(slob, ptr1, 200);
     g_check_cmp_ptr(mm, !=, NULL);
-    if (mm && mm->realloc) {
-        void *ptr = mm->alloc(mm, 100);
-        g_check_cmp_ptr(ptr, !=, NULL);
-        if (ptr) {
-            void (*old_handler)(int) = signal(SIGABRT, abort_handler);
-            if (setjmp(abort_jmp_buf) == 0) {
-                void *new_ptr = mm->realloc(mm, ptr, 200);
-                (void)new_ptr;
-            }
-            signal(SIGABRT, old_handler);
-        }
-    }
-}*/
+}
 
 void register_sloballoc_tests(void) {
     g_test_add_func("/core/sloballoc/slobinit", test_slobinit);
@@ -146,5 +136,5 @@ void register_sloballoc_tests(void) {
     g_test_add_func("/core/sloballoc/slobcheck", test_slobcheck);
     g_test_add_func("/core/sloballoc/h_sloballoc", test_h_sloballoc);
     g_test_add_func("/core/sloballoc/h_sloballoc_too_small", test_h_sloballoc_too_small);
-    //g_test_add_func("/core/sloballoc/h_slob_realloc", test_h_slob_realloc);
+    g_test_add_func("/core/sloballoc/h_slob_realloc", test_h_slob_realloc);
 }

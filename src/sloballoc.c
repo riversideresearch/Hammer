@@ -5,6 +5,9 @@
 
 #include <assert.h>
 #include <stdint.h>
+#include <string.h>
+
+#define MIN(a, b) (((a) < (b)) ? (a) : (b))
 
 struct alloc {
     size_t size;
@@ -70,6 +73,30 @@ void *sloballoc(SLOB *slob, size_t size) {
 
     return NULL;
 }
+
+void *slobrealloc(SLOB *slob, void *a_, size_t size){
+    //Null input handling
+    if (size == 0) {
+        slobfree(slob, a_);
+        return NULL;
+    }
+    if (a_ == NULL) {
+        return sloballoc(slob, size);
+    }
+    struct alloc *a = (struct alloc *)((uint8_t *)a_ - sizeof(struct alloc));
+    assert((uint8_t *)a >= slob->data);
+    assert(a->data + a->size <= slob->data + slob->size);
+    size_t old_size = a->size;
+
+    void *new = sloballoc(slob, size);
+    if (!new)
+        return NULL;
+
+    memcpy(new, a_, MIN(old_size,size));
+    memset(a_, 0, old_size); // zeroize
+    slobfree(slob, a_);
+    return new;
+} 
 
 void slobfree(SLOB *slob, void *a_) {
     struct alloc *a = (struct alloc *)((uint8_t *)a_ - sizeof(struct alloc));
@@ -192,8 +219,8 @@ static void h_slob_free(HAllocator *mm, void *p) {
 static void *h_slob_realloc(HAllocator *mm, void *p, size_t size) {
     SLOB *slob = (SLOB *)(mm + 1);
 
-    assert(((void)"XXX need realloc for SLOB allocator", 0));
-    return NULL;
+    //assert(((void)"XXX need realloc for SLOB allocator", 0));
+    return slobrealloc(slob, p, size);
 }
 
 HAllocator *h_sloballoc(void *mem, size_t size) {

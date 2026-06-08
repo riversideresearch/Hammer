@@ -7,6 +7,7 @@ typedef struct slob SLOB;
 
 SLOB *slobinit(void *mem, size_t size);
 void *sloballoc(SLOB *slob, size_t size);
+void *slobrealloc(SLOB *slob, void *p, size_t size);
 void slobfree(SLOB *slob, void *p);
 
 // consistency check (verify internal invariants); returns 0 on success
