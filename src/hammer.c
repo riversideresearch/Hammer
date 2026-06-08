@@ -31,7 +31,10 @@
 
 static HParserBackendVTable *backends[PB_MAX + 1] = {
     &h__missing_backend_vtable, /* For PB_INVALID */
-    &h__packrat_backend_vtable  /* For PB_PACKRAT */
+    &h__packrat_backend_vtable, /* For PB_PACKRAT */
+    &h__llk_backend_vtable,     /* For PB_LL */
+    &h__lalr_backend_vtable,    /* For PB_LALR */
+    &h__glr_backend_vtable      /* For PB_GLR */
 };
 
 /* Helper function, since these lines appear in every parser */
@@ -606,6 +609,9 @@ int h_compile(HParser *parser, HParserBackend backend, const void *params) {
 
 int h_compile__m(HAllocator *mm__, HParser *parser, HParserBackend backend, const void *params) {
     if (!parser) {
+        return -1;
+    }
+    if (backend < PB_MIN || backend > PB_MAX) {
         return -1;
     }
     if (parser->backend >= PB_MIN && parser->backend <= PB_MAX &&
