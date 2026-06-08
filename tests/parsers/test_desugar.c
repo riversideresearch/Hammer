@@ -111,6 +111,20 @@ static void test_desugar_many1(void) {
     g_check_cmp_int(desugared->type, ==, HCF_CHOICE);
 }
 
+static void test_desugar_many_cap(void) {
+    const HParser *p = h_many_cap(h_ch('a'),1);
+    HCFChoice *desugared = h_desugar(&system_allocator, NULL, p);
+    g_check_cmp_ptr(desugared, !=, NULL);
+    g_check_cmp_int(desugared->type, ==, HCF_CHOICE);
+}
+
+static void test_desugar_many1_cap(void) {
+    const HParser *p = h_many1_cap(h_ch('a'),1);
+    HCFChoice *desugared = h_desugar(&system_allocator, NULL, p);
+    g_check_cmp_ptr(desugared, !=, NULL);
+    g_check_cmp_int(desugared->type, ==, HCF_CHOICE);
+}
+
 static void test_desugar_optional(void) {
     const HParser *p = h_optional(h_ch('a'));
     HCFChoice *desugared = h_desugar(&system_allocator, NULL, p);
@@ -242,6 +256,8 @@ void register_desugar_tests(void) {
     g_test_add_func("/core/desugar/choice", test_desugar_choice);
     g_test_add_func("/core/desugar/many", test_desugar_many);
     g_test_add_func("/core/desugar/many1", test_desugar_many1);
+    g_test_add_func("/core/desugar/many_cap", test_desugar_many_cap);
+    g_test_add_func("/core/desugar/many1_cap", test_desugar_many1_cap);
     g_test_add_func("/core/desugar/optional", test_desugar_optional);
     g_test_add_func("/core/desugar/ignore", test_desugar_ignore);
     g_test_add_func("/core/desugar/ignoreseq", test_desugar_ignoreseq);
