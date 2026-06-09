@@ -26,7 +26,7 @@
 
 struct arena_link {
     struct arena_link *next;
-    uint8_t *block;  // pointer to the data block
+    uint8_t *block; // pointer to the data block
     size_t free;
     size_t used;
 };
@@ -102,11 +102,16 @@ HArena *h_new_arena(HAllocator *mm__, size_t block_size) {
     if (block_size == 0)
         block_size = 4096;
     struct HArena_ *ret = h_new(struct HArena_, 1);
-    struct arena_link *link = (struct arena_link *)h_alloc(mm__, sizeof(struct arena_link));
-    uint8_t *block = (uint8_t *)h_alloc(mm__, block_size);
     assert(ret != NULL);
-    assert(link != NULL);
-    assert(block != NULL);
+    struct arena_link *link = (struct arena_link *)h_alloc(mm__, sizeof(struct arena_link));
+    if (link == NULL) {
+        return NULL;
+    }
+    uint8_t *block = (uint8_t *)h_alloc(mm__, block_size);
+    if (block == NULL) {
+        h_free(link);
+        return NULL;
+    }
     link->block = block;
     link->free = block_size;
     link->used = 0;
@@ -195,9 +200,14 @@ static void *h_arena_malloc_raw(HArena *arena, size_t size, bool need_zero) {
          * -- andrea
          */
         link = (struct arena_link *)alloc_block(arena, sizeof(struct arena_link));
+        if (link == NULL) {
+            return NULL;
+        }
         uint8_t *block = (uint8_t *)alloc_block(arena, size);
-        assert(link != NULL);
-        assert(block != NULL);
+        if (block == NULL) {
+            free(link);
+            return NULL;
+        }
         arena->used += size;
         arena->wasted += sizeof(struct arena_link);
         link->block = block;
@@ -221,11 +231,16 @@ static void *h_arena_malloc_raw(HArena *arena, size_t size, bool need_zero) {
     } else {
         /* we just need to allocate an ordinary new block. */
         link = (struct arena_link *)alloc_block(arena, sizeof(struct arena_link));
+        if (link == NULL) {
+            return NULL;
+        }
         uint8_t *block = (uint8_t *)alloc_block(arena, arena->block_size);
-        assert(link != NULL);
-        assert(block != NULL);
+        if (block == NULL) {
+            free(link);
+            return NULL;
+        }
 #ifdef DETAILED_ARENA_STATS
-        arena->mm_malloc_count += 2;  /* link and block allocations */
+        arena->mm_malloc_count += 2; /* link and block allocations */
         arena->mm_malloc_bytes += sizeof(struct arena_link) + arena->block_size;
 #endif
         link->block = block;
@@ -330,3 +345,4 @@ void *h_arena_realloc(HArena *arena, void *ptr, size_t n) {
 
     return ret;
 }
+
