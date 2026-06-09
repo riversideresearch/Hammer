@@ -76,7 +76,7 @@ void *sloballoc(SLOB *slob, size_t size) {
 
 void *slobrealloc(SLOB *slob, void *a_, size_t size) {
     // Null input handling
-    if (slob == NULL || (a_ == NULL && size == 0)) {
+    if (slob == NULL) {
         return NULL;
     }
     if (a_ == NULL) {

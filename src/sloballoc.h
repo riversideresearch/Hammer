@@ -22,6 +22,7 @@ SLOB *slobinit(void *mem, size_t size);
  * @param slob The allocator instance that owns the block.
  * @param size Size of the intended allocation
  * @return A pointer belonging to @param slob in the resized block on success, or NULL on failure.
+ * @note if size is too small or 0, the size will be set to fitblock bytes
  */
 void *sloballoc(SLOB *slob, size_t size);
 

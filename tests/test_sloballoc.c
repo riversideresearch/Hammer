@@ -114,6 +114,13 @@ static void test_h_sloballoc_too_small(void) {
     g_check_cmp_ptr(mm, ==, NULL);
 }
 
+static void test_sloballoc_zero(void) {
+    uint8_t mem[1024];
+    SLOB *slob = slobinit(mem, 1024);
+    void *ptr = sloballoc(slob, 0);
+    g_check_cmp_ptr(ptr, !=, NULL);
+}
+
 static void test_slob_realloc_shrink(void) {
     uint8_t mem[1024];
     SLOB *slob = slobinit(mem, 1024);
@@ -157,7 +164,14 @@ static void test_slob_realloc_null_ptr(void) {
     g_check_cmp_ptr(mm, !=, NULL);
     g_check_cmp_int(slobcheck(slob), ==, 0);
 }
-
+static void test_slob_realloc_null(void) {
+    uint8_t mem[1024];
+    SLOB *slob = slobinit(mem, 1024);
+    //it's performing sloballoc(slob, 0); which will allocate a slob of minimum size
+    void *mm = slobrealloc(slob, NULL, 0);
+    g_check_cmp_ptr(mm, !=, NULL);
+    g_check_cmp_int(slobcheck(slob), ==, 0);
+}
 static void test_slob_realloc_shrink_non_splittable(void) {
     uint8_t mem[1024];
     SLOB *slob = slobinit(mem, 1024);
@@ -208,12 +222,14 @@ void register_sloballoc_tests(void) {
     g_test_add_func("/core/sloballoc/slobfree_no_adjacent", test_slobfree_no_adjacent);
     g_test_add_func("/core/sloballoc/slobcheck", test_slobcheck);
     g_test_add_func("/core/sloballoc/h_sloballoc", test_h_sloballoc);
+    g_test_add_func("/core/sloballoc/test_sloballoc_zero", test_sloballoc_zero);
     g_test_add_func("/core/sloballoc/h_sloballoc_too_small", test_h_sloballoc_too_small);
     g_test_add_func("/core/sloballoc/h_slob_realloc_shrink", test_slob_realloc_shrink);
     g_test_add_func("/core/sloballoc/h_slob_realloc_expand", test_slob_realloc_expand);
     g_test_add_func("/core/sloballoc/h_slob_realloc_overflow", test_slob_realloc_overflow);
     g_test_add_func("/core/sloballoc/test_slob_realloc_zero_size", test_slob_realloc_zero_size);
     g_test_add_func("/core/sloballoc/test_slob_realloc_null_ptr", test_slob_realloc_null_ptr);
+    g_test_add_func("/core/sloballoc/test_slob_realloc_null", test_slob_realloc_null);
     g_test_add_func("/core/sloballoc/h_slob_realloc_shrink_non_splittable",
                     test_slob_realloc_shrink_non_splittable);
     g_test_add_func("/core/sloballoc/h_slob_realloc_fallback", test_slob_realloc_fallback);
