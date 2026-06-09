@@ -121,6 +121,7 @@ static void test_slob_realloc_shrink(void) {
 
     void *mm = slobrealloc(slob, ptr, 100);
     g_check_cmp_ptr(mm, !=, NULL);
+    g_check_cmp_int(slobcheck(slob), ==, 0);
 }
 
 static void test_slob_realloc_expand(void) {
@@ -130,14 +131,69 @@ static void test_slob_realloc_expand(void) {
 
     void *mm = slobrealloc(slob, ptr, 200);
     g_check_cmp_ptr(mm, !=, NULL);
+    g_check_cmp_int(slobcheck(slob), ==, 0);
 }
 
 static void test_slob_realloc_overflow(void) {
     uint8_t mem[1024];
+    SLOB *slob = slobinit(mem, 200);
+    void *ptr = sloballoc(slob, 100);
+    void *mm = slobrealloc(slob, ptr, 1024);
+    g_check_cmp_ptr(mm, ==, NULL);
+    g_check_cmp_int(slobcheck(slob), ==, 0);
+}
+static void test_slob_realloc_zero_size(void) {
+    uint8_t mem[1024];
+    SLOB *slob = slobinit(mem, 1024);
+    void *ptr = sloballoc(slob, 100);
+    void *mm = slobrealloc(slob, ptr, 0);
+    g_check_cmp_ptr(mm, ==, NULL);
+    g_check_cmp_int(slobcheck(slob), ==, 0);
+}
+static void test_slob_realloc_null_ptr(void) {
+    uint8_t mem[1024];
+    SLOB *slob = slobinit(mem, 1024);
+    void *mm = slobrealloc(slob, NULL, 100);
+    g_check_cmp_ptr(mm, !=, NULL);
+    g_check_cmp_int(slobcheck(slob), ==, 0);
+}
+
+static void test_slob_realloc_shrink_non_splittable(void) {
+    uint8_t mem[1024];
     SLOB *slob = slobinit(mem, 1024);
     void *ptr = sloballoc(slob, 200);
-    void *mm = slobrealloc(slob, ptr, SIZE_MAX);
+    void *mm = slobrealloc(slob, ptr, 199);
+    g_check_cmp_ptr(mm, !=, NULL);
+    g_check_cmp_int(slobcheck(slob), ==, 0);
+}
+static void test_slob_realloc_fallback(void) {
+    uint8_t mem[1024];
+    SLOB *slob = slobinit(mem, 1024);
+
+    void *ptr = sloballoc(slob, 100);
+    g_check_cmp_ptr(ptr, !=, NULL);
+    memset(ptr, 0x33, 100);
+
+    // Try to expand to a very large size so allocation should fail
+    void *mm = slobrealloc(slob, ptr, 1000);
     g_check_cmp_ptr(mm, ==, NULL);
+
+    // Original must still be valid and payload preserved
+    for (size_t i = 0; i < 100; ++i)
+        g_check_cmp_int(((unsigned char *)ptr)[i], ==, 0x33);
+
+    g_check_cmp_int(slobcheck(slob), ==, 0);
+}
+static void test_slob_coalesce_after_shrink(void) {
+    uint8_t mem[1024];
+    SLOB *slob = slobinit(mem, 1024);
+
+    void *a = sloballoc(slob, 200);
+    void *b = sloballoc(slob, 200);
+    slobfree(slob, a); // Free a block
+    // Shrink b so its tail becomes a free block adjacent to a and should coalesce
+    void *b2 = slobrealloc(slob, b, 100);
+    g_check_cmp_int(slobcheck(slob), ==, 0);
 }
 
 void register_sloballoc_tests(void) {
@@ -156,5 +212,12 @@ void register_sloballoc_tests(void) {
     g_test_add_func("/core/sloballoc/h_slob_realloc_shrink", test_slob_realloc_shrink);
     g_test_add_func("/core/sloballoc/h_slob_realloc_expand", test_slob_realloc_expand);
     g_test_add_func("/core/sloballoc/h_slob_realloc_overflow", test_slob_realloc_overflow);
-    g_test_add_func("/core/sloballoc/h_slob_realloc_too_small", test_slob_realloc_too_small);
+    g_test_add_func("/core/sloballoc/test_slob_realloc_zero_size", test_slob_realloc_zero_size);
+    g_test_add_func("/core/sloballoc/test_slob_realloc_null_ptr", test_slob_realloc_null_ptr);
+    g_test_add_func("/core/sloballoc/h_slob_realloc_shrink_non_splittable",
+                    test_slob_realloc_shrink_non_splittable);
+    g_test_add_func("/core/sloballoc/h_slob_realloc_fallback", test_slob_realloc_fallback);
+    g_test_add_func("/core/sloballoc/test_slob_coalesce_after_shrink",
+                    test_slob_coalesce_after_shrink);
 }
+
