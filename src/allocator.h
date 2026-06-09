@@ -41,16 +41,23 @@ extern "C" {
 
 /* #define DETAILED_ARENA_STATS */
 
-// HAllocatorVtable: function pointers which take an environment pointer.
+/**
+ * @struct HAllocatorVtable_
+ * @brief function pointers which take an environment pointer.
+ */
 typedef struct HAllocatorVtable_ {
     void *(*alloc)(void *env, size_t size);
     void *(*realloc)(void *env, void *ptr, size_t size);
     void (*free)(void *env, void *ptr);
 } HAllocatorVtable;
 
-// Backwards-compatible HAllocator wrapper.
-// The first three fields keep the old layout so static initializers
-// that supply function pointers directly continue to work.
+/**
+ * @struct HAllocator_
+ * @brief Backwards-compatible HAllocator wrapper.
+ * The first three fields keep the old layout
+ * @note if old code doesn't initialize the *vt and *env it will create a
+ * -Wmissing-field-initializers warning
+ */
 typedef struct HAllocator_ {
     /* legacy-style function pointers (kept first for static init compat) */
     void *(*alloc)(struct HAllocator_ *allocator, size_t size);
