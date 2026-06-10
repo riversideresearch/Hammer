@@ -230,6 +230,12 @@ HParsedToken *append_action(const HParseResult *p, void *user) {
     return seq1;
 }
 
+HParsedToken *remove_action(const HParseResult *p, void *user) {
+    HParsedToken *seq = (HParsedToken *)p->ast;
+    h_seq_remove(seq);
+    return seq;
+}
+
 static void test_glue_seq_append_snoc(void) {
     // Test h_seq_snoc
     HParser *p = h_sequence(h_ch('a'), NULL);
@@ -241,6 +247,23 @@ static void test_glue_seq_append_snoc(void) {
     HParser *p2 = h_sequence(h_ch('c'), h_ch('d'), NULL);
     HParser *p_append = h_action(p1, append_action, p2);
     g_check_parse_match(p_append, PB_PACKRAT, "ab", 2, "(u0x61 u0x62 u0x63 u0x64)");
+}
+
+static void test_glue_seq_remove(void) {
+   
+    // Test h_seq_remove
+    HParser *p = h_sequence(h_ch('a'), h_ch('b'), NULL);
+    HParser *p_remove = h_action(p, remove_action, NULL);
+    g_check_parse_match(p_remove, PB_PACKRAT, "ab", 2, "(u0x61)");
+}
+
+static void test_glue_seq_remove_and_append(void) {
+   
+    // Test h_seq_remove and h_seq_snoc work together
+    HParser *p = h_sequence(h_ch('a'), h_ch('b'), NULL);
+    HParser *p_remove = h_action(p, remove_action, NULL);
+    HParser *p_snoc = h_action(p_remove, snoc_action, NULL);
+    g_check_parse_match(p_snoc, PB_PACKRAT, "ab", 2, "(u0x61 u0x2a)");
 }
 
 HParsedToken *test_vpath_helper(const HParsedToken *p, ...) {
@@ -387,6 +410,8 @@ void register_misc_tests(void) {
     g_test_add_func("/core/misc/glue_make_functions", test_glue_make_functions);
     g_test_add_func("/core/misc/glue_seq_flatten", test_glue_seq_flatten);
     g_test_add_func("/core/misc/glue_seq_append_snoc", test_glue_seq_append_snoc);
+    g_test_add_func("/core/misc/test_glue_seq_remove_and_append", test_glue_seq_remove_and_append);
+    g_test_add_func("/core/misc/test_glue_seq_remove", test_glue_seq_remove);
     g_test_add_func("/core/misc/glue_seq_index_vpath", test_glue_seq_index_vpath);
     g_test_add_func("/core/misc/pprint_basic", test_pprint_basic);
     g_test_add_func("/core/misc/pprint_write_result_unamb", test_pprint_write_result_unamb);

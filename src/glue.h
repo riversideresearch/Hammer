@@ -294,15 +294,9 @@ void h_seq_append(HParsedToken *xs, const HParsedToken *ys);
 /**
  * @brief Remove the head from a sequence
  * @param xs A sequence of tokens
- * @note Does not deallocate the head node
+ * @note Nullifies the head before removal
  */
 void h_seq_remove(HParsedToken *xs);
-
-/**
- * @brief Remove and deallocate the head from a sequence
- * @param xs A sequence of tokens
- */
-void h_seq_pop(HParsedToken *xs);
 
 /**
  * @brief Flatten nested sequences into one.
