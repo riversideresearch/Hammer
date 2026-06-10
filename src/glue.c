@@ -188,6 +188,19 @@ void h_seq_append(HParsedToken *xs, const HParsedToken *ys) {
         h_carray_append(xs->seq, ys->seq->elements[i]);
 }
 
+void h_seq_remove(HParsedToken *xs) {
+    HAMMER_ASSERT(xs != NULL);
+    HAMMER_ASSERT(xs->token_type == TT_SEQUENCE);
+
+    h_slist_drop(xs);
+}
+
+void h_seq_pop(HParsedToken *xs) {
+    HAMMER_ASSERT(xs != NULL);
+    HAMMER_ASSERT(xs->token_type == TT_SEQUENCE);
+
+    h_seq_pop(xs);
+}
 // Flatten nested sequences. Always returns a sequence.
 // If input element is not a sequence, returns it as a singleton sequence.
 const HParsedToken *h_seq_flatten(HArena *arena, const HParsedToken *p) {

@@ -278,13 +278,39 @@ HParsedToken *h_carray_index(const HCountedArray *a, size_t i); /**< XXX -> inte
 
 /** Sequence modification... */
 
-/** Add elements to a sequence. */
-void h_seq_snoc(HParsedToken *xs, const HParsedToken *x);    /**< append one */
-void h_seq_append(HParsedToken *xs, const HParsedToken *ys); /**< append many */
+/**
+ * @brief Add one element to a sequence
+ * @param xs A sequence of tokens
+ * @param x A single token to be added
+ */
+void h_seq_snoc(HParsedToken *xs, const HParsedToken *x);
+/**
+ * @brief Add many elements to a sequence
+ * @param xs A sequence of tokens
+ * @param ys A sequence of tokens to be added
+ */
+void h_seq_append(HParsedToken *xs, const HParsedToken *ys);
 
-/** XXX TODO: Remove elements from a sequence. */
+/**
+ * @brief Remove the head from a sequence
+ * @param xs A sequence of tokens
+ * @note Does not deallocate the head node
+ */
+void h_seq_remove(HParsedToken *xs);
 
-/** Flatten nested sequences into one. */
+/**
+ * @brief Remove and deallocate the head from a sequence
+ * @param xs A sequence of tokens
+ */
+void h_seq_pop(HParsedToken *xs);
+
+/**
+ * @brief Flatten nested sequences into one.
+ * @param arena An HArena
+ * @param p A Token
+ * @return Always returns a sequence, never NULL
+ * @note If input element is not a sequence, returns it as a singleton sequence.
+ */
 const HParsedToken *h_seq_flatten(HArena *arena, const HParsedToken *p);
 
 #endif
