@@ -16,8 +16,8 @@ static HParseResult *parse_bytes(void *env_, HParseState *state) {
 
     HParsedToken *result = a_new(HParsedToken, 1);
     result->token_type = TT_BYTES;
-    result->bytes.token = bs;
-    result->bytes.len = env->length;
+    result->token_data.bytes.token = bs;
+    result->token_data.bytes.len = env->length;
     result->index = 0;
     result->bit_length = 0;
     result->bit_offset = 0;

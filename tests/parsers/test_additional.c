@@ -347,7 +347,7 @@ static void test_bind_edge_cases(gconstpointer backend) {
 static bool attr_predicate(HParseResult *p, void *user_data) {
     (void)user_data;
     if (p->ast && p->ast->token_type == TT_UINT) {
-        return p->ast->uint == 'a';
+        return p->ast->token_data.uint == 'a';
     }
     return false;
 }
@@ -873,7 +873,7 @@ static void test_int_range_edge_cases(gconstpointer backend) {
     g_check_cmp_ptr(sint_res, !=, NULL);
     g_check_cmp_ptr(sint_res->ast, !=, NULL);
     g_check_cmp_int(sint_res->ast->token_type, ==, TT_SINT);
-    g_check_cmp_int(sint_res->ast->sint, ==, 5);
+    g_check_cmp_int(sint_res->ast->token_data.sint, ==, 5);
     h_parse_result_free(sint_res);
     // Test with value out of range (too high)
     int8_t too_high = 20;
@@ -1033,13 +1033,13 @@ static void test_many_internal(gconstpointer backend) {
         HParsedToken *char_token1 = h_make_uint(arena, 97);
         HParsedToken *char_token2 = h_make_uint(arena, 97);
         // Build: inner_seq1 = [char_token1, inner_seq2] (used=2, n-2=0, n-1=1)
-        h_carray_append(inner_seq1->seq, char_token1);
-        h_carray_append(inner_seq1->seq, inner_seq2);
+        h_carray_append(inner_seq1->token_data.seq, char_token1);
+        h_carray_append(inner_seq1->token_data.seq, inner_seq2);
         // inner_seq2 = [char_token2, empty_seq] (used=2)
-        h_carray_append(inner_seq2->seq, char_token2);
+        h_carray_append(inner_seq2->token_data.seq, char_token2);
         HParsedToken *empty_seq = h_make_seq(arena); // used=0, triggers else branch (tok = NULL)
-        h_carray_append(inner_seq2->seq, empty_seq);
-        h_carray_append(seq_token->seq, inner_seq1);
+        h_carray_append(inner_seq2->token_data.seq, empty_seq);
+        h_carray_append(seq_token->token_data.seq, inner_seq1);
         HParseResult mock_result = {.arena = arena, .ast = seq_token, .bit_length = 0};
         // Call reshape function directly to ensure coverage
         // The function pointer should point to reshape_many
@@ -1051,10 +1051,10 @@ static void test_many_internal(gconstpointer backend) {
         HParsedToken *char_tok1 = h_make_uint(arena, 97);
         HParsedToken *char_tok2 = h_make_uint(arena, 97);
         HParsedToken *next_seq = h_make_seq(arena);
-        h_carray_append(inner_seq_with_3->seq, char_tok1); // element 0
-        h_carray_append(inner_seq_with_3->seq, char_tok2); // element 1
-        h_carray_append(inner_seq_with_3->seq, next_seq);  // element 2 (used=3, n-2=1, n-1=2)
-        h_carray_append(seq_token2->seq, inner_seq_with_3);
+        h_carray_append(inner_seq_with_3->token_data.seq, char_tok1); // element 0
+        h_carray_append(inner_seq_with_3->token_data.seq, char_tok2); // element 1
+        h_carray_append(inner_seq_with_3->token_data.seq, next_seq);  // element 2 (used=3, n-2=1, n-1=2)
+        h_carray_append(seq_token2->token_data.seq, inner_seq_with_3);
         HParseResult mock_result2 = {.arena = arena, .ast = seq_token2, .bit_length = 0};
         HParsedToken *reshaped2 = desugared_many->reshape(&mock_result2, NULL);
         g_check_cmp_ptr(reshaped2, !=, NULL);
@@ -1230,7 +1230,7 @@ static void test_optional_internal(gconstpointer backend) {
         HArena *arena1 = h_new_arena(&system_allocator, 0);
         HParsedToken *seq_token1 = h_make_seq(arena1);
         HParsedToken *elem = h_make_uint(arena1, 97); // 'a'
-        h_carray_append(seq_token1->seq, elem);
+        h_carray_append(seq_token1->token_data.seq, elem);
         HParseResult mock_result1 = {.arena = arena1, .ast = seq_token1, .bit_length = 0};
         HParsedToken *reshaped1 = desugared_opt->reshape(&mock_result1, NULL);
         g_check_cmp_ptr(reshaped1, !=, NULL);
@@ -1239,7 +1239,7 @@ static void test_optional_internal(gconstpointer backend) {
         // Test case 2: seq->used > 0 but elements[0] is NULL (covers line 37-38)
         HArena *arena2 = h_new_arena(&system_allocator, 0);
         HParsedToken *seq_token2 = h_make_seq(arena2);
-        h_carray_append(seq_token2->seq, NULL); // NULL element
+        h_carray_append(seq_token2->token_data.seq, NULL); // NULL element
         HParseResult mock_result2 = {.arena = arena2, .ast = seq_token2, .bit_length = 0};
         HParsedToken *reshaped2 = desugared_opt->reshape(&mock_result2, NULL);
         g_check_cmp_ptr(reshaped2, !=, NULL);

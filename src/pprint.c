@@ -55,31 +55,31 @@ void h_pprint(FILE *stream, const HParsedToken *tok, int indent, int delta) {
         fprintf(stream, "null");
         break;
     case TT_BYTES:
-        pprint_bytes(stream, tok->bytes.token, tok->bytes.len);
+        pprint_bytes(stream, tok->token_data.bytes.token, tok->token_data.bytes.len);
         break;
     case TT_SINT:
-        fprintf(stream, "%" PRId64, tok->sint);
+        fprintf(stream, "%" PRId64, tok->token_data.sint);
         break;
     case TT_UINT:
-        fprintf(stream, "%" PRIu64, tok->uint);
+        fprintf(stream, "%" PRIu64, tok->token_data.uint);
         break;
     case TT_DOUBLE:
-        fprintf(stream, "%f", tok->dbl);
+        fprintf(stream, "%f", tok->token_data.dbl);
         break;
     case TT_FLOAT:
-        fprintf(stream, "%f", (double)tok->flt);
+        fprintf(stream, "%f", (double)tok->token_data.flt);
         break;
     case TT_SEQUENCE:
-        if (tok->seq->used == 0)
+        if (tok->token_data.seq->used == 0)
             fprintf(stream, "[ ]");
         else {
             fprintf(stream, "[%*s", delta - 1, "");
-            for (size_t i = 0; i < tok->seq->used; i++) {
+            for (size_t i = 0; i < tok->token_data.seq->used; i++) {
                 if (i > 0)
                     fprintf(stream, "\n%*s,%*s", indent, "", delta - 1, "");
-                h_pprint(stream, tok->seq->elements[i], indent + delta, delta);
+                h_pprint(stream, tok->token_data.seq->elements[i], indent + delta, delta);
             }
-            if (tok->seq->used > 2)
+            if (tok->token_data.seq->used > 2)
                 fprintf(stream, "\n%*s]", indent, "");
             else
                 fprintf(stream, " ]");
@@ -142,7 +142,7 @@ bool h_append_buf_c(struct result_buf *buf, char v) {
 }
 
 /** append a formatted string to the result buffer */
-bool h_append_buf_formatted(struct result_buf *buf, char *format, ...) {
+bool h_append_buf_formatted(struct result_buf *buf, const char *format, ...) {
     char *tmpbuf;
     int len;
     bool result;
@@ -167,13 +167,13 @@ static void unamb_sub(const HParsedToken *tok, struct result_buf *buf) {
         h_append_buf(buf, "null", 4);
         break;
     case TT_BYTES:
-        if (tok->bytes.len == 0)
+        if (tok->token_data.bytes.len == 0)
             h_append_buf(buf, "<>", 2);
         else {
-            for (size_t i = 0; i < tok->bytes.len; i++) {
+            for (size_t i = 0; i < tok->token_data.bytes.len; i++) {
                 const char *HEX = "0123456789abcdef";
                 h_append_buf_c(buf, (i == 0) ? '<' : '.');
-                char c = tok->bytes.token[i];
+                char c = tok->token_data.bytes.token[i];
                 h_append_buf_c(buf, HEX[(c >> 4) & 0xf]);
                 h_append_buf_c(buf, HEX[(c >> 0) & 0xf]);
             }
@@ -181,29 +181,29 @@ static void unamb_sub(const HParsedToken *tok, struct result_buf *buf) {
         }
         break;
     case TT_SINT:
-        if (tok->sint < 0)
-            h_append_buf_formatted(buf, "s-%#" PRIx64, -tok->sint);
+        if (tok->token_data.sint < 0)
+            h_append_buf_formatted(buf, "s-%#" PRIx64, -tok->token_data.sint);
         else
-            h_append_buf_formatted(buf, "s%#" PRIx64, tok->sint);
+            h_append_buf_formatted(buf, "s%#" PRIx64, tok->token_data.sint);
         break;
     case TT_UINT:
-        h_append_buf_formatted(buf, "u%#" PRIx64, tok->uint);
+        h_append_buf_formatted(buf, "u%#" PRIx64, tok->token_data.uint);
         break;
     case TT_DOUBLE:
-        h_append_buf_formatted(buf, "d%a", tok->dbl);
+        h_append_buf_formatted(buf, "d%a", tok->token_data.dbl);
         break;
     case TT_FLOAT:
-        h_append_buf_formatted(buf, "f%a", (double)tok->flt);
+        h_append_buf_formatted(buf, "f%a", (double)tok->token_data.flt);
         break;
     case TT_ERR:
         h_append_buf(buf, "ERR", 3);
         break;
     case TT_SEQUENCE: {
         h_append_buf_c(buf, '(');
-        for (size_t i = 0; i < tok->seq->used; i++) {
+        for (size_t i = 0; i < tok->token_data.seq->used; i++) {
             if (i > 0)
                 h_append_buf_c(buf, ' ');
-            unamb_sub(tok->seq->elements[i], buf);
+            unamb_sub(tok->token_data.seq->elements[i], buf);
         }
         h_append_buf_c(buf, ')');
     } break;

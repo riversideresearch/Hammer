@@ -351,8 +351,8 @@ HParsedToken *act_backend_with_params(const HParseResult *p, void *user_data) {
     backend_name_t *name = H_FIELD(backend_name_t, 0);
     be_with_params->name = *name;
 
-    HParsedToken *param_list = p->ast->seq->elements[1];
-    if (param_list->token_type == TT_SEQUENCE && param_list->seq->used == 3) {
+    HParsedToken *param_list = p->ast->token_data.seq->elements[1];
+    if (param_list->token_type == TT_SEQUENCE && param_list->token_data.seq->used == 3) {
         backend_params_t *params = H_INDEX(backend_params_t, param_list, 1);
         be_with_params->params = *params;
     }
@@ -369,7 +369,7 @@ HParsedToken *act_backend_name(const HParseResult *p, void *user_data) {
     r->name = h_arena_malloc(p->arena, r->len + 1);
     for (size_t i = 0; i < r->len; ++i) {
 
-        r->name[i] = flat->seq->elements[i]->uint;
+        r->name[i] = flat->token_data.seq->elements[i]->token_data.uint;
     }
     r->name[r->len] = 0;
 
@@ -396,7 +396,7 @@ HParsedToken *act_param_name(const HParseResult *p, void *user_data) {
     r->len = h_seq_len(flat);
     r->param_name = h_arena_malloc(p->arena, r->len + 1);
     for (size_t i = 0; i < r->len; ++i)
-        r->param_name[i] = flat->seq->elements[i]->uint;
+        r->param_name[i] = flat->token_data.seq->elements[i]->token_data.uint;
     r->param_name[r->len] = 0;
 
     return H_MAKE(backend_param_name_t, r);
@@ -405,7 +405,7 @@ HParsedToken *act_param_name(const HParseResult *p, void *user_data) {
 HParsedToken *act_param_with_name(const HParseResult *p, void *user_data) {
     backend_param_with_name_t *backend_param_with_name = H_ALLOC(backend_param_with_name_t);
 
-    HParsedToken *tok = p->ast->seq->elements[0];
+    HParsedToken *tok = p->ast->token_data.seq->elements[0];
 
     if (tok->token_type == TT_SEQUENCE) {
         backend_param_name_t *param_name = H_INDEX(backend_param_name_t, tok, 0);
@@ -500,7 +500,7 @@ HParserBackendWithParams *h_get_backend_with_params_by_name(const char *name_wit
 
             if (r) {
 
-                backend_with_params_t *be_w_params = r->ast->user;
+                backend_with_params_t *be_w_params = r->ast->token_data.user;
 
                 backend_name_t *name = &be_w_params->name;
 

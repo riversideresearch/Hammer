@@ -30,15 +30,15 @@ HParsedToken *act_bsfdig(const HParseResult *p, void *user_data) {
     uint8_t c = H_CAST_UINT(p->ast);
 
     if (c >= 0x41 && c <= 0x5A) // A-Z
-        res->uint = c - 0x41;
+        res->token_data.uint = c - 0x41;
     else if (c >= 0x61 && c <= 0x7A) // a-z
-        res->uint = c - 0x61 + 26;
+        res->token_data.uint = c - 0x61 + 26;
     else if (c >= 0x30 && c <= 0x39) // 0-9
-        res->uint = c - 0x30 + 52;
+        res->token_data.uint = c - 0x30 + 52;
     else if (c == '+')
-        res->uint = 62;
+        res->token_data.uint = 62;
     else if (c == '/')
-        res->uint = 63;
+        res->token_data.uint = 63;
 
     return res;
 }
@@ -63,7 +63,7 @@ HParsedToken *act_base64_n(int n, const HParseResult *p, void *user_data) {
     int bits = 0;
     for (int i = 0; i < n + 1; i++) {
         x <<= 6;
-        x |= digits[i]->uint;
+        x |= digits[i]->token_data.uint;
         bits += 6;
     }
     x >>= bits % 8; // align, i.e. cut off extra bits
@@ -71,10 +71,10 @@ HParsedToken *act_base64_n(int n, const HParseResult *p, void *user_data) {
     for (int i = 0; i < n; i++) {
         HParsedToken *item = H_MAKE_UINT(x & 0xFF);
 
-        res->seq->elements[n - 1 - i] = item; // output the last byte and
+        res->token_data.seq->elements[n - 1 - i] = item; // output the last byte and
         x >>= 8;                              // discard it
     }
-    res->seq->used = n;
+    res->token_data.seq->used = n;
 
     return res;
 }
@@ -85,8 +85,8 @@ H_ACT_APPLY(act_base64_1, act_base64_n, 1);
 
 HParsedToken *act_base64(const HParseResult *p, void *user_data) {
     assert(p->ast->token_type == TT_SEQUENCE);
-    assert(p->ast->seq->used == 2);
-    assert(p->ast->seq->elements[0]->token_type == TT_SEQUENCE);
+    assert(p->ast->token_data.seq->used == 2);
+    assert(p->ast->token_data.seq->elements[0]->token_type == TT_SEQUENCE);
 
     HParsedToken *res = H_MAKE_SEQ();
 

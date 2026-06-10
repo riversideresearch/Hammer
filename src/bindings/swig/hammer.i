@@ -530,32 +530,32 @@ def free_value(name): return _h_free_value(name)
         return (int)$self->token_type;
     }
     long long sintValue() {
-        return (long long)$self->sint;
+        return (long long)$self->token_data.sint;
     }
     unsigned long long uintValue() {
-        return (unsigned long long)$self->uint;
+        return (unsigned long long)$self->token_data.uint;
     }
     size_t seqLength() {
-        return ($self->token_type == TT_SEQUENCE) ? $self->seq->used : 0;
+        return ($self->token_type == TT_SEQUENCE) ? $self->token_data.seq->used : 0;
     }
     /* Returns the i-th element of a TT_SEQUENCE token, or NULL if out of range. */
     struct HParsedToken_* seqElement(size_t i) {
-        if ($self->token_type == TT_SEQUENCE && i < $self->seq->used)
-            return $self->seq->elements[i];
+        if ($self->token_type == TT_SEQUENCE && i < $self->token_data.seq->used)
+            return $self->token_data.seq->elements[i];
         return NULL;
     }
     const uint8_t *bytesData() {
     return ($self->token_type == TT_BYTES)
-        ? $self->bytes.token
+        ? $self->token_data.bytes.token
         : NULL;
     }
     size_t bytesLength() {
-        return ($self->token_type == TT_BYTES) ? $self->bytes.len : 0;
+        return ($self->token_type == TT_BYTES) ? $self->token_data.bytes.len : 0;
     }
     /* Returns byte value at index i as a short (0-255), or -1 if out of range. */
     short byteAt(size_t i) {
-        if ($self->token_type == TT_BYTES && i < $self->bytes.len)
-            return (short)(unsigned short)$self->bytes.token[i];
+        if ($self->token_type == TT_BYTES && i < $self->token_data.bytes.len)
+            return (short)(unsigned short)$self->token_data.bytes.token[i];
         return -1;
     }
 }

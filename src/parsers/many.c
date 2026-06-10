@@ -38,7 +38,7 @@ static HParseResult *parse_many(void *env, HParseState *state) {
 succ:; // necessary for the label to be here...
     HParsedToken *res = a_new(HParsedToken, 1);
     res->token_type = TT_SEQUENCE;
-    res->seq = seq;
+    res->token_data.seq = seq;
     res->index = 0;
     res->bit_length = 0;
     res->bit_offset = 0;
@@ -72,11 +72,11 @@ static HParsedToken *reshape_many(const HParseResult *p, void *user) {
     const HParsedToken *tok = p->ast;
     while (tok) {
         assert(tok->token_type == TT_SEQUENCE);
-        if (tok->seq->used > 0) {
-            size_t n = tok->seq->used;
+        if (tok->token_data.seq->used > 0) {
+            size_t n = tok->token_data.seq->used;
             assert(n <= 3);
-            h_carray_append(seq, tok->seq->elements[n - 2]);
-            tok = tok->seq->elements[n - 1];
+            h_carray_append(seq, tok->token_data.seq->elements[n - 2]);
+            tok = tok->token_data.seq->elements[n - 1];
         } else {
             tok = NULL;
         }
@@ -84,7 +84,7 @@ static HParsedToken *reshape_many(const HParseResult *p, void *user) {
 
     HParsedToken *res = a_new_(p->arena, HParsedToken, 1);
     res->token_type = TT_SEQUENCE;
-    res->seq = seq;
+    res->token_data.seq = seq;
     res->index = p->ast->index;
     res->bit_offset = p->ast->bit_offset;
     res->bit_length = p->bit_length;
@@ -223,7 +223,7 @@ static HParseResult *parse_length_value(void *env, HParseState *state) {
     if (len->ast->token_type != TT_UINT)
         h_platform_errx(1, "Length parser must return an unsigned integer");
     // TODO: allocate this using public functions
-    HRepeat repeat = {.p = lv->value, .sep = NULL, .count = len->ast->uint, .min_p = false};
+    HRepeat repeat = {.p = lv->value, .sep = NULL, .count = len->ast->token_data.uint, .min_p = false};
     return parse_many(&repeat, state);
 }
 
