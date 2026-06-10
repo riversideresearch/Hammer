@@ -280,23 +280,24 @@ HParsedToken *h_carray_index(const HCountedArray *a, size_t i); /**< XXX -> inte
 
 /**
  * @brief Add one element to a sequence
- * @param xs A sequence of tokens
+ * @param xs A TT_SEQUENCE of tokens
  * @param x A single token to be added
  */
 void h_seq_snoc(HParsedToken *xs, const HParsedToken *x);
 /**
  * @brief Add many elements to a sequence
- * @param xs A sequence of tokens
- * @param ys A sequence of tokens to be added
+ * @param xs A TT_SEQUENCE of tokens
+ * @param ys A TT_SEQUENCE of tokens to be added
  */
 void h_seq_append(HParsedToken *xs, const HParsedToken *ys);
 
 /**
- * @brief Remove the head from a sequence
- * @param xs A sequence of tokens
- * @note Nullifies the head before removal
+ * @brief Remove n elemenets from a sequence
+ * @param xs A TT_SEQUENCE of tokens
+ * @param n Number of elements to remove.
+ * @note if @param n is larger than the sequence it will remove all elements without error
  */
-void h_seq_remove(HParsedToken *xs);
+void h_seq_remove(HParsedToken *xs, uint8_t n);
 
 /**
  * @brief Flatten nested sequences into one.

@@ -230,9 +230,15 @@ HParsedToken *append_action(const HParseResult *p, void *user) {
     return seq1;
 }
 
-HParsedToken *remove_action(const HParseResult *p, void *user) {
+HParsedToken *remove_action_1(const HParseResult *p, void *user) {
     HParsedToken *seq = (HParsedToken *)p->ast;
-    h_seq_remove(seq);
+    h_seq_remove(seq, 1);
+    return seq;
+}
+
+HParsedToken *remove_action_2(const HParseResult *p, void *user) {
+    HParsedToken *seq = (HParsedToken *)p->ast;
+    h_seq_remove(seq, 2);
     return seq;
 }
 
@@ -250,18 +256,34 @@ static void test_glue_seq_append_snoc(void) {
 }
 
 static void test_glue_seq_remove(void) {
-   
-    // Test h_seq_remove
+
+    // Test h_seq_remove w/ param n=1
     HParser *p = h_sequence(h_ch('a'), h_ch('b'), NULL);
-    HParser *p_remove = h_action(p, remove_action, NULL);
+    HParser *p_remove = h_action(p, remove_action_1, NULL);
     g_check_parse_match(p_remove, PB_PACKRAT, "ab", 2, "(u0x61)");
 }
 
+static void test_glue_seq_remove_multiple(void) {
+
+    // Test h_seq_remove w/ param n=2 fpr 2 tokens
+    HParser *p = h_sequence(h_ch('a'), h_ch('b'), NULL);
+    HParser *p_remove = h_action(p, remove_action_2, NULL);
+    g_check_parse_match(p_remove, PB_PACKRAT, "ab", 2, "()");
+}
+
+static void test_glue_seq_remove_too_many(void) {
+
+    // Test h_seq_remove w/ param n=2 for 1 token.
+    HParser *p = h_sequence(h_ch('a'), NULL);
+    HParser *p_remove = h_action(p, remove_action_2, NULL);
+    g_check_parse_match(p_remove, PB_PACKRAT, "a", 1, "()");
+}
+
 static void test_glue_seq_remove_and_append(void) {
-   
+
     // Test h_seq_remove and h_seq_snoc work together
     HParser *p = h_sequence(h_ch('a'), h_ch('b'), NULL);
-    HParser *p_remove = h_action(p, remove_action, NULL);
+    HParser *p_remove = h_action(p, remove_action_1, NULL);
     HParser *p_snoc = h_action(p_remove, snoc_action, NULL);
     g_check_parse_match(p_snoc, PB_PACKRAT, "ab", 2, "(u0x61 u0x2a)");
 }
@@ -412,6 +434,8 @@ void register_misc_tests(void) {
     g_test_add_func("/core/misc/glue_seq_append_snoc", test_glue_seq_append_snoc);
     g_test_add_func("/core/misc/test_glue_seq_remove_and_append", test_glue_seq_remove_and_append);
     g_test_add_func("/core/misc/test_glue_seq_remove", test_glue_seq_remove);
+    g_test_add_func("/core/misc/test_glue_seq_remove_multiple", test_glue_seq_remove_multiple);
+    g_test_add_func("/core/misc/test_glue_seq_remove_too_many", test_glue_seq_remove_too_many);
     g_test_add_func("/core/misc/glue_seq_index_vpath", test_glue_seq_index_vpath);
     g_test_add_func("/core/misc/pprint_basic", test_pprint_basic);
     g_test_add_func("/core/misc/pprint_write_result_unamb", test_pprint_write_result_unamb);
