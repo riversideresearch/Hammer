@@ -163,7 +163,7 @@ typedef struct HParsedToken_ {
  */
 typedef struct HParseResult_ {
     const HParsedToken *ast; /**< Abstract syntax tree */
-    int64_t bit_length;
+    size_t bit_length;
     HArena *arena; /**< Memory arena for the parse result */
 } HParseResult;
 

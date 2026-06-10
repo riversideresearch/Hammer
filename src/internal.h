@@ -60,7 +60,7 @@
 // Functions with arguments are difficult to forward cleanly. Alas, we will need to forward them
 // manually.
 
-#define h_new(type, count) ((type *)(h_alloc(mm__, sizeof(type) * (count))))
+#define h_new(type, count) ((type *)(h_alloc(mm__, sizeof(type) * (size_t)(count))))
 #define h_free(addr) (mm__->free(mm__, (addr)))
 
 #ifndef __cplusplus
@@ -179,8 +179,8 @@ static inline int charset_isset(HCharset cs, uint8_t pos) {
 
 static inline void charset_set(HCharset cs, uint8_t pos, int val) {
     cs[pos / (sizeof(*cs) * 8)] =
-        val ? cs[pos / (sizeof(*cs) * 8)] | (1 << (pos % (sizeof(*cs) * 8)))
-            : cs[pos / (sizeof(*cs) * 8)] & ~(1 << (pos % (sizeof(*cs) * 8)));
+        val ? cs[pos / (sizeof(*cs) * 8)] | (1u << (pos % (sizeof(*cs) * 8)))
+            : cs[pos / (sizeof(*cs) * 8)] & ~(1u << (pos % (sizeof(*cs) * 8)));
 }
 
 typedef unsigned int HHashValue;
@@ -368,7 +368,7 @@ void h_seek_bits(HInputStream *state, size_t pos);
 static inline size_t h_input_stream_pos(HInputStream *state) {
     assert(state->pos <= SIZE_MAX - state->index);
     assert(state->pos + state->index < SIZE_MAX / 8);
-    return (state->pos + state->index) * 8 + state->bit_offset + state->margin;
+    return (state->pos + state->index) * 8 + (size_t)(state->bit_offset) + (size_t)(state->margin);
 }
 static inline size_t h_input_stream_length(HInputStream *state) {
     assert(state->pos <= SIZE_MAX - state->length);
@@ -522,10 +522,10 @@ static inline void h_cfstack_add_to_seq(HAllocator *mm__, HCFStack *stk__, HCFCh
     assert(cur_top->type == HCF_CHOICE);
     assert(cur_top->data.seq[0] != NULL); // There must be at least one sequence...
     stk__->last_completed = item;
-    for (int i = 0;; i++) {
+    for (size_t i = 0;; i++) {
         if (cur_top->data.seq[i + 1] == NULL) {
             assert(cur_top->data.seq[i]->items != NULL);
-            for (int j = 0;; j++) {
+            for (size_t j = 0;; j++) {
                 if (cur_top->data.seq[i]->items[j] == NULL) {
                     cur_top->data.seq[i]->items =
                         mm__->realloc(mm__, cur_top->data.seq[i]->items, sizeof(HCFChoice *) * (j + 2));
@@ -587,7 +587,7 @@ static inline void h_cfstack_begin_choice(HAllocator *mm__, HCFStack *stk__) {
     if (stk__->count + 1 > stk__->cap) {
         assert(stk__->cap > 0);
         stk__->cap *= 2;
-        stk__->stack = mm__->realloc(mm__, stk__->stack, stk__->cap * sizeof(HCFChoice *));
+        stk__->stack = mm__->realloc(mm__, stk__->stack, (size_t)(stk__->cap) * sizeof(HCFChoice *));
         if (!stk__->stack) {
             stk__->error = 1;
         }
@@ -598,7 +598,7 @@ static inline void h_cfstack_begin_choice(HAllocator *mm__, HCFStack *stk__) {
 
 static inline void h_cfstack_begin_seq(HAllocator *mm__, HCFStack *stk__) {
     HCFChoice *top = stk__->stack[stk__->count - 1];
-    for (int i = 0;; i++) {
+    for (size_t i = 0;; i++) {
         if (top->data.seq[i] == NULL) {
             top->data.seq = mm__->realloc(mm__, top->data.seq, sizeof(HCFSequence *) * (i + 2));
             if (!top->data.seq) {
