@@ -103,7 +103,7 @@ HBenchmarkResults *h_benchmark__m(HAllocator *mm__, HParser *parser, HParserTest
                 }
                 time_diff = h_platform_stopwatch_ns(&stopwatch);
             } while (time_diff < 100000000);
-            ret->results[backend].cases[cur_case].parse_time = (time_diff / count);
+            ret->results[backend].cases[cur_case].timestamp.parse_time = (time_diff / count);
             ret->results[backend].cases[cur_case].length = tc->length;
             cur_case++;
         }
@@ -124,8 +124,8 @@ void h_benchmark_report(FILE *stream, HBenchmarkResults *result) {
                 continue;
             }
             fprintf(stream, "Case %zd: %zd ns/parse, %zd ns/byte\n", j,
-                    result->results[i].cases[j].parse_time,
-                    result->results[i].cases[j].parse_time / result->results[i].cases[j].length);
+                    result->results[i].cases[j].timestamp.parse_time,
+                    result->results[i].cases[j].timestamp.parse_time / result->results[i].cases[j].length);
         }
     }
 }

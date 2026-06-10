@@ -15,7 +15,7 @@ H_ACT_APPLY(act_index0, h_act_index, 0)
 bool validate_label(HParseResult *p, void *user_data) {
     if (TT_SEQUENCE != p->ast->token_type)
         return false;
-    return (64 > p->ast->seq->used);
+    return (64 > p->ast->token_data.seq->used);
 }
 
 #define act_label h_act_flatten
@@ -31,12 +31,12 @@ HParsedToken *act_domain(const HParseResult *p, void *user_data) {
     case TT_SEQUENCE:
         // Sequence of subdomains separated by "."
         // Each subdomain is a label, which can be no more than 63 chars.
-        arr = h_arena_malloc(p->arena, 64 * p->ast->seq->used);
+        arr = h_arena_malloc(p->arena, 64 * p->ast->token_data.seq->used);
         size_t count = 0;
-        for (size_t i = 0; i < p->ast->seq->used; ++i) {
-            HParsedToken *tmp = p->ast->seq->elements[i];
-            for (size_t j = 0; j < tmp->seq->used; ++j) {
-                arr[count] = tmp->seq->elements[i]->uint;
+        for (size_t i = 0; i < p->ast->token_data.seq->used; ++i) {
+            HParsedToken *tmp = p->ast->token_data.seq->elements[i];
+            for (size_t j = 0; j < tmp->token_data.seq->used; ++j) {
+                arr[count] = tmp->token_data.seq->elements[i]->token_data.uint;
                 ++count;
             }
             arr[count] = '.';

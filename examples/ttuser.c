@@ -24,9 +24,9 @@ void pprint(FILE *stream, const HParsedToken *tok, int indent, int delta) {
      *  - Indent sub-objects by adding 'delta' to 'indent'.
      */
 
-    if (((HParsedToken *)tok->user)->token_type == TT_SEQUENCE)
+    if (((HParsedToken *)tok->token_data.user)->token_type == TT_SEQUENCE)
         fprintf(stream, "\n%*s", indent, "");
-    h_pprint(stream, tok->user, indent, delta);
+    h_pprint(stream, tok->token_data.user, indent, delta);
 }
 
 /* XXX define umamb_sub as well */

@@ -30,7 +30,7 @@ uint8_t bsfdig_value(const HParsedToken *p) {
     uint8_t value = 0;
 
     if (p && p->token_type == TT_UINT) {
-        uint8_t c = p->uint;
+        uint8_t c = p->token_data.uint;
         if (c >= 0x41 && c <= 0x5A) // A-Z
             value = c - 0x41;
         else if (c >= 0x61 && c <= 0x7A) // a-z
@@ -51,18 +51,18 @@ uint8_t bsfdig_value(const HParsedToken *p) {
 
 HParsedToken *act_base64(const HParseResult *p, void *user_data) {
     assert(p->ast->token_type == TT_SEQUENCE);
-    assert(p->ast->seq->used == 2);
-    assert(p->ast->seq->elements[0]->token_type == TT_SEQUENCE);
+    assert(p->ast->token_data.seq->used == 2);
+    assert(p->ast->token_data.seq->elements[0]->token_type == TT_SEQUENCE);
 
     // grab b64_3 block sequence
     // grab and analyze b64 end block (_2 or _1)
-    const HParsedToken *b64_3 = p->ast->seq->elements[0];
-    const HParsedToken *b64_2 = p->ast->seq->elements[1];
-    const HParsedToken *b64_1 = p->ast->seq->elements[1];
+    const HParsedToken *b64_3 = p->ast->token_data.seq->elements[0];
+    const HParsedToken *b64_2 = p->ast->token_data.seq->elements[1];
+    const HParsedToken *b64_1 = p->ast->token_data.seq->elements[1];
 
     if (b64_2->token_type != TT_SEQUENCE)
         b64_1 = b64_2 = NULL;
-    else if (b64_2->seq->elements[2]->uint == '=')
+    else if (b64_2->token_data.seq->elements[2]->token_data.uint == '=')
         b64_2 = NULL;
     else
         b64_1 = NULL;
@@ -71,9 +71,9 @@ HParsedToken *act_base64(const HParseResult *p, void *user_data) {
     HParsedToken *res = H_MAKE_SEQ();
 
     // concatenate base64_3 blocks
-    for (size_t i = 0; i < b64_3->seq->used; i++) {
-        assert(b64_3->seq->elements[i]->token_type == TT_SEQUENCE);
-        HParsedToken **digits = b64_3->seq->elements[i]->seq->elements;
+    for (size_t i = 0; i < b64_3->token_data.seq->used; i++) {
+        assert(b64_3->token_data.seq->elements[i]->token_type == TT_SEQUENCE);
+        HParsedToken **digits = b64_3->token_data.seq->elements[i]->token_data.seq->elements;
 
         uint32_t x = bsfdig_value(digits[0]);
         x <<= 6;
@@ -89,7 +89,7 @@ HParsedToken *act_base64(const HParseResult *p, void *user_data) {
 
     // append one trailing base64_2 or _1 block
     if (b64_2) {
-        HParsedToken **digits = b64_2->seq->elements;
+        HParsedToken **digits = b64_2->token_data.seq->elements;
         uint32_t x = bsfdig_value(digits[0]);
         x <<= 6;
         x |= bsfdig_value(digits[1]);
@@ -98,7 +98,7 @@ HParsedToken *act_base64(const HParseResult *p, void *user_data) {
         seq_append_byte(res, (x >> 10) & 0xFF);
         seq_append_byte(res, (x >> 2) & 0xFF);
     } else if (b64_1) {
-        HParsedToken **digits = b64_1->seq->elements;
+        HParsedToken **digits = b64_1->token_data.seq->elements;
         uint32_t x = bsfdig_value(digits[0]);
         x <<= 6;
         x |= bsfdig_value(digits[1]);

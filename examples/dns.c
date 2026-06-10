@@ -20,7 +20,7 @@
 bool validate_hdzero(HParseResult *p, void *user_data) {
     if (TT_UINT != p->ast->token_type)
         return false;
-    return (0 == p->ast->uint);
+    return (0 == p->ast->token_data.uint);
 }
 
 /**
@@ -347,7 +347,7 @@ int main(int argc, char **argv) {
             printf("Invalid packet; ignoring\n");
             continue;
         }
-        dns_message_t *message = content->ast->user;
+        dns_message_t *message = content->ast->token_data.user;
         (void)message;
         for (size_t i = 0; i < message->header.question_count; i++) {
             struct dns_question *question = &message->questions[i];

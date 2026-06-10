@@ -137,8 +137,8 @@ static void test_derives_epsilon_seq_nonempty(void) {
 
     if (g) {
         HCFChoice *desugared = h_desugar(&system_allocator, NULL, p);
-        if (desugared && desugared->type == HCF_CHOICE && desugared->seq && desugared->seq[0]) {
-            bool result = h_derives_epsilon_seq(g, desugared->seq[0]->items);
+        if (desugared && desugared->type == HCF_CHOICE && desugared->data.seq && desugared->data.seq[0]) {
+            bool result = h_derives_epsilon_seq(g, desugared->data.seq[0]->items);
             // many can derive epsilon (zero repetitions), but the sequence itself
             // contains h_ch('a') which does NOT derive epsilon
             // So the result should be false, not true
@@ -372,7 +372,7 @@ static void test_mentions_symbol(void) {
         HCFChoice *desugared1 = h_desugar(&system_allocator, NULL, p1);
         HCFChoice *desugared2 = h_desugar(&system_allocator, NULL, p2);
 
-        if (desugared && desugared->type == HCF_CHOICE && desugared->seq && desugared->seq[0]) {
+        if (desugared && desugared->type == HCF_CHOICE && desugared->data.seq && desugared->data.seq[0]) {
             // Test that mentions_symbol finds p1 in the sequence
             // This is tested indirectly through remove_productions_with
             // which calls eliminate_dead_rules
@@ -511,8 +511,8 @@ static void test_predict(void) {
 
     if (g) {
         HCFChoice *desugared = h_desugar(&system_allocator, NULL, p);
-        if (desugared && desugared->type == HCF_CHOICE && desugared->seq && desugared->seq[0]) {
-            HStringMap *predict = h_predict(1, g, desugared, desugared->seq[0]);
+        if (desugared && desugared->type == HCF_CHOICE && desugared->data.seq && desugared->data.seq[0]) {
+            HStringMap *predict = h_predict(1, g, desugared, desugared->data.seq[0]);
             g_check_cmp_ptr(predict, !=, NULL);
             // remove_all_shorter is called inside h_predict
         }
@@ -528,9 +528,9 @@ static void test_follow_via_predict(void) {
 
     if (g) {
         HCFChoice *desugared = h_desugar(&system_allocator, NULL, p);
-        if (desugared && desugared->type == HCF_CHOICE && desugared->seq && desugared->seq[0]) {
+        if (desugared && desugared->type == HCF_CHOICE && desugared->data.seq && desugared->data.seq[0]) {
             // h_follow_ is called via stringset_extend in h_predict
-            HStringMap *predict = h_predict(2, g, desugared, desugared->seq[0]);
+            HStringMap *predict = h_predict(2, g, desugared, desugared->data.seq[0]);
             g_check_cmp_ptr(predict, !=, NULL);
         }
         h_cfgrammar_free(g);
@@ -637,8 +637,8 @@ static void test_pprint_string(void) {
     if (g) {
         // pprint_string is called via h_pprint_sequence for CHAR sequences
         HCFChoice *desugared = h_desugar(&system_allocator, NULL, p);
-        if (desugared && desugared->type == HCF_CHOICE && desugared->seq && desugared->seq[0]) {
-            h_pprint_sequence(f, g, desugared->seq[0]);
+        if (desugared && desugared->type == HCF_CHOICE && desugared->data.seq && desugared->data.seq[0]) {
+            h_pprint_sequence(f, g, desugared->data.seq[0]);
         }
         h_cfgrammar_free(g);
     }
@@ -711,8 +711,8 @@ static void test_pprint_sequence(void) {
     HCFGrammar *g1 = h_cfgrammar(&system_allocator, p1);
     if (g1) {
         HCFChoice *d1 = h_desugar(&system_allocator, NULL, p1);
-        if (d1 && d1->type == HCF_CHOICE && d1->seq && d1->seq[0]) {
-            h_pprint_sequence(f, g1, d1->seq[0]);
+        if (d1 && d1->type == HCF_CHOICE && d1->data.seq && d1->data.seq[0]) {
+            h_pprint_sequence(f, g1, d1->data.seq[0]);
         }
         h_cfgrammar_free(g1);
     }
@@ -723,8 +723,8 @@ static void test_pprint_sequence(void) {
     HCFGrammar *g2 = h_cfgrammar(&system_allocator, p2);
     if (g2) {
         HCFChoice *d2 = h_desugar(&system_allocator, NULL, p2);
-        if (d2 && d2->type == HCF_CHOICE && d2->seq && d2->seq[0]) {
-            h_pprint_sequence(f, g2, d2->seq[0]);
+        if (d2 && d2->type == HCF_CHOICE && d2->data.seq && d2->data.seq[0]) {
+            h_pprint_sequence(f, g2, d2->data.seq[0]);
         }
         h_cfgrammar_free(g2);
     }

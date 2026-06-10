@@ -14,9 +14,9 @@ static HParseResult *parse_bits(void *env, HParseState *state) {
     result->token_type = (env_->signedp ? TT_SINT : TT_UINT);
     // h_read_bits takes int; cast is required by its signature
     if (env_->signedp)
-        result->sint = h_read_bits(&state->input_stream, (int)env_->length, true);
+        result->token_data.sint = h_read_bits(&state->input_stream, (int)env_->length, true);
     else
-        result->uint = h_read_bits(&state->input_stream, (int)env_->length, false);
+        result->token_data.uint = h_read_bits(&state->input_stream, (int)env_->length, false);
     result->index = 0;
     result->bit_length = 0;
     result->bit_offset = 0;
@@ -31,24 +31,24 @@ static HParsedToken *reshape_bits(const HParseResult *p, void *signedp_p) {
     assert(p->ast);
     assert(p->ast->token_type == TT_SEQUENCE);
 
-    HCountedArray *seq = p->ast->seq;
+    HCountedArray *seq = p->ast->token_data.seq;
     HParsedToken *ret = h_arena_malloc(p->arena, sizeof(HParsedToken));
     ret->token_type = TT_UINT;
 
-    if (signedp && seq->used > 0 && (seq->elements[0]->uint & 128))
-        ret->uint = -1; // all ones
+    if (signedp && seq->used > 0 && (seq->elements[0]->token_data.uint & 128))
+        ret->token_data.uint = -1; // all ones
 
     for (size_t i = 0; i < seq->used; i++) {
         HParsedToken *t = seq->elements[i];
         assert(t->token_type == TT_UINT);
 
-        ret->uint <<= 8;
-        ret->uint |= t->uint & 0xFF;
+        ret->token_data.uint <<= 8;
+        ret->token_data.uint |= t->token_data.uint & 0xFF;
     }
 
     if (signedp) {
         ret->token_type = TT_SINT;
-        ret->sint = ret->uint;
+        ret->token_data.sint = ret->token_data.uint;
     }
 
     return ret;

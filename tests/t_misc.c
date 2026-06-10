@@ -185,14 +185,14 @@ static void test_glue_make_functions(void) {
     HParser *p_double = h_action(h_epsilon_p(), make_double_action, NULL);
     res = h_parse(p_double, (const uint8_t *)"", 0);
     g_check_cmp_int(res->ast->token_type, ==, TT_DOUBLE);
-    g_check_cmpdouble(res->ast->dbl, ==, 3.14159);
+    g_check_cmpdouble(res->ast->token_data.dbl, ==, 3.14159);
     h_parse_result_free(res);
 
     // Test h_make_float
     HParser *p_float = h_action(h_epsilon_p(), make_float_action, NULL);
     res = h_parse(p_float, (const uint8_t *)"", 0);
     g_check_cmp_int(res->ast->token_type, ==, TT_FLOAT);
-    g_check_cmpfloat(res->ast->flt, ==, 2.718f);
+    g_check_cmpfloat(res->ast->token_data.flt, ==, 2.718f);
     h_parse_result_free(res);
 }
 
@@ -266,12 +266,12 @@ static void test_glue_seq_index_vpath(void) {
 
     HParsedToken *tok01 = h_seq_index_path(res->ast, 0, 1, -1);
     g_check_cmp_int(tok01->token_type, ==, TT_UINT);
-    g_check_cmp_int64(tok01->uint, ==, 0x62); // 'b'
+    g_check_cmp_int64(tok01->token_data.uint, ==, 0x62); // 'b'
 
     // Test h_seq_index_vpath directly
     HParsedToken *tok_vpath = test_vpath_helper(res->ast, 0, 1, -1);
     g_check_cmp_int(tok_vpath->token_type, ==, TT_UINT);
-    g_check_cmp_int64(tok_vpath->uint, ==, 0x62);
+    g_check_cmp_int64(tok_vpath->token_data.uint, ==, 0x62);
 
     h_parse_result_free(res);
 }
