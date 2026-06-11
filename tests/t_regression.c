@@ -167,6 +167,8 @@ static void test_charset_bits(void) {
         .alloc = test_charset_bits__alloc,
         .realloc = NULL,
         .free = NULL,
+        .vt = NULL,
+        .env = NULL,
     };
     test_charset_bits__buf[32] = 0xAB;
     new_charset(&alloc);
@@ -222,6 +224,8 @@ static HAllocator deadbeefing_allocator = {
     .alloc = deadbeefing_malloc,
     .realloc = deadbeefing_realloc,
     .free = deadbeefing_free,
+    .vt = NULL,
+    .env = NULL,
 };
 
 static void test_bug_19() {

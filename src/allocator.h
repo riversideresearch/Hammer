@@ -41,12 +41,32 @@ extern "C" {
 
 /* #define DETAILED_ARENA_STATS */
 
-// TODO(thequux): Turn this into an "HAllocatorVtable", and add a wrapper that also takes an
-// environment pointer.
+/**
+ * @struct HAllocatorVtable_
+ * @brief function pointers which take an environment pointer.
+ */
+typedef struct HAllocatorVtable_ {
+    void *(*alloc)(void *env, size_t size);
+    void *(*realloc)(void *env, void *ptr, size_t size);
+    void (*free)(void *env, void *ptr);
+} HAllocatorVtable;
+
+/**
+ * @struct HAllocator_
+ * @brief Backwards-compatible HAllocator wrapper.
+ * The first three fields keep the old layout
+ * @note if old code doesn't initialize the *vt and *env it will create a
+ * -Wmissing-field-initializers warning
+ */
 typedef struct HAllocator_ {
+    /* legacy-style function pointers (kept first for static init compat) */
     void *(*alloc)(struct HAllocator_ *allocator, size_t size);
     void *(*realloc)(struct HAllocator_ *allocator, void *ptr, size_t size);
     void (*free)(struct HAllocator_ *allocator, void *ptr);
+
+    /* new-style vtable and environment pointer */
+    HAllocatorVtable *vt;
+    void *env;
 } HAllocator;
 
 void *h_alloc(HAllocator *allocator, size_t size) ATTR_MALLOC(2);
@@ -55,6 +75,12 @@ void *h_realloc(HAllocator *allocator, void *ptr, size_t size);
 typedef struct HArena_ HArena; // hidden implementation
 
 HArena *h_new_arena(HAllocator *allocator, size_t block_size); // pass 0 for default...
+
+// Initialize an HAllocator wrapper to dispatch to a vtable with the
+// provided environment pointer. After calling this, use the returned
+// HAllocator like the legacy allocator (pass it to functions expecting
+// an HAllocator*).
+void h_allocator_wrap(HAllocator *out, HAllocatorVtable *vt, void *env);
 
 void *h_arena_malloc_noinit(HArena *arena, size_t count) ATTR_MALLOC(2);
 void *h_arena_malloc(HArena *arena, size_t count) ATTR_MALLOC(2);

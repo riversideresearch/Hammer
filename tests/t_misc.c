@@ -51,7 +51,7 @@ static void *fail_realloc(HAllocator *mm__, void *ptr, size_t size) {
 static void fail_free(HAllocator *mm__, void *ptr) {
     return system_allocator.free(&system_allocator, ptr);
 }
-static HAllocator fail_allocator = {fail_alloc, fail_realloc, fail_free};
+static HAllocator fail_allocator = {fail_alloc, fail_realloc, fail_free, NULL, NULL};
 
 // Helper function for out-of-memory test action
 static HParsedToken *act_oom(const HParseResult *r, void *user) {
