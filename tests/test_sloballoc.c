@@ -236,4 +236,3 @@ void register_sloballoc_tests(void) {
     g_test_add_func("/core/sloballoc/test_slob_coalesce_after_shrink",
                     test_slob_coalesce_after_shrink);
 }
-

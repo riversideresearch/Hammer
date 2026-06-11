@@ -345,4 +345,3 @@ void *h_arena_realloc(HArena *arena, void *ptr, size_t n) {
 
     return ret;
 }
-
