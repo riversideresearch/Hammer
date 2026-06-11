@@ -167,7 +167,7 @@ static void test_slob_realloc_null_ptr(void) {
 static void test_slob_realloc_null(void) {
     uint8_t mem[1024];
     SLOB *slob = slobinit(mem, 1024);
-    //it's performing sloballoc(slob, 0); which will allocate a slob of minimum size
+    // it's performing sloballoc(slob, 0); which will allocate a slob of minimum size
     void *mm = slobrealloc(slob, NULL, 0);
     g_check_cmp_ptr(mm, !=, NULL);
     g_check_cmp_int(slobcheck(slob), ==, 0);
