@@ -967,8 +967,8 @@ void register_cfgrammar_tests(void) {
     g_test_add_func("/core/cfgrammar/derives_epsilon_seq_empty", test_derives_epsilon_seq_empty);
     g_test_add_func("/core/cfgrammar/derives_epsilon_seq_nonempty",
                     test_derives_epsilon_seq_nonempty);
-    g_test_add_func("/core/cfgrammar/test_many_cap", test_many_cap);
-    g_test_add_func("/core/cfgrammar/test_many1_cap", test_many1_cap);
+    g_test_add_func("/core/cfgrammar/many_cap", test_many_cap);
+    g_test_add_func("/core/cfgrammar/many1_cap", test_many1_cap);
     g_test_add_func("/core/cfgrammar/stringmap_new", test_stringmap_new);
     g_test_add_func("/core/cfgrammar/stringmap_put_end", test_stringmap_put_end);
     g_test_add_func("/core/cfgrammar/stringmap_put_epsilon", test_stringmap_put_epsilon);
