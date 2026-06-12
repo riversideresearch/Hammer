@@ -52,6 +52,7 @@ extern void register_platform_tests();
 extern void register_misc_tests();
 extern void register_mm_tests();
 extern void register_names_tests();
+extern void register_param_k_tests();
 extern void register_benchmark_tests();
 extern void register_regression_tests();
 extern void register_allocator_tests();
@@ -99,6 +100,7 @@ int main(int argc, char **argv) {
     register_benchmark_tests(); // Always run for coverage
     register_allocator_tests();
     register_datastructures_tests();
+    register_param_k_tests();
     register_pprint_tests();
     register_sloballoc_tests();
     register_system_allocator_tests();
