@@ -432,10 +432,10 @@ void register_misc_tests(void) {
     g_test_add_func("/core/misc/glue_make_functions", test_glue_make_functions);
     g_test_add_func("/core/misc/glue_seq_flatten", test_glue_seq_flatten);
     g_test_add_func("/core/misc/glue_seq_append_snoc", test_glue_seq_append_snoc);
-    g_test_add_func("/core/misc/test_glue_seq_remove_and_append", test_glue_seq_remove_and_append);
-    g_test_add_func("/core/misc/test_glue_seq_remove", test_glue_seq_remove);
-    g_test_add_func("/core/misc/test_glue_seq_remove_multiple", test_glue_seq_remove_multiple);
-    g_test_add_func("/core/misc/test_glue_seq_remove_too_many", test_glue_seq_remove_too_many);
+    g_test_add_func("/core/misc/glue_seq_remove_and_append", test_glue_seq_remove_and_append);
+    g_test_add_func("/core/misc/glue_seq_remove", test_glue_seq_remove);
+    g_test_add_func("/core/misc/glue_seq_remove_multiple", test_glue_seq_remove_multiple);
+    g_test_add_func("/core/misc/glue_seq_remove_too_many", test_glue_seq_remove_too_many);
     g_test_add_func("/core/misc/glue_seq_index_vpath", test_glue_seq_index_vpath);
     g_test_add_func("/core/misc/pprint_basic", test_pprint_basic);
     g_test_add_func("/core/misc/pprint_write_result_unamb", test_pprint_write_result_unamb);
