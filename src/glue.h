@@ -295,7 +295,7 @@ void h_seq_append(HParsedToken *xs, const HParsedToken *ys);
  * @brief Remove n elemenets from a sequence
  * @param xs A TT_SEQUENCE of tokens
  * @param n Number of elements to remove.
- * @note if @param n is larger than the sequence it will remove all elements without error
+ * @note if n is larger than the sequence it will remove all elements without error
  */
 void h_seq_remove(HParsedToken *xs, uint8_t n);
 
