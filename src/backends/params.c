@@ -68,15 +68,6 @@ char *h_format_name_with_param_k(HAllocator *mm__, const char *backend_name, siz
 
 #define MAX_LENGTH 1024
 
-bool is_null_terminated(const char *str) {
-    for (size_t i = 0; i < MAX_LENGTH; i++) {
-        if (str[i] == '\0') {
-            return true; // Null-terminated
-        }
-    }
-    return false; // Not null-terminated
-}
-
 int h_extract_param_k(HParserBackendWithParams *be_with_params,
                       backend_with_params_t *be_with_params_t) {
 
@@ -89,7 +80,6 @@ int h_extract_param_k(HParserBackendWithParams *be_with_params,
     int success = 0;
     uintptr_t param;
 
-    size_t expected_params_len = 1;
     backend_params_t params_t = be_with_params_t->params;
 
     if (params_t.params == NULL || params_t.len == 0) {
@@ -98,12 +88,21 @@ int h_extract_param_k(HParserBackendWithParams *be_with_params,
 
     size_t actual_params_len = params_t.len;
 
-    if (actual_params_len >= expected_params_len) {
+    if (actual_params_len >= 1) {
         backend_param_with_name_t param_t = params_t.params[0];
-        if (!is_null_terminated((char *)param_t.param.param)) {
-            return -3; // Not NUL-terminated param
+        if (param_t.param.param == NULL) {
+            return -3; // NULL param
         }
+        // char's can sometimes be non NUL-terminated and will cause an overflow on sscanf, so
+        // nul-termination can be added
+        param_t.param.param[actual_params_len] = '\0';
         success = sscanf((char *)param_t.param.param, "%d", &param_0);
+        /*
+        char *param_nt[2];
+        param_nt[0] = (char *)param_t.param.param;
+        param_nt[1] = '\0';
+        success = sscanf((char *)param_nt, "%d", &param_0);
+        */
     }
 
     if (success == 1) {

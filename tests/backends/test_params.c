@@ -1,5 +1,5 @@
+#include "backends/params.h"
 #include "hammer.h"
-#include "params.h"
 #include "test_suite.h"
 
 #include <glib.h>
@@ -27,7 +27,7 @@ static backend_param_with_name_t *make_param_entry_from_cstr(const char *s) {
     }
 
     entry->param.param = buf;
-    entry->param.len = len; /* length excluding terminating NUL */
+    entry->param.len = 2; /* length excluding terminating NUL */
     return entry;
 }
 
@@ -43,6 +43,7 @@ static void free_param_entry(backend_param_with_name_t *e) {
  * If entry == NULL, create a params struct with len==1 and params==NULL
  * to simulate a broken input (as used in tests).
  */
+
 static backend_params_t make_params_with_one_entry(backend_param_with_name_t *entry) {
     backend_params_t p;
 
@@ -61,7 +62,7 @@ static backend_params_t make_params_with_one_entry(backend_param_with_name_t *en
     }
 
     arr[0] = *entry; /* assign the pointer into the pointer array */
-    p.len = 1;
+    p.len = 2;
     p.params = arr;
     return p;
 }
@@ -114,18 +115,20 @@ static void test_param_k_valid_integer(void) {
     HParserBackendWithParams out;
     backend_with_params_t in;
 
-    backend_param_with_name_t *entry = make_param_entry_from_cstr("42");
+    backend_param_with_name_t *entry = make_param_entry_from_cstr("53");
     g_assert_nonnull(entry);
 
     in.params = make_params_with_one_entry(entry);
 
     int rc = h_extract_param_k(&out, &in);
+
     /* sscanf returns 1 on success; the implementation returns that value */
     g_check_cmp_int(rc, ==, 1);
 
     /* decode stored pointer back to integer via helper */
     size_t k = h_get_param_k(out.params);
-    g_check_cmp_int((int)k, ==, 42);
+
+    g_check_cmp_int((int)k, ==, 53);
 
     free_params_array(&in.params);
     free_param_entry(entry);
