@@ -199,7 +199,7 @@ void h_seq_remove(HParsedToken *xs, uint8_t n) {
         n = xs->seq->used;
 
     for (size_t i = 0; i < n; i++) {
-        xs->seq->elements[(xs->seq->used) - i - 1] = NULL;
+        xs->seq->elements[(xs->seq->used) - 1] = NULL;
         xs->seq->used--;
     }
 }
