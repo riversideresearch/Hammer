@@ -148,6 +148,91 @@ static void test_derives_epsilon_seq_nonempty(void) {
     }
 }
 
+// Helper: compute maximum number of terminal symbols reachable in any
+// production of the given choice (avoid infinite recursion via visited set).
+static int max_terminals_choice(HCFGrammar *g, const HCFChoice *ch, HHashSet *visited) {
+    if (!ch)
+        return 0;
+    if (ch->type == HCF_CHAR || ch->type == HCF_CHARSET)
+        return 1;
+    if (ch->type == HCF_END)
+        return 0;
+    if (h_hashset_present(visited, ch))
+        return 0;
+    h_hashset_put(visited, (void *)ch);
+
+    int best = 0;
+    for (HCFSequence **s = ch->seq; s && *s; s++) {
+        int sum = 0;
+        for (HCFChoice **it = (*s)->items; it && *it; it++) {
+            sum += max_terminals_choice(g, *it, visited);
+            if (sum > 1024) // guard
+                break;
+        }
+        if (sum > best)
+            best = sum;
+    }
+    return best;
+}
+
+static void test_many_cap(void) {
+    HParser *p = h_many_cap(h_choice(h_ch('a'), h_ch('b'), NULL), 2);
+
+    h_compile(p, PB_PACKRAT, NULL);
+    HCFChoice *desugared = h_desugar(&system_allocator, NULL, p);
+    g_check_cmp_ptr(desugared, !=, NULL);
+    g_check_cmp_int(desugared->type, ==, HCF_CHOICE);
+    g_check_cmp_ptr(desugared->seq, !=, NULL);
+    g_check_cmp_ptr(desugared->seq[0], !=, NULL);
+
+    HCFGrammar *g = h_cfgrammar_(&system_allocator, desugared);
+    g_check_cmp_ptr(g, !=, NULL);
+    if (g) {
+        g_check_cmp_ptr(g->start, !=, NULL);
+        g_check_cmp_int(h_hashset_present(g->nts, g->start), ==, true);
+        bool derives = h_derives_epsilon(g, g->start);
+        // many_cap with count 2 allows zero occurrences, so epsilon should derive.
+        g_check_cmp_int(derives, ==, true);
+
+        // Verify desugaring does not expand past the cap: compute maximum
+        // number of terminal symbols reachable from start and ensure it's <= 2.
+        HHashSet *visited = h_hashset_new(g->arena, h_eq_ptr, h_hash_ptr);
+        int max_terms = max_terminals_choice(g, g->start, visited);
+        g_check_cmp_int(max_terms, <=, 2);
+        h_hashset_free(visited);
+        h_cfgrammar_free(g);
+    }
+}
+
+static void test_many1_cap(void) {
+    HParser *p = h_many1_cap(h_choice(h_ch('a'), h_ch('b'), NULL), 2);
+
+    h_compile(p, PB_PACKRAT, NULL);
+    HCFChoice *desugared = h_desugar(&system_allocator, NULL, p);
+    g_check_cmp_ptr(desugared, !=, NULL);
+    g_check_cmp_int(desugared->type, ==, HCF_CHOICE);
+    g_check_cmp_ptr(desugared->seq, !=, NULL);
+    g_check_cmp_ptr(desugared->seq[0], !=, NULL);
+
+    HCFGrammar *g = h_cfgrammar_(&system_allocator, desugared);
+    g_check_cmp_ptr(g, !=, NULL);
+    if (g) {
+        g_check_cmp_ptr(g->start, !=, NULL);
+        g_check_cmp_int(h_hashset_present(g->nts, g->start), ==, true);
+        bool derives = h_derives_epsilon(g, g->start);
+        // many1_cap with count 2 allows min, so epsilon should not derive.
+        g_check_cmp_int(derives, ==, false);
+
+        // Verify desugaring does not expand past the cap: compute maximum
+        // number of terminal symbols reachable from start and ensure it's <= 2.
+        HHashSet *visited = h_hashset_new(g->arena, h_eq_ptr, h_hash_ptr);
+        int max_terms = max_terminals_choice(g, g->start, visited);
+        g_check_cmp_int(max_terms, <=, 2);
+        h_hashset_free(visited);
+        h_cfgrammar_free(g);
+    }
+}
+
 // Test cfgrammar.c: h_stringmap_new (line 279)
 static void test_stringmap_new(void) {
     HArena *arena = h_new_arena(&system_allocator, 0);
@@ -882,6 +967,8 @@ void register_cfgrammar_tests(void) {
     g_test_add_func("/core/cfgrammar/derives_epsilon_seq_empty", test_derives_epsilon_seq_empty);
     g_test_add_func("/core/cfgrammar/derives_epsilon_seq_nonempty",
                     test_derives_epsilon_seq_nonempty);
+    g_test_add_func("/core/cfgrammar/many_cap", test_many_cap);
+    g_test_add_func("/core/cfgrammar/many1_cap", test_many1_cap);
     g_test_add_func("/core/cfgrammar/stringmap_new", test_stringmap_new);
     g_test_add_func("/core/cfgrammar/stringmap_put_end", test_stringmap_put_end);
     g_test_add_func("/core/cfgrammar/stringmap_put_epsilon", test_stringmap_put_epsilon);

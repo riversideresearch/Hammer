@@ -407,6 +407,39 @@ static void test_many1(gconstpointer backend) {
     g_check_parse_failed(many1_, (HParserBackend)GPOINTER_TO_INT(backend), "daabbabadef", 11);
 }
 
+static void test_many_cap(gconstpointer backend) {
+    const HParser *many_cap_ = h_many_cap(h_choice(h_ch('a'), h_ch('b'), NULL), 2);
+
+    g_check_parse_match(many_cap_, (HParserBackend)GPOINTER_TO_INT(backend), "", 0, "()");
+    g_check_parse_match(many_cap_, (HParserBackend)GPOINTER_TO_INT(backend), "a", 1, "(u0x61)");
+    g_check_parse_match(many_cap_, (HParserBackend)GPOINTER_TO_INT(backend), "ab", 2, "(u0x61 u0x62)");
+    g_check_parse_match(many_cap_, (HParserBackend)GPOINTER_TO_INT(backend), "aab", 3,
+                        "(u0x61 u0x61)");
+
+    const HParser *many_cap_2 = h_many_cap(h_choice(h_ch('a'), h_ch('b'), NULL), 0);
+    g_check_parse_match(many_cap_2, (HParserBackend)GPOINTER_TO_INT(backend), "", 0, "()");
+    g_check_parse_match(many_cap_2, (HParserBackend)GPOINTER_TO_INT(backend), "a", 1, "()");
+}
+
+static void test_many1_cap(gconstpointer backend) {
+    const HParser *many1_cap_ = h_many1_cap(h_choice(h_ch('a'), h_ch('b'), NULL), 2);
+
+    g_check_parse_failed(many1_cap_, (HParserBackend)GPOINTER_TO_INT(backend), "", 0);
+    g_check_parse_match(many1_cap_, (HParserBackend)GPOINTER_TO_INT(backend), "a", 1, "(u0x61)");
+    g_check_parse_match(many1_cap_, (HParserBackend)GPOINTER_TO_INT(backend), "ab", 2, "(u0x61 u0x62)");
+    g_check_parse_match(many1_cap_, (HParserBackend)GPOINTER_TO_INT(backend), "aab", 3,
+                        "(u0x61 u0x61)");
+    
+    const HParser *many1_cap_2 = h_many1_cap(h_choice(h_ch('a'), h_ch('b'), NULL), 0);
+    g_check_parse_failed(many1_cap_2, (HParserBackend)GPOINTER_TO_INT(backend), "", 0);
+    g_check_parse_failed(many1_cap_2, (HParserBackend)GPOINTER_TO_INT(backend), "a", 1);
+    
+    const HParser *many1_cap_3 = h_many1_cap(h_choice(h_ch('a'), h_ch('b'), NULL), 1);
+    g_check_parse_failed(many1_cap_3, (HParserBackend)GPOINTER_TO_INT(backend), "", 0);
+    g_check_parse_match(many1_cap_3, (HParserBackend)GPOINTER_TO_INT(backend), "a", 1, "(u0x61)");
+    g_check_parse_match(many1_cap_3, (HParserBackend)GPOINTER_TO_INT(backend), "ab", 2, "(u0x61)");
+}
+
 static void test_repeat_n(gconstpointer backend) {
     const HParser *repeat_n_ = h_repeat_n(h_choice(h_ch('a'), h_ch('b'), NULL), 2);
 
@@ -1004,6 +1037,8 @@ void register_parser_tests(void) {
     g_test_add_data_func("/core/parser/packrat/xor", GINT_TO_POINTER(PB_PACKRAT), test_xor);
     g_test_add_data_func("/core/parser/packrat/many", GINT_TO_POINTER(PB_PACKRAT), test_many);
     g_test_add_data_func("/core/parser/packrat/many1", GINT_TO_POINTER(PB_PACKRAT), test_many1);
+    g_test_add_data_func("/core/parser/packrat/many_cap", GINT_TO_POINTER(PB_PACKRAT), test_many_cap);
+    g_test_add_data_func("/core/parser/packrat/many1_cap", GINT_TO_POINTER(PB_PACKRAT), test_many1_cap);
     g_test_add_data_func("/core/parser/packrat/repeat_n", GINT_TO_POINTER(PB_PACKRAT),
                          test_repeat_n);
     g_test_add_data_func("/core/parser/packrat/optional", GINT_TO_POINTER(PB_PACKRAT),

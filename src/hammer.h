@@ -821,6 +821,24 @@ HParser *h_many__m(HAllocator *mm__, const HParser *p);
  */
 HParser *h_many1(const HParser *p);
 HParser *h_many1__m(HAllocator *mm__, const HParser *p);
+  
+/**
+ * @brief Given a parser, p, this parser succeeds for zero or more up to N repetitions of p.
+ * @param p Parser to repeat
+ * @param n Maximum number of repetitions
+ * @return Result token type: TT_SEQUENCE
+ */
+HParser *h_many_cap(const HParser *p, const size_t n);
+HParser *h_many_cap__m(HAllocator *mm__, const HParser *p, const size_t n);
+
+/**
+ * @brief Given a parser, p, this parser succeeds for one or more up to N repetitions of p.
+ * @param p Parser to repeat
+ * @param n Maximum number of repetitions
+ * @return Result token type: TT_SEQUENCE
+ */
+HParser *h_many1_cap(const HParser *p, const size_t n);
+HParser *h_many1_cap__m(HAllocator *mm__, const HParser *p, const size_t n);
 
 /**
  * @brief Given a parser, p, this parser succeeds for exactly N repetitions of p.
