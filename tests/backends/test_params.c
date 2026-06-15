@@ -203,13 +203,12 @@ static void test_format_helpers_specific_k(void) {
     char *name = h_format_name_with_param_k(&fail_allocator, backend, k);
     g_assert_nonnull(name);
     g_check_string(name, ==, "hammer(7)");
-    // free using the allocator expected by your project; tests assume free() works //
-    // free(name);
+    free(name);
 
     char *desc = h_format_description_with_param_k(&fail_allocator, backend, k);
     g_assert_nonnull(desc);
     g_check_string(desc, ==, "hammer(7) parser backend");
-    // free(desc);
+    free(desc);
 }
 
 static void test_format_helpers_generic_k(void) {
@@ -219,7 +218,7 @@ static void test_format_helpers_generic_k(void) {
     char *name = h_format_name_with_param_k(&fail_allocator, backend, k);
     g_assert_nonnull(name);
     g_check_string(name, ==, "hammer(k)");
-    // free(name);
+    free(name);
 
     char *desc = h_format_description_with_param_k(&fail_allocator, backend, k);
     g_assert_nonnull(desc);
@@ -234,7 +233,7 @@ static void test_format_helpers_generic_k(void) {
     }
 #endif
 
-    // free(desc);
+    free(desc);
 }
 
 void register_param_k_tests(void) {
