@@ -66,7 +66,7 @@ char *h_format_name_with_param_k(HAllocator *mm__, const char *backend_name, siz
     return name;
 }
 
-#define MAX_LENGTH 1024
+#define MAX_LENGTH 256
 
 int h_extract_param_k(HParserBackendWithParams *be_with_params,
                       backend_with_params_t *be_with_params_t) {
@@ -88,7 +88,7 @@ int h_extract_param_k(HParserBackendWithParams *be_with_params,
 
     size_t actual_params_len = params_t.len;
 
-    if (actual_params_len >= 1) {
+    if (actual_params_len >= 1 && actual_params_len <= MAX_LENGTH) {
         backend_param_with_name_t param_t = params_t.params[0];
         if (param_t.param.param == NULL) {
             return -3; // NULL param
@@ -97,13 +97,8 @@ int h_extract_param_k(HParserBackendWithParams *be_with_params,
         // nul-termination can be added
         param_t.param.param[actual_params_len] = '\0';
         success = sscanf((char *)param_t.param.param, "%d", &param_0);
-        /*
-        char *param_nt[2];
-        param_nt[0] = (char *)param_t.param.param;
-        param_nt[1] = '\0';
-        success = sscanf((char *)param_nt, "%d", &param_0);
-        */
-    }
+    } else
+        return -4; // length 0 or too large
 
     if (success == 1) {
         param = (uintptr_t)param_0;
