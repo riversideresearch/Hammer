@@ -66,7 +66,7 @@ char *h_format_name_with_param_k(HAllocator *mm__, const char *backend_name, siz
     return name;
 }
 
-#define MAX_LENGTH 256
+#define MAX_LENGTH 10 // On a 32-bit system ASCII representation of 2^32 is 10 digits.
 
 int h_extract_param_k(HParserBackendWithParams *be_with_params,
                       backend_with_params_t *be_with_params_t) {
@@ -86,21 +86,27 @@ int h_extract_param_k(HParserBackendWithParams *be_with_params,
         return -2; // NULL params in be_with_params_t->params
     }
 
-    size_t actual_params_len = params_t.len;
+    size_t num_of_params = params_t.len;
 
-    if (actual_params_len >= 1 && actual_params_len <= MAX_LENGTH) {
+    if (num_of_params > 0) {
         backend_param_with_name_t param_t = params_t.params[0];
-        if (param_t.param.param == NULL) {
+        if (param_t.param.param == NULL)
             return -3; // NULL param
-        }
-        // char's can sometimes be non NUL-terminated and will cause an overflow on sscanf, so
-        // nul-termination can be added
-        param_t.param.param[actual_params_len] = '\0';
-        success = sscanf((char *)param_t.param.param, "%d", &param_0);
-    } else
-        return -4; // length 0 or too large
 
-    if (success == 1) {
+        size_t len = param_t.param.len; // length of the param string
+        if (len > MAX_LENGTH && len > 0)
+            return -5; // param_t.param.len is too large or 0
+
+        // char's can sometimes be non NUL-terminated and will cause an overflow on sscanf, so
+        // nul-termination can be added inside a temp copy to avoid overwriting unowned memory
+        char tmp[10];
+        memcpy(tmp, param_t.param.param, len);
+        tmp[len] = '\0';
+        success = sscanf((char *)tmp, "%d", &param_0);
+    } else
+        return -4; // params_t.len is 0
+
+    if ((size_t)success <= num_of_params && success > 0) {
         param = (uintptr_t)param_0;
         be_with_params->params = (void *)param;
     }

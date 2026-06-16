@@ -52,9 +52,9 @@ char *h_format_name_with_param_k(HAllocator *mm__, const char *backend_name, siz
  *
  * @param be_with_params Output backend structure whose `params` field will be set.
  * @param be_with_params_t Input parameter container holding the raw parameter list.
- * @return 1 on successful int extraction & assignment, 0 if the parsing fails.
- *         -1 on NULL input, -2 if params are NULL, -3 if the raw parameter is NULL,
-           -4 if the len is 0 or >256.
+ * @return n for each successful int extraction & assignment, 0 if the parsing fails.
+ *         0 if parse fails, -1 on NULL input, -2 if params are NULL, -3 if the raw param is
+ *         NULL, -4 if the length of params is 0, -5 if the length of a raw param is 0 or >10.
  * @note  On success, the parsed integer value is cast to uintptr_t and stored in
  *        `be_with_params->params` as a (void *) pointer. The caller is responsible for
  *        interpreting this value appropriately.

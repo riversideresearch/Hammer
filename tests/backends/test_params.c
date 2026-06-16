@@ -9,17 +9,18 @@
 
 // Helpers to construct the parameter structures used by the C functions.
 
-static backend_param_with_name_t *make_param_entry_from_cstr(const char *s) {
+static backend_param_with_name_t *make_param_entry_from_cstr(const char *s ) {
     backend_param_with_name_t *entry = g_malloc0(sizeof(*entry));
     if (!entry)
         return NULL;
 
     size_t len = s ? strlen(s) : 0;
+    //fprintf(stderr, "Len = %lu", len);
     /* allocate buffer with space for terminating NUL so sscanf/str* are safe */
     uint8_t *buf = NULL;
     if (len > 0) {
-        buf = g_malloc(len + 1);
-        memcpy(buf, s, len + 1);
+        buf = g_malloc(len);
+        memcpy(buf, s, len);
     } else {
         /* represent empty buffer as a valid pointer to a zero-length string */
         buf = g_malloc(1);
@@ -27,7 +28,7 @@ static backend_param_with_name_t *make_param_entry_from_cstr(const char *s) {
     }
 
     entry->param.param = buf;
-    entry->param.len = 2; /* length excluding terminating NUL */
+    entry->param.len = len; /* length excluding terminating NUL */
     return entry;
 }
 
@@ -62,7 +63,7 @@ static backend_params_t make_params_with_one_entry(backend_param_with_name_t *en
     }
 
     arr[0] = *entry; /* assign the pointer into the pointer array */
-    p.len = 2;
+    p.len = 1;
     p.params = arr;
     return p;
 }
@@ -115,7 +116,7 @@ static void test_param_k_valid_integer(void) {
     HParserBackendWithParams out;
     backend_with_params_t in;
 
-    backend_param_with_name_t *entry = make_param_entry_from_cstr("53");
+    backend_param_with_name_t *entry = make_param_entry_from_cstr("1234567890");
     g_assert_nonnull(entry);
 
     in.params = make_params_with_one_entry(entry);
@@ -128,7 +129,7 @@ static void test_param_k_valid_integer(void) {
     /* decode stored pointer back to integer via helper */
     size_t k = h_get_param_k(out.params);
 
-    g_check_cmp_int((int)k, ==, 53);
+    g_check_cmp_int((int)k, ==, 1234567890);
 
     free_params_array(&in.params);
     free_param_entry(entry);
