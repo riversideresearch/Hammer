@@ -18,7 +18,45 @@
 #include "test_suite.h"
 
 #include "hammer.h"
-
+#ifdef RTEMS_BUILD
+void register_all_hammer_tests(void){
+    register_bitreader_tests();
+    register_bitwriter_tests();
+    register_parser_tests();
+    register_basic_parser_tests();
+    register_integer_parser_tests();
+    register_float_parser_tests();
+    register_additional_parser_tests();
+    register_parser_internal_tests();
+    register_permutation_tests();
+    register_seek_tests();
+    register_sequence_tests();
+    register_token_tests();
+    register_value_tests();
+    register_whitespace_tests();
+    register_xor_tests();
+    register_missing_tests();
+    register_packrat_tests();
+    register_hammer_tests();
+    register_glue_tests();
+    register_registry_tests();
+    register_desugar_tests();
+    register_internal_tests();
+    register_unimplemented_tests();
+    register_grammar_tests();
+    register_cfgrammar_tests();
+    register_platform_tests();
+    register_misc_tests();
+    register_names_tests();
+    register_benchmark_tests();
+    register_regression_tests();
+    register_allocator_tests();
+    register_datastructures_tests();
+    register_pprint_tests();
+    register_sloballoc_tests();
+    register_system_allocator_tests();
+}
+#endif //#ifdef RTEMS_BUILD
 #include <glib.h>
 
 extern void register_bitreader_tests();
@@ -48,7 +86,9 @@ extern void register_grammar_tests();
 extern void register_cfgrammar_tests();
 extern void register_platform_tests();
 extern void register_misc_tests();
+#ifndef RTEMS_BUILD
 extern void register_mm_tests();
+#endif // #ifndef RTEMS_BUILD
 extern void register_names_tests();
 extern void register_benchmark_tests();
 extern void register_regression_tests();
@@ -57,7 +97,7 @@ extern void register_datastructures_tests();
 extern void register_pprint_tests();
 extern void register_sloballoc_tests();
 extern void register_system_allocator_tests();
-
+#ifndef RTEMS_BUILD
 int main(int argc, char **argv) {
     g_test_init(&argc, &argv, NULL);
 
@@ -101,3 +141,4 @@ int main(int argc, char **argv) {
 
     g_test_run();
 }
+#endif // #ifndef RTEMS_BUILD

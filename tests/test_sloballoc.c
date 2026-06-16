@@ -120,6 +120,7 @@ static void test_h_slob_realloc(void) {
     if (mm && mm->realloc) {
         void *ptr = mm->alloc(mm, 100);
         g_check_cmp_ptr(ptr, !=, NULL);
+        #ifndef RTEMS_BUILD
         if (ptr) {
             void (*old_handler)(int) = signal(SIGABRT, abort_handler);
             if (setjmp(abort_jmp_buf) == 0) {
@@ -128,6 +129,7 @@ static void test_h_slob_realloc(void) {
             }
             signal(SIGABRT, old_handler);
         }
+        #endif // #ifndef RTEMS_BUILD
     }
 }
 

@@ -1,7 +1,9 @@
 /* Copyright (c) 2026 Riverside Research */
 #include "hammer.h"
 #include "internal.h"
+#ifndef RTEMS_BUILD
 #include "test_suite.h"
+#endif // #ifndef RTEMS_BUILD
 
 #include <assert.h>
 #include <stdint.h>

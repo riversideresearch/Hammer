@@ -317,7 +317,7 @@ HParseResult *h_packrat_parse(HAllocator *mm__, const HParser *parser, HInputStr
         h_delete_arena(arena);
         return NULL;
     }
-
+    
     HParseState *parse_state = a_new_(arena, HParseState, 1);
     parse_state->cache = h_hashtable_new(arena, cache_key_equal, // key_equal_func
                                          cache_key_hash);        // hash_func

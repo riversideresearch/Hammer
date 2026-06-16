@@ -780,6 +780,7 @@ static void test_ignoreseq_internal(gconstpointer backend) {
     test_seq->len = 4;
     test_seq->which = 2; // Invalid: not 0, not 1, not len-1=3
 
+    #ifndef RTEMS_BUILD
     // Use signal handler to catch abort and allow test to continue
     // This allows coverage to be recorded while still hitting the assert line
     struct sigaction old_sa, new_sa;
@@ -796,6 +797,7 @@ static void test_ignoreseq_internal(gconstpointer backend) {
     }
     // Restore original signal handler
     sigaction(SIGABRT, &old_sa, NULL);
+    #endif // #ifndef RTEMS_BUILD
 }
 
 static void test_indirect_internal(gconstpointer backend) {

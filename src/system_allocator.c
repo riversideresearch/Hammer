@@ -38,6 +38,10 @@ static inline void *block_for_user_ptr(void *uptr) { return ((char *)uptr) - BLO
 static inline void *user_ptr(void *block) { return ((char *)block) + BLOCK_HEADER_SIZE; }
 
 static void *system_alloc(HAllocator *allocator, size_t size) {
+    // ensure that usable ptr is returned in rtems build
+    #ifdef RTEMS_BUILD
+    if(size ==0) size=1;
+    #endif // #ifdef RTEMS_BUILD
     void *block = malloc(block_size(size));
     if (!block) {
         return NULL;

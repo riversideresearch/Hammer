@@ -74,7 +74,7 @@ static void test_desugar_bits_signed(void) {
     // Bits parser desugars to a choice (not directly to HCF_BITS)
     g_check_cmp_int(desugared->type, ==, HCF_CHOICE);
 }
-
+#ifndef RTEMS_BUILD
 static void test_desugar_int_range(void) {
     const HParser *p = h_int_range(h_uint8(), 0, 255);
     HCFChoice *desugared = h_desugar(&system_allocator, NULL, p);
@@ -82,6 +82,7 @@ static void test_desugar_int_range(void) {
     // int_range desugars to a charset (HCF_CHARSET = 2)
     g_check_cmp_int(desugared->type, ==, HCF_CHARSET);
 }
+#endif // #ifndef RTEMS_BUILD
 
 static void test_desugar_sequence(void) {
     const HParser *p = h_sequence(h_ch('a'), h_ch('b'), h_ch('c'), NULL);
@@ -237,7 +238,9 @@ void register_desugar_tests(void) {
     g_test_add_func("/core/desugar/charset_not_in", test_desugar_charset_not_in);
     g_test_add_func("/core/desugar/bits", test_desugar_bits);
     g_test_add_func("/core/desugar/bits_signed", test_desugar_bits_signed);
+    #ifndef RTEMS_BUILD
     g_test_add_func("/core/desugar/int_range", test_desugar_int_range);
+    #endif // #ifndef RTEMS_BUILD
     g_test_add_func("/core/desugar/sequence", test_desugar_sequence);
     g_test_add_func("/core/desugar/choice", test_desugar_choice);
     g_test_add_func("/core/desugar/many", test_desugar_many);

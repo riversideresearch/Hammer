@@ -14,6 +14,11 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+#ifdef RTEMS_BUILD
+#include "rtems_test_suite.h"
+#else
+#include <glib.h>
+#endif // #ifdef RTEMS_BUILD
 
 #ifndef HAMMER_TEST_SUITE__H
 #define HAMMER_TEST_SUITE__H

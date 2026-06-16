@@ -5,7 +5,7 @@
 
 #include <glib.h>
 #include <string.h>
-
+#ifndef RTEMS_BUILD
 #define check_sloballoc_invariants()                                                               \
     do {                                                                                           \
         int err = slobcheck(slob);                                                                 \
@@ -149,3 +149,5 @@ void register_mm_tests(void) {
     g_test_add_func("/core/mm/sloballoc/small", test_sloballoc_small);
     g_test_add_func("/core/mm/sloballoc/hammer", test_sloballoc_hammer);
 }
+
+#endif // #ifndef RTEMS_BUILD

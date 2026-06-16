@@ -18,7 +18,9 @@
 
 #include "hammer.h"
 #include "internal.h"
+#ifndef RTEMS_BUILD
 #include "test_suite.h"
+#endif // #ifndef RTEMS_BUILD
 
 #include <stdint.h>
 #include <stdio.h>

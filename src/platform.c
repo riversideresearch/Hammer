@@ -6,6 +6,14 @@
 #include <stdlib.h>
 #include <time.h>
 
+#ifdef RTEMS_BUILD
+#include <rtems.h>
+static void gettime(struct timespec *ts){
+    if (ts ==NULL) return;
+    rtems_clock_get_uptime(ts);
+}
+#endif // #ifdef RTEMS_BUILD
+
 int h_platform_asprintf(char **strp, const char *fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
@@ -29,12 +37,13 @@ void h_platform_errx(int err, const char *format, ...) {
 
 // TODO: replace this with a posix timer-based benchmark. (cf. timerfd_create, timer_create,
 // setitimer)
-
+#ifndef RTEMS_BUILD
 static void gettime(struct timespec *ts) {
     if (ts == NULL)
         return;
     clock_gettime(CLOCK_THREAD_CPUTIME_ID, ts);
 }
+#endif //#ifndef RTEMS_BUILD
 
 void h_platform_stopwatch_reset(struct HStopWatch *stopwatch) { gettime(&stopwatch->start); }
 

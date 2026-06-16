@@ -32,7 +32,7 @@ struct arena_link {
     struct arena_link *next;
     size_t free;
     size_t used;
-    uint8_t rest[];
+    uint8_t rest[] __attribute__((aligned(8)));
 };
 
 struct HArena_ {
@@ -128,6 +128,9 @@ void *h_arena_malloc_noinit(HArena *arena, size_t size) {
 void *h_arena_malloc(HArena *arena, size_t size) { return h_arena_malloc_raw(arena, size, true); }
 
 static void *h_arena_malloc_raw(HArena *arena, size_t size, bool need_zero) {
+    // Round up pointer alignment so subsequent allocations stay aligned
+    size = (size + 7) & ~7;
+
     struct arena_link *link = NULL;
     void *ret = NULL;
 

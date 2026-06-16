@@ -5,6 +5,9 @@
 
 #include <glib.h>
 #include <stdint.h>
+#ifdef RTEMS_BUILD
+#define FALSE 0
+#endif // #ifdef RTEMS_BUILD
 
 typedef struct {
     uint64_t data;

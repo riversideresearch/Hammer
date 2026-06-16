@@ -502,7 +502,11 @@ static void test_bug60() {
  * This is the original bug60 test case; cut down from an ABNF parser
  */
 
+#ifdef SIMULATOR_LIMITED
+#define BUG60_ABNF_SCAN_UP_TO 8
+#else
 #define BUG60_ABNF_SCAN_UP_TO 64
+#endif // #ifdef SIMULATOR_LIMITED
 
 static void test_bug60_abnf() {
     HParser *newline = NULL;
