@@ -63,4 +63,3 @@ int h_extract_param_k(HParserBackendWithParams *be_with_params,
                       backend_with_params_t *be_with_params_t);
 
 #endif /* !defined(HAMMER_BACKENDS_PARAMS__H) */
-git
