@@ -88,24 +88,20 @@ int h_extract_param_k(HParserBackendWithParams *be_with_params,
 
     size_t num_of_params = params_t.len;
 
-    if (num_of_params > 0) {
-        backend_param_with_name_t param_t = params_t.params[0];
-        if (param_t.param.param == NULL)
-            return -3; // NULL param
+    backend_param_with_name_t param_t = params_t.params[0];
+    if (param_t.param.param == NULL)
+        return -3; // NULL param
 
-        size_t len = param_t.param.len; // length of the param string
-        if (len > MAX_LENGTH && len > 0)
-            return -5; // param_t.param.len is too large or 0
+    size_t len = param_t.param.len; // length of the param string
+    if (len > MAX_LENGTH && len > 0)
+        return -4; // param_t.param.len is too large or 0
 
-        // char's can sometimes be non NUL-terminated and will cause an overflow on sscanf, so
-        // nul-termination can be added inside a temp copy to avoid overwriting unowned memory
-        char tmp[10];
-        memcpy(tmp, param_t.param.param, len);
-        tmp[len] = '\0';
-        success = sscanf((char *)tmp, "%d", &param_0);
-    } else
-        return -4; // params_t.len is 0
-
+    // char's can sometimes be non NUL-terminated and will cause an overflow on sscanf, so
+    // nul-termination can be added inside a temp copy to avoid overwriting unowned memory
+    char tmp[10];
+    memcpy(tmp, param_t.param.param, len);
+    tmp[len] = '\0';
+    success = sscanf((char *)tmp, "%d", &param_0);
     if ((size_t)success <= num_of_params && success > 0) {
         param = (uintptr_t)param_0;
         be_with_params->params = (void *)param;

@@ -105,11 +105,11 @@ static void test_param_k_first_entry_null(void) {
     backend_param_with_name_t *entry = make_param_entry_from_cstr("42");
     g_assert_nonnull(entry);
 
-    in.params = make_params_with_one_entry(NULL);
-
+    in.params = make_params_with_one_entry(entry);
+    in.params.params[0].param.param = NULL;
     int rc = h_extract_param_k(&out, &in);
-    // sscanf returns -2 on error
-    g_check_cmp_int(rc, ==, -2);
+    
+    g_check_cmp_int(rc, ==, -3);
 }
 
 static void test_param_k_valid_integer(void) {
@@ -174,6 +174,25 @@ static void test_param_k_negative_integer(void) {
     /* We can still call h_get_param_k to see what it returns; it will be a size_t value. */
     size_t k = h_get_param_k(out.params);
     g_check_cmp_int((int)k, !=, 0); /* not zero (likely large value due to cast) */
+
+    free_params_array(&in.params);
+    free_param_entry(entry);
+}
+
+static void test_param_k_overflow(void) {
+    HParserBackendWithParams out;
+    backend_with_params_t in;
+
+    backend_param_with_name_t *entry = make_param_entry_from_cstr("12345678910");
+    g_assert_nonnull(entry);
+
+    in.params = make_params_with_one_entry(entry);
+
+    int rc = h_extract_param_k(&out, &in);
+    g_check_cmp_int(rc, ==, -4);
+
+    // On parse failure, out.params should remain NULL because we initialized it
+    g_check_cmp_ptr(out.params, ==, NULL);
 
     free_params_array(&in.params);
     free_param_entry(entry);
@@ -244,6 +263,7 @@ void register_param_k_tests(void) {
     g_test_add_func("/core/backends/param_k/valid_integer", test_param_k_valid_integer);
     g_test_add_func("/core/backends/param_k/invalid_integer", test_param_k_invalid_integer);
     g_test_add_func("/core/backends/param_k/negative_integer", test_param_k_negative_integer);
+    g_test_add_func("/core/backends/param_k/overflow", test_param_k_overflow);
     g_test_add_func("/core/backends/param_k/format_specific_k", test_format_helpers_specific_k);
     g_test_add_func("/core/backends/param_k/format_generic_k", test_format_helpers_generic_k);
 }
