@@ -192,15 +192,15 @@ void h_seq_remove(HParsedToken *xs, uint8_t n) {
     HAMMER_ASSERT(xs != NULL);
     HAMMER_ASSERT(xs->token_type == TT_SEQUENCE);
 
-    if (n == 0 || (xs->seq->used == 0))
+    if (n == 0 || (xs->token_data.seq->used == 0))
         return;
-    if (xs->seq->used < n)
+    if (xs->token_data.seq->used < n)
         // If n is too large just remove the whole list
-        n = xs->seq->used;
+        n = xs->token_data.seq->used;
 
     for (size_t i = 0; i < n; i++) {
-        xs->seq->elements[(xs->seq->used) - 1] = NULL;
-        xs->seq->used--;
+        xs->token_data.seq->elements[(xs->token_data.seq->used) - 1] = NULL;
+        xs->token_data.seq->used--;
     }
 }
 
