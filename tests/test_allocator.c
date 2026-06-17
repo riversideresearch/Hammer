@@ -249,8 +249,8 @@ void register_allocator_tests(void) {
     g_test_add_func("/core/allocator/allocator_stats", test_allocator_stats);
     g_test_add_func("/core/allocator/arena_free", test_arena_free);
     g_test_add_func("/core/allocator/delete_arena", test_delete_arena);
-    g_test_add_func("/core/allocator/test_wrap_sets_fields", test_wrap_sets_fields);
-    g_test_add_func("/core/allocator/test_alloc_dispatches", test_alloc_dispatches);
-    g_test_add_func("/core/allocator/test_realloc_dispatches", test_realloc_dispatches);
-    g_test_add_func("/core/allocator/test_free_dispatches", test_free_dispatches);
+    g_test_add_func("/core/allocator/wrap_sets_fields", test_wrap_sets_fields);
+    g_test_add_func("/core/allocator/alloc_dispatches", test_alloc_dispatches);
+    g_test_add_func("/core/allocator/realloc_dispatches", test_realloc_dispatches);
+    g_test_add_func("/core/allocator/free_dispatches", test_free_dispatches);
 }

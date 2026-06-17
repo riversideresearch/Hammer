@@ -96,7 +96,7 @@ void register_names_tests(void) {
                     test_tt_get_backend_with_params_by_name);
     g_test_add_func("/core/names/tt_test_tt_h_get_descriptive_text_for_backend_with_params",
                     test_tt_h_get_descriptive_text_for_backend_with_params);
-    g_test_add_func("/core/names/test_tt_h_get_name_for_backend_with_params",
+    g_test_add_func("/core/names/tt_test_tt_h_get_name_for_backend_with_params",
                     test_tt_h_get_name_for_backend_with_params);
     g_test_add_func("/core/names/tt_h_compile_for_backend_with_params",
                     test_tt_h_compile_for_backend_with_params);
