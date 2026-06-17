@@ -278,13 +278,34 @@ HParsedToken *h_carray_index(const HCountedArray *a, size_t i); /**< XXX -> inte
 
 /** Sequence modification... */
 
-/** Add elements to a sequence. */
-void h_seq_snoc(HParsedToken *xs, const HParsedToken *x);    /**< append one */
-void h_seq_append(HParsedToken *xs, const HParsedToken *ys); /**< append many */
+/**
+ * @brief Add one element to a sequence
+ * @param xs A TT_SEQUENCE of tokens
+ * @param x A single token to be added
+ */
+void h_seq_snoc(HParsedToken *xs, const HParsedToken *x);
+/**
+ * @brief Add many elements to a sequence
+ * @param xs A TT_SEQUENCE of tokens
+ * @param ys A TT_SEQUENCE of tokens to be added
+ */
+void h_seq_append(HParsedToken *xs, const HParsedToken *ys);
 
-/** XXX TODO: Remove elements from a sequence. */
+/**
+ * @brief Remove n elemenets from a sequence
+ * @param xs A TT_SEQUENCE of tokens
+ * @param n Number of elements to remove.
+ * @note if n is larger than the sequence it will remove all elements without error
+ */
+void h_seq_remove(HParsedToken *xs, uint8_t n);
 
-/** Flatten nested sequences into one. */
+/**
+ * @brief Flatten nested sequences into one.
+ * @param arena An HArena
+ * @param p A Token
+ * @return Always returns a sequence, never NULL
+ * @note If input element is not a sequence, returns it as a singleton sequence.
+ */
 const HParsedToken *h_seq_flatten(HArena *arena, const HParsedToken *p);
 
 #endif
