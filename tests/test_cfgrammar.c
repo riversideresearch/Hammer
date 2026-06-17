@@ -162,7 +162,7 @@ static int max_terminals_choice(HCFGrammar *g, const HCFChoice *ch, HHashSet *vi
     h_hashset_put(visited, (void *)ch);
 
     int best = 0;
-    for (HCFSequence **s = ch->seq; s && *s; s++) {
+    for (HCFSequence **s = ch->data.seq; s && *s; s++) {
         int sum = 0;
         for (HCFChoice **it = (*s)->items; it && *it; it++) {
             sum += max_terminals_choice(g, *it, visited);
@@ -182,8 +182,8 @@ static void test_many_cap(void) {
     HCFChoice *desugared = h_desugar(&system_allocator, NULL, p);
     g_check_cmp_ptr(desugared, !=, NULL);
     g_check_cmp_int(desugared->type, ==, HCF_CHOICE);
-    g_check_cmp_ptr(desugared->seq, !=, NULL);
-    g_check_cmp_ptr(desugared->seq[0], !=, NULL);
+    g_check_cmp_ptr(desugared->data.seq, !=, NULL);
+    g_check_cmp_ptr(desugared->data.seq[0], !=, NULL);
 
     HCFGrammar *g = h_cfgrammar_(&system_allocator, desugared);
     g_check_cmp_ptr(g, !=, NULL);
@@ -211,8 +211,8 @@ static void test_many1_cap(void) {
     HCFChoice *desugared = h_desugar(&system_allocator, NULL, p);
     g_check_cmp_ptr(desugared, !=, NULL);
     g_check_cmp_int(desugared->type, ==, HCF_CHOICE);
-    g_check_cmp_ptr(desugared->seq, !=, NULL);
-    g_check_cmp_ptr(desugared->seq[0], !=, NULL);
+    g_check_cmp_ptr(desugared->data.seq, !=, NULL);
+    g_check_cmp_ptr(desugared->data.seq[0], !=, NULL);
 
     HCFGrammar *g = h_cfgrammar_(&system_allocator, desugared);
     g_check_cmp_ptr(g, !=, NULL);

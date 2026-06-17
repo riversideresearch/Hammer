@@ -269,7 +269,7 @@ static HParseResult *parse_cap(void *env, HParseState *state) {
 succ:; // necessary for the label to be here...
     HParsedToken *res = a_new(HParsedToken, 1);
     res->token_type = TT_SEQUENCE;
-    res->seq = seq;
+    res->token_data.seq = seq;
     res->index = 0;
     res->bit_length = 0;
     res->bit_offset = 0;
