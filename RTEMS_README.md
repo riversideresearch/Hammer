@@ -60,12 +60,13 @@ placing `-lhammer_tests` BEFORE `-lhammer`.
 ### NOTES
 * When doing `make tests` you will see many warnings of functions being redefined in the different test files.
   This is intended, as glib is not supported on rtems, so any functions provided by it were redefined for the rtems build.
+* There is a CFlag named SIMULATOR_LIMITED. This was added, as some tests would take too much time in the simulator, so the test suite was unable to fully run. This flag can be safely removed if not running on simulator.
 * Running `make install` or `make install-tests` will by default install everything needed to link to `~/install/`, which the linking instructions above are based on.
 * Some desugar tests were removed, as they did not verify any functionality, they only verified desugar output formatting.
 
 
 ## Example rtems test
-```shell
+```c
 #include <rtems.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -96,9 +97,7 @@ rtems_task Init(rtems_task_argument arg) {
 #define CONFIGURE_INIT
 
 #define CONFIGURE_FILESYSTEM_IMFS
-// #define CONFIGURE_USE_IMFS_AS_BASE_FILESYSTEM
 #define CONFIGURE_MAXIMUM_FILE_DESCRIPTORS 16
-// #define CONFIGURE_IMFS_ENABLE_MKFIFO
 
 #define CONFIGURE_INIT_TASK_ATTRIBUTES RTEMS_FLOATING_POINT
 
