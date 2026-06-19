@@ -275,6 +275,7 @@ HParseResult *run_trace(HAllocator *mm__, HRVMProg *orig_prog, HRVMTrace *trace,
             break;
         case SVM_ACTION:
             // Action should modify stack appropriately
+            ctx->input_pos = cur->input_pos;
             if (!orig_prog->actions[cur->arg].action(arena, ctx,
                                                      orig_prog->actions[cur->arg].env)) {
 

@@ -65,7 +65,11 @@ static void desugar_optional(HAllocator *mm__, HCFStack *stk__, void *env) {
 
 static bool h_svm_action_optional(HArena *arena, HSVMContext *ctx, void *env) {
     if (ctx->stack[ctx->stack_count - 1]->token_type == TT_MARK) {
-        ctx->stack[ctx->stack_count - 1]->token_type = TT_NONE;
+        if (ctx->stack[ctx->stack_count - 1]->index < ctx->input_pos) {
+            ctx->stack_count--;
+        } else {
+            ctx->stack[ctx->stack_count - 1]->token_type = TT_NONE;
+        }
     } else {
         HParsedToken *save = ctx->stack[ctx->stack_count - 1];
         ctx->stack_count--;

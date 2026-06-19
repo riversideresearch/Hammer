@@ -2,6 +2,7 @@
 #include "parser_internal.h"
 
 #include <assert.h>
+#include <stdint.h>
 
 struct bits_env {
     size_t length;
@@ -85,8 +86,15 @@ static bool h_svm_action_bits(HArena *arena, HSVMContext *ctx, void *env) {
     uint64_t res = 0;
     for (size_t i = 0; i < top->bytes.len; i++)
         res = (res << 8) | top->bytes.token[i];
-    top->uint = res;
-    top->token_type = (env_->signedp ? TT_SINT : TT_UINT);
+    if (env_->signedp) {
+        if (env_->length > 0 && env_->length < 64 && (res & (UINT64_C(1) << (env_->length - 1))))
+            res |= UINT64_MAX << env_->length;
+        top->sint = (int64_t)res;
+        top->token_type = TT_SINT;
+    } else {
+        top->uint = res;
+        top->token_type = TT_UINT;
+    }
     return true;
 }
 
