@@ -54,7 +54,7 @@ static HParseResult *parse_dispatch(void *env, HParseState *state) {
     // Parse discriminator
     HParseResult *disc_result = h_do_parse(d->discriminator, state);
     if (!disc_result) {
-        //fprintf(stderr, "Discriminator is NULL");
+        fprintf(stderr, "Discriminator is NULL");
         return NULL;
     }
 
@@ -63,7 +63,7 @@ static HParseResult *parse_dispatch(void *env, HParseState *state) {
 
     // Validate range
     if (opcode >= d->count || !d->parsers[opcode] || opcode == (size_t)-1) {
-        //fprintf(stderr, "Invalid discriminator or no parser for value: %lu", opcode);
+        fprintf(stderr, "Invalid discriminator or no parser for value");
         return NULL; // Invalid discriminator or no parser for this value
     }
 
@@ -133,5 +133,3 @@ HParser *h_dispatch__m(HAllocator *mm__, HParser *discriminator, HParser **parse
 
     return h_new_parser(mm__, &dispatch_vt, env);
 }
-
-// TODO: h_dispatch_static
