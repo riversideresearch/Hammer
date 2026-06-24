@@ -50,7 +50,7 @@ static void test_dispatch_incorrect_opcode(void) {
 
     buf[1] = (uint8_t){0x41};
 
-    HParser **bodies = HParser **bodies = build_body_parsers();
+    HParser **bodies = build_body_parsers();
 
     HParser *discriminator = h_uint8();
 
