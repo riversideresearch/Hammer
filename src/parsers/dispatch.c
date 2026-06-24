@@ -72,28 +72,39 @@ static HParseResult *parse_dispatch(void *env, HParseState *state) {
 }
 
 static bool dispatch_isValidRegular(void *env) {
-    HDispatch *s = (HDispatch *)env;
-    for (size_t i = 0; i < s->count; ++i) {
-        if (!s->parsers[i]->vtable->isValidRegular(s->parsers[i]->env))
+    HDispatch *d = (HDispatch *)env;
+
+    if (!d->discriminator->vtable->isValidCF(d->discriminator->env))
+        return false;
+    for (size_t i = 0; i < d->count; ++i) {
+        if (!d->parsers[i]->vtable->isValidRegular(d->parsers[i]->env))
             return false;
     }
     return true;
 }
 
 static bool dispatch_isValidCF(void *env) {
-    HDispatch *s = (HDispatch *)env;
-    for (size_t i = 0; i < s->count; ++i) {
-        if (!s->parsers[i]->vtable->isValidCF(s->parsers[i]->env))
+    HDispatch *d = (HDispatch *)env;
+
+    if (!d->discriminator->vtable->isValidCF(d->discriminator->env))
+        return false;
+    for (size_t i = 0; i < d->count; ++i) {
+        if (!d->parsers[i]->vtable->isValidCF(d->parsers[i]->env))
             return false;
     }
     return true;
 }
 
 static void desugar_dispatch(HAllocator *mm__, HCFStack *stk__, void *env) {
-    HDispatch *s = (HDispatch *)env;
+    HDispatch *d = (HDispatch *)env;
     HCFS_BEGIN_CHOICE() {
-        for (size_t i = 0; i < s->count; i++) {
-            HCFS_BEGIN_SEQ() { HCFS_DESUGAR(s->parsers[i]); }
+        for (size_t i = 0; i < d->count; ++i) {
+            if (!d->parsers[i]) // Not every index will always have a parser
+                continue;
+            HCFS_BEGIN_SEQ() {
+                HCFS_DESUGAR(d->discriminator);
+                HCFS_DESUGAR(d->parsers[i]);
+            }
             HCFS_END_SEQ();
         }
         HCFS_THIS_CHOICE->reshape = h_act_first;
