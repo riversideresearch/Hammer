@@ -175,6 +175,7 @@ typedef struct HParseResult_ {
 typedef struct HBitWriter_ HBitWriter;
 
 typedef struct HCFChoice_ HCFChoice;
+typedef struct HCFDispatch_ HCFDispatch;
 typedef struct HRVMProg_ HRVMProg;
 typedef struct HParserVtable_ HParserVtable;
 
@@ -741,6 +742,24 @@ HParser *h_choice__a(void *args[]);
 HParser *h_choice__ma(HAllocator *mm__, void *args[]);
 
 /**
+ * Create a parser that dispatches based on a discriminator value.
+ *
+ * @param discriminator Parser that produces an integer value (e.g., h_uint8())
+ * @param parsers Array of parsers indexed by discriminator value
+ * @param count Number of parsers in the array
+ * @return Parser that reads discriminator and dispatches to parsers[value]
+ */
+HParser *h_dispatch(HParser *discriminator, HParser **parsers, size_t count);
+HParser *h_dispatch__m(HAllocator *mm__, HParser *discriminator, HParser **parsers, size_t count);
+/*
+HParser *h_dispatch__mv(HAllocator *mm__, HParser *discriminator, HParser **parsers, size_t count,
+                        va_list ap);
+HParser *h_dispatch__v(HParser *discriminator, HParser **parsers, size_t count, va_list ap);
+HParser *h_dispatch__a(void *args[]);
+HParser *h_dispatch__ma(HAllocator *mm__, void *args[]);
+*/
+
+/**
  * @brief Given a null-terminated list of parsers, match a permutation phrase of these parsers, i.e.
  * match all parsers exactly once in any order.
  *
@@ -821,7 +840,7 @@ HParser *h_many__m(HAllocator *mm__, const HParser *p);
  */
 HParser *h_many1(const HParser *p);
 HParser *h_many1__m(HAllocator *mm__, const HParser *p);
-  
+
 /**
  * @brief Given a parser, p, this parser succeeds for zero or more up to N repetitions of p.
  * @param p Parser to repeat

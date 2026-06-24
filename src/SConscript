@@ -36,6 +36,7 @@ parsers = [
         "charset",
         "choice",
         "difference",
+        "dispatch",
         "end",
         "endianness",
         "epsilon",

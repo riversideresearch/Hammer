@@ -42,6 +42,7 @@ extern void register_hammer_tests();
 extern void register_glue_tests();
 extern void register_registry_tests();
 extern void register_desugar_tests();
+extern void register_dispatch_tests();
 extern void register_internal_tests();
 extern void register_unimplemented_tests();
 extern void register_grammar_tests();
@@ -83,6 +84,7 @@ int main(int argc, char **argv) {
     register_glue_tests();
     register_registry_tests();
     register_desugar_tests();
+    register_dispatch_tests();
     register_internal_tests();
     register_unimplemented_tests();
     register_grammar_tests();
