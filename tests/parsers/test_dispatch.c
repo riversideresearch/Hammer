@@ -73,6 +73,10 @@ static void test_dispatch_32_bits(void) {
 
     g_check_cmp_ptr(res, !=, NULL);
     g_check_cmp_ptr(res->ast, !=, NULL);
+
+    size_t expected_bits = 64;
+
+    g_check_cmp_int(res->bit_length, ==, expected_bits);
 }
 
 static void test_dispatch_bit_length_sequence(void) {
@@ -118,9 +122,46 @@ static void test_dispatch_bit_length_sequence(void) {
     g_check_cmp_int(res->bit_length, ==, expected_bits);
 }
 
+static void test_dispatch_does_not_mutate_cached_body(void) {
+    uint8_t buf[256];
+    int buf_size = 1 + BODY_SIZE;
+
+    buf[0] = 1;
+    buf[1] = (uint8_t){0x41};
+
+    HParser *body_parser = h_ch(0x41);
+    OpcodeMap entries[] = {{1, body_parser}};
+
+    // Parse the body alone to populate any body parser cache
+    HParseResult *body_first = h_parse(body_parser, buf + 1, BODY_SIZE);
+    g_check_cmp_ptr(body_first, !=, NULL);
+    g_check_cmp_int(body_first->bit_length, ==, BODY_SIZE * 8);
+
+    // Build and run the dispatch parser (which should not mutate cached body result)
+    HParser *discriminator = h_uint8();
+    HParser *message = h_dispatch(discriminator, entries);
+    g_check_cmp_ptr(message, !=, NULL);
+    
+    HParseResult *dispatch_res = h_parse(message, buf, buf_size);
+    g_check_cmp_ptr(dispatch_res, !=, NULL);
+
+    // Parse the body again
+    HParseResult *body_second = h_parse(body_parser, buf + 1, BODY_SIZE);
+    g_check_cmp_ptr(body_second, !=, NULL);
+
+    // Assert the cached body result was not mutated by dispatch
+    g_check_cmp_int(body_first->bit_length, ==, body_second->bit_length);
+
+    g_check_cmp_int(body_first->bit_length, ==, body_second->bit_length);
+    g_check_cmp_int(body_first->ast->token_type, ==, body_second->ast->token_type);
+    g_check_cmp_int(body_first->ast->token_data.uint, ==, body_second->ast->token_data.uint);
+}
+
 void register_dispatch_tests(void) {
     g_test_add_func("/core/dispatch/basic_functionality", test_dispatch_basic_functionality);
     g_test_add_func("/core/dispatch/incorrect_opcode", test_dispatch_incorrect_opcode);
     g_test_add_func("/core/dispatch/32_bits", test_dispatch_32_bits);
     g_test_add_func("/core/dispatch/bit_length", test_dispatch_bit_length_sequence);
+    g_test_add_func("/core/dispatch/cached_body_mutation",
+                    test_dispatch_does_not_mutate_cached_body);
 }
