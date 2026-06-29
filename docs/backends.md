@@ -1,6 +1,6 @@
 # Hammer Parsing Backends
 
-Hammer exposes several parser backends. Packrat remains the default and is the most general backend for parser-combinator grammars. Regex/RVM is a restored regular-language backend that compiles supported parsers to a small regex virtual machine. LL(k), LALR(k), and GLR are restored context-free grammar backends that compile a parser through Hammer's CFG/desugar layer.
+Hammer exposes several parser backends. Packrat remains the default and is the most general backend for parser-combinator grammars. Regex/RVM is a regular-language backend that compiles supported parsers to a small regex virtual machine. LL(k), LALR(k), and GLR are context-free grammar backends that compile a parser through Hammer's CFG/desugar layer.
 
 ## Available Backends
 
@@ -18,7 +18,7 @@ The default `k` for the context-free backends is currently 1. Pass a numeric par
 
 The regex backend (`PB_REGULAR`) compiles through per-combinator RVM emitters and accepts only parsers marked regular. The context-free backends (`PB_LL`, `PB_LALR`, and `PB_GLR`) all compile through the same CFG/desugar layer. At the combinator level they therefore accept the same set of Hammer parsers. They still differ in grammar acceptance:
 
-- `PB_REGULAR` rejects non-regular parsers and has no chunked parsing API.
+- `PB_REGULAR` accepts only parsers that can be represented as regular languages and has no chunked parsing API.
 - `PB_LL` can reject CFG-capable grammars that need more lookahead than the supplied `k`, or that are not predictive.
 - `PB_LALR` can reject CFG-capable grammars with unresolved LR table conflicts.
 - `PB_GLR` accepts LALR table conflicts, but can use more runtime work for ambiguous grammars.
@@ -127,7 +127,7 @@ Packrat parses by recursively evaluating the parser combinator graph with memoiz
 
 Use it when:
 
-- the grammar uses non-context-free combinators such as binding or symbol-table state
+- the grammar uses context-sensitive features such as binding or symbol-table state
 - left recursion is useful
 - the grammar is being developed and backend constraints are not yet clear
 
@@ -138,13 +138,13 @@ Limitations:
 
 ### Regex/RVM
 
-Regex/RVM compiles supported regular parsers to Hammer's RVM bytecode and then executes that bytecode against the input. This backend was restored from the old regex backend, along with the `compile_to_rvm` parser-vtable interface needed by regular combinators.
+Regex/RVM compiles supported regular parsers to Hammer's RVM bytecode and then executes that bytecode against the input. This backend uses the `compile_to_rvm` parser-vtable interface provided by regular combinators.
 
 Use it when:
 
 - the grammar is regular
 - fast table/VM-style matching is preferable to packrat recursion
-- parser features such as `h_bind`, value state, seek/tell, or arbitrary byte arrays are not needed
+- parser features such as `h_bind`, value state, seek/tell, or length-selected byte arrays are not needed
 
 Limitations:
 

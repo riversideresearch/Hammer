@@ -1,9 +1,10 @@
 /*
- * NOTE: This is an internal header and installed for use by extensions. The
- * API is not guaranteed stable.
+ * Internal regex/RVM backend definitions.
+ *
+ * This header is installed so external parser extensions can provide
+ * compile_to_rvm implementations for custom regular parsers. It is not part of
+ * Hammer's stable public API.
  */
-
-// Internal defs
 #ifndef HAMMER_BACKEND_REGEX__H
 #define HAMMER_BACKEND_REGEX__H
 

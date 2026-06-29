@@ -1,30 +1,13 @@
-// Intended to be included from regex_debug.c
+// Debug formatting helpers for regex/RVM traces.
 #include "../platform.h"
 #include <stdlib.h>
 
-#define USE_DLADDR (0)
-
-#if USE_DLADDR
-// This is some spectacularly non-portable code... but whee!
-#include <dlfcn.h>
-#endif
-
 char* getsym(HSVMActionFunc addr) {
   char* retstr;
-#if USE_DLADDR
-  // This will be fixed later.
-  Dl_info dli;
-  if (dladdr(addr, &dli) != 0 && dli.dli_sname != NULL) {
-    if (dli.dli_saddr == addr)
-      return strdup(dli.dli_sname);
-    else if (asprintf(&retstr, "%s+0x%lx", dli.dli_sname, addr - dli.dli_saddr) > 0)
-      return retstr;
-  } else
-#endif
-    if (h_platform_asprintf(&retstr, "%p", addr) > 0)
-      return retstr;
-    else
-      return NULL;
+  if (h_platform_asprintf(&retstr, "%p", addr) > 0)
+    return retstr;
+  else
+    return NULL;
 }
 
 const char* rvm_op_names[RVM_OPCOUNT] = {
@@ -59,8 +42,7 @@ void dump_rvm_prog(HRVMProg *prog) {
       break;
     case RVM_ACTION:
       symref = getsym(prog->actions[insn->arg].action);
-      // TODO: somehow format the argument to action
-      printf("%s\n", symref);
+      printf("%s env=%p\n", symref, prog->actions[insn->arg].env);
       (&system_allocator)->free(&system_allocator, symref);
       break;
     case RVM_MATCH: {
@@ -95,8 +77,7 @@ void dump_svm_prog(HRVMProg *prog, HRVMTrace *trace) {
     switch (trace->opcode) {
     case SVM_ACTION:
       symref = getsym(prog->actions[trace->arg].action);
-      // TODO: somehow format the argument to action
-      printf("%s\n", symref);
+      printf("%s env=%p\n", symref, prog->actions[trace->arg].env);
       (&system_allocator)->free(&system_allocator, symref);
       break;
     default:

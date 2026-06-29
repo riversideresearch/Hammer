@@ -9,6 +9,22 @@ static HParser *make_ab_or_ac(void) {
     return h_choice(ab, ac, NULL);
 }
 
+static void check_contextfree_backend_accepts(HParser *parser, HParserBackend backend,
+                                              const uint8_t *input, size_t len) {
+    g_check_cmp_int(h_compile(parser, backend, (void *)2), ==, 0);
+    HParseResult *res = h_parse(parser, input, len);
+    g_check_cmp_ptr(res, !=, NULL);
+    h_parse_result_free(res);
+}
+
+static HParsedToken *drop_action(const HParseResult *p, void *user_data) {
+    return h_act_ignore(p, user_data);
+}
+
+static bool accept_predicate(HParseResult *p, void *user_data) {
+    return true;
+}
+
 static void test_contextfree_backend_registration(void) {
     g_check_cmp_int(h_is_backend_available(PB_LL), ==, 1);
     g_check_cmp_int(h_is_backend_available(PB_LALR), ==, 1);
@@ -72,6 +88,32 @@ static void test_glr_accepts_lalr_conflict(void) {
     h_parse_result_free(res);
 }
 
+static void test_contextfree_common_combinators(void) {
+    const uint8_t letters[] = {'x', 'y', 'z'};
+    const uint8_t input[] = "abcyz!";
+
+    HParserBackend backends[] = {PB_LL, PB_LALR, PB_GLR};
+    for (size_t i = 0; i < sizeof(backends) / sizeof(backends[0]); i++) {
+        HParser *parser = h_sequence(
+            h_token((const uint8_t *)"ab", 2),
+            h_optional(h_ch('c')),
+            h_many1(h_in(letters, sizeof(letters))),
+            h_action(h_ch('!'), drop_action, NULL),
+            NULL);
+        check_contextfree_backend_accepts(parser, backends[i], input, sizeof(input) - 1);
+    }
+}
+
+static void test_contextfree_attr_bool(void) {
+    const uint8_t input[] = "q";
+
+    HParserBackend backends[] = {PB_LL, PB_LALR, PB_GLR};
+    for (size_t i = 0; i < sizeof(backends) / sizeof(backends[0]); i++) {
+        HParser *parser = h_attr_bool(h_ch('q'), accept_predicate, NULL);
+        check_contextfree_backend_accepts(parser, backends[i], input, sizeof(input) - 1);
+    }
+}
+
 void register_contextfree_backend_tests(void) {
     g_test_add_func("/core/backends/contextfree/registration",
                     test_contextfree_backend_registration);
@@ -81,4 +123,7 @@ void register_contextfree_backend_tests(void) {
     g_test_add_func("/core/backends/contextfree/lalr_parse",
                     test_lalr_parse_simple_contextfree_grammar);
     g_test_add_func("/core/backends/contextfree/glr_conflict", test_glr_accepts_lalr_conflict);
+    g_test_add_func("/core/backends/contextfree/common_combinators",
+                    test_contextfree_common_combinators);
+    g_test_add_func("/core/backends/contextfree/attr_bool", test_contextfree_attr_bool);
 }

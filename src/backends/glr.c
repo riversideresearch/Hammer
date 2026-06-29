@@ -97,7 +97,7 @@ static HLREngine *demerge(HParseResult **result, HSlist *engines, HLREngine *eng
     return engine; // there is enough stack before the merge point
 }
 
-/* Forking engines (on conflicts */
+/* Forking engines (on conflicts) */
 
 HLREngine *fork_engine(const HLREngine *engine) {
     HLREngine *eng2 = h_arena_malloc(engine->tarena, sizeof(HLREngine));
