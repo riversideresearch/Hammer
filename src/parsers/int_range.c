@@ -99,9 +99,10 @@ static bool h_svm_action_validate_int_range(HArena *arena, HSVMContext *ctx, voi
     HParsedToken *head = ctx->stack[ctx->stack_count - 1];
     switch (head->token_type) {
     case TT_SINT:
-        return r_env->lower <= head->sint && r_env->upper >= head->sint;
+        return r_env->lower <= head->token_data.sint && r_env->upper >= head->token_data.sint;
     case TT_UINT:
-        return (uint64_t)r_env->lower <= head->uint && (uint64_t)r_env->upper >= head->uint;
+        return (uint64_t)r_env->lower <= head->token_data.uint &&
+               (uint64_t)r_env->upper >= head->token_data.uint;
     default:
         return false;
     }

@@ -147,7 +147,7 @@ static int fill_table_row(size_t kmax, HCFGrammar *g, HStringMap *row, const HCF
 
     // initialize working set to the productions of A
     workset = h_hashset_new(g->arena, h_eq_ptr, h_hash_ptr);
-    for (HCFSequence **s = A->seq; *s; s++)
+    for (HCFSequence **s = A->data.seq; *s; s++)
         h_hashset_put(workset, *s);
 
     // run until workset exhausted or kmax hit
@@ -498,7 +498,7 @@ static HCountedArray *llk_parse_chunk_(HLLkState *s, const HParser *parser, HInp
             // hit stack frame boundary...
             // wrap the accumulated parse result, this sequence is finished
             tok->token_type = TT_SEQUENCE;
-            tok->seq = seq;
+            tok->token_data.seq = seq;
             // XXX would have to set token pos but we've forgotten pos of seq
 
             // recover original nonterminal and result sequence
@@ -537,19 +537,19 @@ static HCountedArray *llk_parse_chunk_(HLLkState *s, const HParser *parser, HInp
             case HCF_CHAR:
                 if (stream->overrun)
                     goto need_input;
-                if (input != x->chr)
+                if (input != x->data.chr)
                     goto no_parse;
                 tok->token_type = TT_UINT;
-                tok->uint = x->chr;
+                tok->token_data.uint = x->data.chr;
                 break;
 
             case HCF_CHARSET:
                 if (stream->overrun)
                     goto need_input;
-                if (!charset_isset(x->charset, input))
+                if (!charset_isset(x->data.charset, input))
                     goto no_parse;
                 tok->token_type = TT_UINT;
-                tok->uint = input;
+                tok->token_data.uint = input;
                 break;
 
             default: // should not be reached

@@ -15,7 +15,7 @@ static HLRAction *lrtable_lookup(const HLRTable *table, size_t state, const HCFC
     case HCF_END:
         return table->tmap[state]->end_branch;
     case HCF_CHAR:
-        return h_stringmap_get(table->tmap[state], &symbol->chr, 1, false);
+        return h_stringmap_get(table->tmap[state], &symbol->data.chr, 1, false);
     default:
         // nonterminal case
         return h_hashtable_get(table->ntmap[state], symbol);
@@ -66,9 +66,9 @@ static bool transform_productions(const HLRTable *table, HLREnhGrammar *eg, size
 
     HArena *arena = eg->arena;
 
-    HCFSequence **seq = h_arena_malloc(arena, seqsize(xAy->seq) * sizeof(HCFSequence *));
+    HCFSequence **seq = h_arena_malloc(arena, seqsize(xAy->data.seq) * sizeof(HCFSequence *));
     HCFSequence **p, **q;
-    for (p = xAy->seq, q = seq; *p; p++, q++) {
+    for (p = xAy->data.seq, q = seq; *p; p++, q++) {
         // trace rhs starting in state x and following the transitions
         // xAy -> ... iBj ...
 
@@ -93,7 +93,7 @@ static bool transform_productions(const HLRTable *table, HLREnhGrammar *eg, size
         (*q)->items = items;
     }
     *q = NULL;
-    xAy->seq = seq;
+    xAy->data.seq = seq;
     return true;
 }
 
@@ -225,7 +225,7 @@ static bool match_charset_production(const HLRTable *table, HLREnhGrammar *eg, c
     assert(lhs->type == HCF_CHARSET);
     assert(rhs->type == HCF_CHAR);
 
-    if (!charset_isset(lhs->charset, rhs->chr))
+    if (!charset_isset(lhs->data.charset, rhs->data.chr))
         return false;
 
     // determine the enhanced-grammar right-hand side and check end state
@@ -246,7 +246,7 @@ static bool match_any_production(const HLRTable *table, HLREnhGrammar *eg, const
     assert(sym->type == HCF_CHOICE || sym->type == HCF_CHARSET);
 
     if (sym->type == HCF_CHOICE) {
-        for (HCFSequence **p = sym->seq; *p; p++) {
+        for (HCFSequence **p = sym->data.seq; *p; p++) {
             if (match_production(eg, (*p)->items, rhs, endstate))
                 return true;
         }

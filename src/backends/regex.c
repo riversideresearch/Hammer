@@ -298,8 +298,8 @@ HParseResult *run_trace(HAllocator *mm__, HRVMProg *orig_prog, HRVMTrace *trace,
                 goto fail;
             assert(tmp_res->bit_offset == 0);
 
-            tmp_res->bytes.token = input + tmp_res->index;
-            tmp_res->bytes.len = cur->input_pos - tmp_res->index;
+            tmp_res->token_data.bytes.token = input + tmp_res->index;
+            tmp_res->token_data.bytes.len = cur->input_pos - tmp_res->index;
             break;
         case SVM_ACCEPT:
             if (ctx->stack_count > 1)
@@ -408,7 +408,7 @@ bool h_svm_action_make_sequence(HArena *arena, HSVMContext *ctx, void *env) {
     res->token_type = TT_SEQUENCE;
 
     HCountedArray *ret_carray = h_carray_new_sized(arena, n_items);
-    res->seq = ret_carray;
+    res->token_data.seq = ret_carray;
     // res index and bit offset are the same as the mark.
     for (size_t i = 0; i < n_items; i++) {
         ret_carray->elements[i] = ctx->stack[ctx->stack_count - n_items + i];

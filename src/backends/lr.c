@@ -11,7 +11,7 @@
 bool h_eq_symbol(const void *p, const void *q) {
     const HCFChoice *x = p, *y = q;
     return (x == y || (x->type == HCF_END && y->type == HCF_END) ||
-            (x->type == HCF_CHAR && y->type == HCF_CHAR && x->chr == y->chr));
+            (x->type == HCF_CHAR && y->type == HCF_CHAR && x->data.chr == y->data.chr));
 }
 
 // hash symbols - terminals by value, others by pointer
@@ -20,7 +20,7 @@ HHashValue h_hash_symbol(const void *p) {
     if (x->type == HCF_END)
         return 0;
     else if (x->type == HCF_CHAR)
-        return x->chr * 33;
+        return x->data.chr * 33;
     else
         return h_hash_ptr(p);
 }
@@ -255,7 +255,7 @@ static HParsedToken *consume_input(HLREngine *engine) {
     } else {
         v = h_arena_malloc(engine->arena, sizeof(HParsedToken));
         v->token_type = TT_UINT;
-        v->uint = c;
+        v->token_data.uint = c;
         v->index = engine->input.pos + engine->input.index - 1;
         v->bit_offset = engine->input.bit_offset;
     }
@@ -286,7 +286,7 @@ bool h_lrengine_step(HLREngine *engine, const HLRAction *action) {
         // semantic value of the reduction result
         HParsedToken *value = h_arena_malloc(arena, sizeof(HParsedToken));
         value->token_type = TT_SEQUENCE;
-        value->seq = h_carray_new_sized(arena, len);
+        value->token_data.seq = h_carray_new_sized(arena, len);
 
         // pull values off the stack, rewinding state accordingly
         HParsedToken *v = NULL;
@@ -299,8 +299,8 @@ bool h_lrengine_step(HLREngine *engine, const HLRAction *action) {
             engine->state = (uintptr_t)h_slist_drop(stack);
 
             // collect values in result sequence
-            value->seq->elements[len - 1 - i] = v;
-            value->seq->used++;
+            value->token_data.seq->elements[len - 1 - i] = v;
+            value->token_data.seq->used++;
         }
         if (v) {
             // result position equals position of left-most symbol
@@ -510,13 +510,13 @@ void h_pprint_lritem(FILE *f, const HCFGrammar *g, const HLRItem *item) {
             if ((*x)->type == HCF_CHAR) {
                 // condense character strings
                 fputc('"', f);
-                h_pprint_char(f, (*x)->chr);
+                h_pprint_char(f, (*x)->data.chr);
                 for (x++; *x; x++) {
                     if (x == mark)
                         break;
                     if ((*x)->type != HCF_CHAR)
                         break;
-                    h_pprint_char(f, (*x)->chr);
+                    h_pprint_char(f, (*x)->data.chr);
                 }
                 fputc('"', f);
             } else {

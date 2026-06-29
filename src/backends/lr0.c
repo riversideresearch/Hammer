@@ -33,7 +33,7 @@ static void expand_to_closure(HCFGrammar *g, HHashSet *items) {
         // NB: unlike LLk, we do consider HCF_CHARSET a non-terminal here
         if (sym != NULL) {
             if (sym->type == HCF_CHOICE) {
-                for (HCFSequence **p = sym->seq; *p; p++) {
+                for (HCFSequence **p = sym->data.seq; *p; p++) {
                     HLRItem *it = h_lritem_new(arena, sym, (*p)->items, 0);
                     if (it == NULL)
                         continue;
@@ -44,12 +44,12 @@ static void expand_to_closure(HCFGrammar *g, HHashSet *items) {
                 }
             } else if (sym->type == HCF_CHARSET) {
                 for (unsigned int i = 0; i < 256; i++) {
-                    if (charset_isset(sym->charset, i)) {
+                    if (charset_isset(sym->data.charset, i)) {
                         // XXX allocate these single-character symbols statically somewhere
                         HCFChoice **rhs = h_new(HCFChoice *, 2);
                         rhs[0] = h_new(HCFChoice, 1);
                         rhs[0]->type = HCF_CHAR;
-                        rhs[0]->chr = i;
+                        rhs[0]->data.chr = i;
                         rhs[1] = NULL;
                         HLRItem *it = h_lritem_new(arena, sym, rhs, 0);
                         h_hashset_put(items, it);
@@ -81,7 +81,7 @@ HLRDFA *h_lr0_dfa(HCFGrammar *g) {
     if (g->start->type != HCF_CHOICE)
         return NULL;
     assert(g->start->type == HCF_CHOICE);
-    for (HCFSequence **p = g->start->seq; *p; p++) {
+    for (HCFSequence **p = g->start->data.seq; *p; p++) {
         HLRItem *item = h_lritem_new(arena, g->start, (*p)->items, 0);
         if (item == NULL)
             return NULL;
@@ -177,7 +177,7 @@ static inline void put_shift(HLRTable *table, size_t state, const HCFChoice *sym
         h_stringmap_put_end(table->tmap[state], action);
         break;
     case HCF_CHAR:
-        h_stringmap_put_char(table->tmap[state], symbol->chr, action);
+        h_stringmap_put_char(table->tmap[state], symbol->data.chr, action);
         break;
     default:
         // nonterminal case

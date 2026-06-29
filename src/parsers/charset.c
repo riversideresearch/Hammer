@@ -29,9 +29,9 @@ static bool h_svm_action_ch(HArena *arena, HSVMContext *ctx, void *env) {
     HParsedToken *top = ctx->stack[ctx->stack_count - 1];
     assert(top->token_type == TT_BYTES);
     uint64_t res = 0;
-    for (size_t i = 0; i < top->bytes.len; i++)
-        res = (res << 8) | top->bytes.token[i];
-    top->uint = res;
+    for (size_t i = 0; i < top->token_data.bytes.len; i++)
+        res = (res << 8) | top->token_data.bytes.token[i];
+    top->token_data.uint = res;
     top->token_type = TT_UINT;
     return true;
 }

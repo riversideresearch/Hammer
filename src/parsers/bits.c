@@ -84,15 +84,15 @@ static bool h_svm_action_bits(HArena *arena, HSVMContext *ctx, void *env) {
     HParsedToken *top = ctx->stack[ctx->stack_count - 1];
     assert(top->token_type == TT_BYTES);
     uint64_t res = 0;
-    for (size_t i = 0; i < top->bytes.len; i++)
-        res = (res << 8) | top->bytes.token[i];
+    for (size_t i = 0; i < top->token_data.bytes.len; i++)
+        res = (res << 8) | top->token_data.bytes.token[i];
     if (env_->signedp) {
         if (env_->length > 0 && env_->length < 64 && (res & (UINT64_C(1) << (env_->length - 1))))
             res |= UINT64_MAX << env_->length;
-        top->sint = (int64_t)res;
+        top->token_data.sint = (int64_t)res;
         top->token_type = TT_SINT;
     } else {
-        top->uint = res;
+        top->token_data.uint = res;
         top->token_type = TT_UINT;
     }
     return true;
