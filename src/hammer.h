@@ -745,18 +745,19 @@ typedef struct {
     uint32_t opcode;
     HParser *parser;
 } OpcodeMap;
-/**
- * Create a parser that dispatches based on a discriminator value.
- *
- * @param discriminator Parser that produces an integer value (e.g., h_uint8())
- * @param parsers Array of parsers indexed by discriminator value
- * @param count Number of parsers in the array
- * @return Parser that reads discriminator and dispatches to parsers[value]
- */
+
 HParser *h_dispatch__m(HAllocator *mm__, HParser *discriminator, const OpcodeMap *map,
                        size_t count);
 HParser *h_dispatch__s(HParser *discriminator, const OpcodeMap *map, size_t count);
 // public macro — zero runtime cost for compile-time arrays
+/**
+ * Create a parser that dispatches based on a discriminator value.
+ *
+ * @param discriminator Parser that produces an integer value that represent the opcode (e.g.,
+ * h_uint8())
+ * @param map An OpcodeMap struct that acts as a dictionary, linking each opcode to a parser.
+ * @return Parser that reads discriminator and dispatches to the linked parser.
+ */
 #define h_dispatch(discriminator, map)                                                             \
     h_dispatch__s((discriminator), (map), (sizeof(map) / sizeof((map)[0])))
 

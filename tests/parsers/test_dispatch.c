@@ -33,7 +33,7 @@ static void test_dispatch_incorrect_opcode(void) {
 
     uint8_t buf[256];
     int buf_size = 1 + BODY_SIZE;
-    buf[0] = 2; // Incorrect opcode byte
+    buf[0] = 0; // Incorrect opcode byte
 
     buf[1] = (uint8_t){0x41};
 
