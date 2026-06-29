@@ -63,6 +63,15 @@ static size_t extract_opcode(HParseResult *result) {
     return opcode;
 }
 
+HParser *extract_parser(HDispatch *d, size_t h, size_t mask, size_t opcode) {
+    while (d->buckets[h].used) {
+        if (d->buckets[h].opcode == opcode)
+            return d->buckets[h].parser;
+        h = (h + 1) & mask;
+    }
+    return NULL;
+}
+
 static HParseResult *parse_dispatch(void *env, HParseState *state) {
     HDispatch *d = (HDispatch *)env;
 
@@ -77,23 +86,25 @@ static HParseResult *parse_dispatch(void *env, HParseState *state) {
     size_t opcode = extract_opcode(disc_result);
 
     // Validate range
-    if (opcode >= d->size || opcode == (size_t)-1) {
-        fprintf(stderr, "Invalid discriminator");
-        return NULL; // Invalid discriminator or no parser for this value
-    }
+
+    fprintf(stderr, "Size is: %lu\n", d->size);
 
     // O(1) lookup
     size_t mask = d->bucket_count - 1;
     size_t h = (opcode ^ (opcode >> 16)) & mask;
 
-    while (d->buckets[h].used) {
-        if (d->buckets[h].opcode == opcode)
-            return h_do_parse(d->buckets[h].parser, state);
-        h = (h + 1) & mask;
-    }
+    HParser *body = extract_parser(d, h, mask, opcode);
+    if (!body)
+        return NULL;
 
-    fprintf(stderr, "Opcode not found!\n");
-    return NULL; // opcode not found
+    HParseResult *body_result = h_do_parse(body, state);
+    if (!body_result) {
+        h_parse_result_free(body_result);
+        return NULL;
+    }
+    body_result->bit_length += disc_result->bit_length; // merge bit length
+
+    return body_result;
 }
 
 static bool dispatch_isValidRegular(void *env) {
@@ -114,7 +125,7 @@ static bool dispatch_isValidCF(void *env) {
     if (!d->discriminator->vtable->isValidCF(d->discriminator->env))
         return false;
     for (size_t i = 0; i < d->size; ++i) {
-         if (!d->map[i].parser->vtable->isValidCF(d->map[i].parser->env))
+        if (!d->map[i].parser->vtable->isValidCF(d->map[i].parser->env))
             return false;
     }
     return true;
