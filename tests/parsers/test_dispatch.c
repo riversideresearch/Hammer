@@ -7,20 +7,8 @@
 #include <glib.h>
 
 #define ITERATIONS 100
-#define NUM_TYPES 5
+#define NUM_TYPES 14
 #define BODY_SIZE 1
-
-static HParser **build_body_parsers(void){
-    HParser **bodies = malloc(NUM_TYPES * sizeof(HParser *));
-
-    bodies[0] = h_ch(0x40);
-    bodies[1] = h_ch(0x41);
-    bodies[2] = h_ch(0x42);
-    bodies[3] = h_ch(0x43);
-    bodies[4] = h_ch(0x44);
-
-    return bodies;
-}
 
 static void test_dispatch_basic_functionality(void) {
 
@@ -30,11 +18,10 @@ static void test_dispatch_basic_functionality(void) {
 
     buf[1] = (uint8_t){0x41};
 
-    HParser **bodies = build_body_parsers();
-
+    OpcodeMap entries[] = {{1, h_ch(0x41)}, {2, h_ch(0x42)}, {2013, h_uint32()}};
     HParser *discriminator = h_uint8();
 
-    HParser *message = h_dispatch(discriminator, bodies, NUM_TYPES);
+    HParser *message = h_dispatch(discriminator, entries);
 
     HParseResult *res = h_parse(message, buf, buf_size);
 
@@ -50,18 +37,43 @@ static void test_dispatch_incorrect_opcode(void) {
 
     buf[1] = (uint8_t){0x41};
 
-    HParser **bodies = build_body_parsers();
+    OpcodeMap entries[] = {{1, h_ch(0x41)}, {2, h_ch(0x42)}, {2013, h_uint32()}};
 
     HParser *discriminator = h_uint8();
 
-    HParser *message = h_dispatch(discriminator, bodies, NUM_TYPES);
+    HParser *message = h_dispatch(discriminator, entries);
 
     HParseResult *res = h_parse(message, buf, buf_size);
 
     g_check_cmp_ptr(res, ==, NULL);
 }
 
+static void test_dispatch_32_bits(void) {
+
+    uint8_t buf[256];
+    int buf_size = 8;
+
+    // opcode = 2013 (0x000007DD)
+    buf[0] = 0x00;
+    buf[1] = 0x00;
+    buf[2] = 0x07;
+    buf[3] = 0xDD;
+
+    // body = 2048 (0x00000800)
+    buf[4] = 0x00;
+    buf[5] = 0x00;
+    buf[6] = 0x08;
+    buf[7] = 0x00;
+
+    OpcodeMap entries[] = {{1, h_ch(0x41)}, {2, h_ch(0x42)}, {2013, h_uint32()}};
+
+    HParser *message = h_dispatch(h_uint32(), entries);
+
+    HParseResult *res = h_parse(message, buf, buf_size);
+}
+
 void register_dispatch_tests(void) {
     g_test_add_func("/core/dispatch/basic_functionality", test_dispatch_basic_functionality);
     g_test_add_func("/core/dispatch/incorrect_opcode", test_dispatch_incorrect_opcode);
+    g_test_add_func("/core/dispatch/32_bits", test_dispatch_32_bits);
 }
