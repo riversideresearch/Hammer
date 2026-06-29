@@ -204,8 +204,13 @@ static const HLRAction *terminal_lookup(const HLREngine *engine, const HInputStr
     size_t state = engine->state;
 
     assert(state < table->nrows);
+    if (state >= table->nrows)
+        return NULL;
+
     if (table->forall[state]) {
         assert(h_lrtable_row_empty(table, state)); // that would be a conflict
+        if (!h_lrtable_row_empty(table, state))
+            return NULL;
         return table->forall[state];
     } else {
         return h_stringmap_get_lookahead(table->tmap[state], *stream);
@@ -217,8 +222,14 @@ static const HLRAction *nonterminal_lookup(const HLREngine *engine, const HCFCho
     size_t state = engine->state;
 
     assert(state < table->nrows);
+    if (state >= table->nrows)
+        return NULL;
+
     assert(!table->forall[state]); // contains only reduce entries
                                    // we are only looking for shifts
+    if (table->forall[state])
+        return NULL;
+
     return h_hashtable_get(table->ntmap[state], symbol);
 }
 
@@ -255,10 +266,14 @@ bool h_lrengine_step(HLREngine *engine, const HLRAction *action) {
         return false; // no handle recognizable in input, terminate
 
     assert(action->type == HLR_SHIFT || action->type == HLR_REDUCE);
+    if (action->type != HLR_SHIFT && action->type != HLR_REDUCE)
+        return false;
 
     if (action->type == HLR_REDUCE) {
         size_t len = action->production.length;
         HCFChoice *symbol = action->production.lhs;
+        if (!symbol)
+            return false;
 
         // semantic value of the reduction result
         HParsedToken *value = h_arena_malloc(arena, sizeof(HParsedToken));
@@ -268,7 +283,11 @@ bool h_lrengine_step(HLREngine *engine, const HLRAction *action) {
         // pull values off the stack, rewinding state accordingly
         HParsedToken *v = NULL;
         for (size_t i = 0; i < len; i++) {
+            if (h_slist_empty(stack))
+                return false;
             v = h_slist_drop(stack);
+            if (h_slist_empty(stack))
+                return false;
             engine->state = (uintptr_t)h_slist_drop(stack);
 
             // collect values in result sequence
@@ -310,6 +329,8 @@ bool h_lrengine_step(HLREngine *engine, const HLRAction *action) {
         if (shift == NULL)
             return false; // parse error
         assert(shift->type == HLR_SHIFT);
+        if (shift->type != HLR_SHIFT)
+            return false;
 
         // piggy-back the shift right here, never touching the input
         h_slist_push(stack, (void *)(uintptr_t)engine->state);
@@ -319,6 +340,8 @@ bool h_lrengine_step(HLREngine *engine, const HLRAction *action) {
         // check for success
         if (engine->state == HLR_SUCCESS) {
             assert(symbol == engine->table->start);
+            if (symbol != engine->table->start)
+                return false;
             return false;
         }
     } else {
@@ -337,6 +360,8 @@ HParseResult *h_lrengine_result(HLREngine *engine) {
     if (engine->state == HLR_SUCCESS) {
         // on top of the stack is the start symbol's semantic value
         assert(!h_slist_empty(engine->stack));
+        if (h_slist_empty(engine->stack))
+            return NULL;
         HParsedToken *tok = engine->stack->head->elem;
         HParseResult *res = make_result(engine->arena, tok);
         res->bit_length = (engine->input.pos + engine->input.index) * 8;
@@ -379,6 +404,10 @@ HParseResult *h_lr_parse(HAllocator *mm__, const HParser *parser, HInputStream *
 void h_lr_parse_start(HSuspendedParser *s) {
     HLRTable *table = s->parser->backend_data;
     assert(table != NULL);
+    if (!table) {
+        s->backend_state = NULL;
+        return;
+    }
 
     HArena *arena = h_new_arena(s->mm__, 0);  // will hold the results
     HArena *tarena = h_new_arena(s->mm__, 0); // tmp, deleted after parse
@@ -395,6 +424,9 @@ void h_lr_parse_start(HSuspendedParser *s) {
 #endif
 bool h_lr_parse_chunk(HSuspendedParser *s, HInputStream *stream) {
     HLREngine *engine = s->backend_state;
+    if (!engine)
+        return true;
+
     engine->input = *stream;
 
     bool run = true;
@@ -414,6 +446,10 @@ bool h_lr_parse_chunk(HSuspendedParser *s, HInputStream *stream) {
         if (action == NEED_INPUT) {
             // XXX assume lookahead 1
             assert(engine->input.length - engine->input.index == 0);
+            if (engine->input.length - engine->input.index != 0) {
+                run = false;
+                break;
+            }
             break;
         }
 
@@ -436,6 +472,8 @@ bool h_lr_parse_chunk(HSuspendedParser *s, HInputStream *stream) {
 
 HParseResult *h_lr_parse_finish(HSuspendedParser *s) {
     HLREngine *engine = s->backend_state;
+    if (!engine)
+        return NULL;
 
     HParseResult *result = h_lrengine_result(engine);
     if (!result)

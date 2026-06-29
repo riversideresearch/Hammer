@@ -33,6 +33,8 @@ static HLREngine *lrengine_merge(HLREngine *old, HLREngine *new) {
 
     assert(old->state == new->state);
     assert(old->input.input == new->input.input);
+    if (old->state != new->state || old->input.input != new->input.input)
+        return NULL;
 
     *ret = *old;
     ret->stack = h_slist_new(arena);
@@ -74,6 +76,9 @@ static HLREngine *demerge(HParseResult **result, HSlist *engines, HLREngine *eng
     if (!engine->merged[0])
         return engine;
 
+    if (!engine->merged[1])
+        return NULL;
+
     HSlistNode *p = engine->stack->head;
     for (size_t i = 0; i < depth; i++) {
         // if stack hits bottom, respawn ancestors
@@ -84,6 +89,8 @@ static HLREngine *demerge(HParseResult **result, HSlist *engines, HLREngine *eng
             // continue demerge until final depth reached
             a = demerge(result, engines, a, action, depth - i);
             b = demerge(result, engines, b, action, depth - i);
+            if (!a || !b)
+                return NULL;
 
             // step and stow one ancestor...
             glr_step(result, engines, a, action);
@@ -119,6 +126,9 @@ HLREngine *fork_engine(const HLREngine *engine) {
 
 static const HLRAction *handle_conflict(HParseResult **result, HSlist *engines,
                                         const HLREngine *engine, const HSlist *branches) {
+    if (!branches || !branches->head || !branches->head->next)
+        return NULL;
+
     // there should be at least two conflicting actions
     assert(branches->head);
     assert(branches->head->next); // this is just a consistency check
@@ -126,6 +136,8 @@ static const HLRAction *handle_conflict(HParseResult **result, HSlist *engines,
     // fork a new engine for all but the first action
     for (HSlistNode *x = branches->head->next; x; x = x->next) {
         HLRAction *act = x->elem;
+        if (!act)
+            continue;
         HLREngine *eng = fork_engine(engine);
 
         // perform one step and add to engines
@@ -149,6 +161,8 @@ static bool glr_step(HParseResult **result, HSlist *engines, HLREngine *engine,
             // demerge/respawn as needed
             size_t depth = action->production.length;
             engine = demerge(result, engines, engine, action, depth);
+            if (!engine)
+                return false;
         }
     }
 
@@ -160,7 +174,10 @@ static bool glr_step(HParseResult **result, HSlist *engines, HLREngine *engine,
         for (x = engines->head; x; x = x->next) {
             HLREngine *eng = x->elem;
             if (eng->state == engine->state && eng->input.index == engine->input.index) {
-                x->elem = lrengine_merge(eng, engine);
+                HLREngine *merged = lrengine_merge(eng, engine);
+                if (!merged)
+                    return false;
+                x->elem = merged;
                 break;
             }
         }
@@ -203,6 +220,8 @@ HParseResult *h_glr_parse(HAllocator *mm__, const HParser *parser, HInputStream 
     HParseResult *result = NULL;
     while (result == NULL && !h_slist_empty(engines)) {
         assert(h_slist_empty(engback));
+        if (!h_slist_empty(engback))
+            break;
 
         // step all engines
         while (!h_slist_empty(engines)) {
