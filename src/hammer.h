@@ -50,7 +50,11 @@ typedef enum HParserBackend_ {
     PB_INVALID = PB_MIN, /**< Have a backend that always fails to pass around "no such backend"
                             indications */
     PB_PACKRAT,
-    PB_MAX = PB_PACKRAT
+    PB_REGULAR,
+    PB_LL,
+    PB_LALR,
+    PB_GLR,
+    PB_MAX = PB_GLR
 } HParserBackend;
 
 typedef struct HParserBackendVTable_ HParserBackendVTable;

@@ -25,12 +25,63 @@ static void desugar_charset(HAllocator *mm__, HCFStack *stk__, void *env) {
     HCFS_ADD_CHARSET((HCharset)env);
 }
 
-// FUTURE: this is horribly inefficient
+static bool h_svm_action_ch(HArena *arena, HSVMContext *ctx, void *env) {
+    HParsedToken *top = ctx->stack[ctx->stack_count - 1];
+    assert(top->token_type == TT_BYTES);
+    uint64_t res = 0;
+    for (size_t i = 0; i < top->token_data.bytes.len; i++)
+        res = (res << 8) | top->token_data.bytes.token[i];
+    top->token_data.uint = res;
+    top->token_type = TT_UINT;
+    return true;
+}
+
+static bool cs_ctrvm(HRVMProg *prog, void *env) {
+    HCharset cs = (HCharset)env;
+    h_rvm_insert_insn(prog, RVM_PUSH, 0);
+
+    uint16_t start = h_rvm_get_ip(prog);
+    uint8_t range_start = 0;
+    bool collecting = false;
+
+    for (unsigned int i = 0; i < 256; i++) {
+        if (charset_isset(cs, i)) {
+            if (!collecting) {
+                collecting = true;
+                range_start = i;
+            }
+        } else if (collecting) {
+            collecting = false;
+            uint16_t insn = h_rvm_insert_insn(prog, RVM_FORK, 0);
+            h_rvm_insert_insn(prog, RVM_MATCH, range_start | ((i - 1) << 8));
+            h_rvm_insert_insn(prog, RVM_GOTO, 0);
+            h_rvm_patch_arg(prog, insn, h_rvm_get_ip(prog));
+        }
+    }
+    if (collecting) {
+        uint16_t insn = h_rvm_insert_insn(prog, RVM_FORK, 0);
+        h_rvm_insert_insn(prog, RVM_MATCH, range_start | (255 << 8));
+        h_rvm_insert_insn(prog, RVM_GOTO, 0);
+        h_rvm_patch_arg(prog, insn, h_rvm_get_ip(prog));
+    }
+
+    h_rvm_insert_insn(prog, RVM_MATCH, 0x00FF);
+    uint16_t jump = h_rvm_insert_insn(prog, RVM_STEP, 0);
+    for (size_t i = start; i < jump; ++i) {
+        if (RVM_GOTO == prog->insns[i].op)
+            h_rvm_patch_arg(prog, i, jump);
+    }
+
+    h_rvm_insert_insn(prog, RVM_CAPTURE, 0);
+    h_rvm_insert_insn(prog, RVM_ACTION, h_rvm_create_action(prog, h_svm_action_ch, env));
+    return true;
+}
 
 static const HParserVtable charset_vt = {
     .parse = parse_charset,
     .isValidRegular = h_true,
     .isValidCF = h_true,
+    .compile_to_rvm = cs_ctrvm,
     .desugar = desugar_charset,
     .higher = false,
 };

@@ -94,10 +94,34 @@ static void desugar_int_range(HAllocator *mm__, HCFStack *stk__, void *env) {
     gen_int_range(mm__, stk__, r->lower, r->upper, bytes);
 }
 
+static bool h_svm_action_validate_int_range(HArena *arena, HSVMContext *ctx, void *env) {
+    HRange *r_env = (HRange *)env;
+    HParsedToken *head = ctx->stack[ctx->stack_count - 1];
+    switch (head->token_type) {
+    case TT_SINT:
+        return r_env->lower <= head->token_data.sint && r_env->upper >= head->token_data.sint;
+    case TT_UINT:
+        return (uint64_t)r_env->lower <= head->token_data.uint &&
+               (uint64_t)r_env->upper >= head->token_data.uint;
+    default:
+        return false;
+    }
+}
+
+static bool ir_ctrvm(HRVMProg *prog, void *env) {
+    HRange *r_env = (HRange *)env;
+    if (!h_compile_regex(prog, r_env->p))
+        return false;
+    h_rvm_insert_insn(prog, RVM_ACTION,
+                      h_rvm_create_action(prog, h_svm_action_validate_int_range, env));
+    return true;
+}
+
 static const HParserVtable int_range_vt = {
     .parse = parse_int_range,
     .isValidRegular = h_true,
     .isValidCF = h_true,
+    .compile_to_rvm = ir_ctrvm,
     .desugar = desugar_int_range,
     .higher = false,
 };
