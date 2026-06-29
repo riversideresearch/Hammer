@@ -108,7 +108,7 @@ static void test_param_k_first_entry_null(void) {
     in.params = make_params_with_one_entry(entry);
     in.params.params[0].param.param = NULL;
     int rc = h_extract_param_k(&out, &in);
-    
+
     g_check_cmp_int(rc, ==, -3);
 }
 
@@ -214,7 +214,7 @@ static void *fail_realloc(HAllocator *mm__, void *ptr, size_t size) {
 static void fail_free(HAllocator *mm__, void *ptr) {
     return system_allocator.free(&system_allocator, ptr);
 }
-static HAllocator fail_allocator = {fail_alloc, fail_realloc, fail_free};
+static HAllocator fail_allocator = {fail_alloc, fail_realloc, fail_free, NULL, NULL};
 
 static void test_format_helpers_specific_k(void) {
     const char *backend = "hammer";

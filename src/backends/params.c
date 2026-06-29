@@ -93,7 +93,7 @@ int h_extract_param_k(HParserBackendWithParams *be_with_params,
         return -3; // NULL param
 
     size_t len = param_t.param.len; // length of the param string
-    if (len > MAX_LENGTH || len > 0)
+    if (len > MAX_LENGTH || len == 0)
         return -4; // param_t.param.len is too large or 0
 
     // char's can sometimes be non NUL-terminated and will cause an overflow on sscanf, so
