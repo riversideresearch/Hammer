@@ -22,8 +22,10 @@ static HLRAction *lrtable_lookup(const HLRTable *table, size_t state, const HCFC
     }
 }
 
-static size_t follow_transition(const HLRTable *table, size_t x, HCFChoice *A) {
+static bool follow_transition(const HLRTable *table, size_t x, HCFChoice *A, size_t *nextstate) {
     HLRAction *action = lrtable_lookup(table, x, A);
+    if (action == NULL)
+        return false;
     assert(action != NULL);
 
     // we are interested in a transition out of state x, i.e. a shift action.
@@ -31,25 +33,34 @@ static size_t follow_transition(const HLRTable *table, size_t x, HCFChoice *A) {
     // those are not what we are here for. so if action is a conflict, search it
     // for the shift. there will only be one and it will be the bottom element.
     if (action->type == HLR_CONFLICT) {
+        if (!action->branches)
+            return false;
         HSlistNode *x;
         for (x = action->branches->head; x; x = x->next) {
             action = x->elem;
+            if (action->type == HLR_CONFLICT)
+                return false;
             assert(action->type != HLR_CONFLICT); // no nesting of conflicts
             if (action->type == HLR_SHIFT)
                 break;
         }
+        if (x == NULL || x->next != NULL)
+            return false;
         assert(x != NULL && x->next == NULL); // shift found at the bottom
     }
+    if (action->type != HLR_SHIFT)
+        return false;
     assert(action->type == HLR_SHIFT);
 
-    return action->nextstate;
+    *nextstate = action->nextstate;
+    return true;
 }
 
 // no-op on terminal symbols
-static void transform_productions(const HLRTable *table, HLREnhGrammar *eg, size_t x,
+static bool transform_productions(const HLRTable *table, HLREnhGrammar *eg, size_t x,
                                   HCFChoice *xAy) {
     if (xAy->type != HCF_CHOICE) {
-        return;
+        return true;
     }
     // NB: nothing to do on quasi-terminal CHARSET which carries no list of rhs's
 
@@ -66,9 +77,13 @@ static void transform_productions(const HLRTable *table, HLREnhGrammar *eg, size
         HCFChoice **items = h_arena_malloc(arena, seqsize(B) * sizeof(HCFChoice *));
         HCFChoice **iBj = items;
         for (; *B; B++, iBj++) {
-            size_t j = follow_transition(table, i, *B);
+            size_t j;
+            if (!follow_transition(table, i, *B, &j))
+                return false;
             HLRTransition i_B_j = {i, *B, j};
             *iBj = h_hashtable_get(eg->tmap, &i_B_j);
+            if (*iBj == NULL)
+                return false;
             assert(*iBj != NULL);
             i = j;
         }
@@ -79,6 +94,7 @@ static void transform_productions(const HLRTable *table, HLREnhGrammar *eg, size
     }
     *q = NULL;
     xAy->seq = seq;
+    return true;
 }
 
 static HCFChoice *new_enhanced_symbol(HLREnhGrammar *eg, const HCFChoice *sym) {
@@ -121,12 +137,14 @@ static HLREnhGrammar *enhance_grammar(const HCFGrammar *g, const HLRDFA *dfa,
 
     // transform the productions
     H_FOREACH(eg->tmap, HLRTransition * t, HCFChoice * sym)
-    transform_productions(table, eg, t->from, sym);
+    if (!transform_productions(table, eg, t->from, sym))
+        return NULL;
     H_END_FOREACH
 
     // add the start symbol
     HCFChoice *start = new_enhanced_symbol(eg, g->start);
-    transform_productions(table, eg, 0, start);
+    if (!transform_productions(table, eg, 0, start))
+        return NULL;
 
     eg->grammar = h_cfgrammar_(mm__, start);
     return eg;
@@ -186,6 +204,8 @@ static bool match_production(HLREnhGrammar *eg, HCFChoice **p, HCFChoice **rhs, 
     size_t state = endstate; // initialized to end in case of empty rhs
     for (; *p && *rhs; p++, rhs++) {
         HLRTransition *t = h_hashtable_get(eg->smap, *p);
+        if (t == NULL)
+            return false;
         assert(t != NULL);
         if (!h_eq_symbol(t->symbol, *rhs)) {
             return false;
@@ -200,6 +220,8 @@ static bool match_production(HLREnhGrammar *eg, HCFChoice **p, HCFChoice **rhs, 
 // [..x..] -> x
 static bool match_charset_production(const HLRTable *table, HLREnhGrammar *eg, const HCFChoice *lhs,
                                      HCFChoice *rhs, size_t endstate) {
+    if (lhs->type != HCF_CHARSET || rhs->type != HCF_CHAR)
+        return false;
     assert(lhs->type == HCF_CHARSET);
     assert(rhs->type == HCF_CHAR);
 
@@ -208,14 +230,19 @@ static bool match_charset_production(const HLRTable *table, HLREnhGrammar *eg, c
 
     // determine the enhanced-grammar right-hand side and check end state
     HLRTransition *t = h_hashtable_get(eg->smap, lhs);
+    if (t == NULL)
+        return false;
     assert(t != NULL);
-    return (follow_transition(table, t->from, rhs) == endstate);
+    size_t nextstate;
+    return (follow_transition(table, t->from, rhs, &nextstate) && nextstate == endstate);
 }
 
 // check wether any production for sym (enhanced-grammar) matches the given
 // (original-grammar) rhs and terminates in the given end state.
 static bool match_any_production(const HLRTable *table, HLREnhGrammar *eg, const HCFChoice *sym,
                                  HCFChoice **rhs, size_t endstate) {
+    if (sym->type != HCF_CHOICE && sym->type != HCF_CHARSET)
+        return false;
     assert(sym->type == HCF_CHOICE || sym->type == HCF_CHARSET);
 
     if (sym->type == HCF_CHOICE) {
@@ -224,6 +251,8 @@ static bool match_any_production(const HLRTable *table, HLREnhGrammar *eg, const
                 return true;
         }
     } else { // HCF_CHARSET
+        if (rhs[0] == NULL || rhs[1] != NULL)
+            return false;
         assert(rhs[0] != NULL);
         assert(rhs[1] == NULL);
         return match_charset_production(table, eg, sym, rhs[0], endstate);
@@ -307,12 +336,16 @@ int h_lalr_compile(HAllocator *mm__, HParser *parser, const void *params) {
 
             // find all LR(0)-enhanced productions matching item
             HHashSet *lhss = h_hashtable_get(eg->corr, item->lhs);
+            if (lhss == NULL)
+                continue;
             assert(lhss != NULL);
             H_FOREACH_KEY(lhss, HCFChoice * lhs)
             if (match_any_production(table, eg, lhs, item->rhs, state)) {
                 // the left-hand symbol's follow set is this production's
                 // contribution to the lookahead
                 const HStringMap *fs = h_follow(k, eg->grammar, lhs);
+                if (fs == NULL || fs->epsilon_branch != NULL || h_stringmap_empty(fs))
+                    continue;
                 assert(fs != NULL);
                 assert(fs->epsilon_branch == NULL);
                 // NB: there is a case where fs can be empty: when reducing by lhs

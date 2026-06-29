@@ -286,17 +286,24 @@ HParseResult *run_trace(HAllocator *mm__, HRVMProg *orig_prog, HRVMTrace *trace,
         case SVM_CAPTURE:
             // Top of stack must be a mark
             // This replaces said mark in-place with a TT_BYTES.
+            if (ctx->stack_count == 0 ||
+                ctx->stack[ctx->stack_count - 1]->token_type != TT_MARK)
+                goto fail;
             assert(ctx->stack[ctx->stack_count - 1]->token_type == TT_MARK);
 
             tmp_res = ctx->stack[ctx->stack_count - 1];
             tmp_res->token_type = TT_BYTES;
             // TODO: Will need to copy if bit_offset is nonzero
+            if (tmp_res->bit_offset != 0)
+                goto fail;
             assert(tmp_res->bit_offset == 0);
 
             tmp_res->bytes.token = input + tmp_res->index;
             tmp_res->bytes.len = cur->input_pos - tmp_res->index;
             break;
         case SVM_ACCEPT:
+            if (ctx->stack_count > 1)
+                goto fail;
             assert(ctx->stack_count <= 1);
             HParseResult *res = a_new0(HParseResult, 1);
             if (ctx->stack_count == 1) {
@@ -372,6 +379,8 @@ uint16_t h_rvm_insert_insn(HRVMProg *prog, HRVMOp op, uint16_t arg) {
 uint16_t h_rvm_get_ip(HRVMProg *prog) { return prog->length; }
 
 void h_rvm_patch_arg(HRVMProg *prog, uint16_t ip, uint16_t new_val) {
+    if (prog->length <= ip)
+        longjmp(prog->except, 1);
     assert(prog->length > ip);
     prog->insns[ip].arg = new_val;
 }
@@ -389,8 +398,12 @@ size_t h_svm_count_to_mark(HSVMContext *ctx) {
 // TODO: Implement the primitive actions
 bool h_svm_action_make_sequence(HArena *arena, HSVMContext *ctx, void *env) {
     size_t n_items = h_svm_count_to_mark(ctx);
+    if (n_items >= ctx->stack_count)
+        return false;
     assert(n_items < ctx->stack_count);
     HParsedToken *res = ctx->stack[ctx->stack_count - 1 - n_items];
+    if (res->token_type != TT_MARK)
+        return false;
     assert(res->token_type == TT_MARK);
     res->token_type = TT_SEQUENCE;
 
@@ -417,6 +430,8 @@ bool h_svm_action_clear_to_mark(HArena *arena, HSVMContext *ctx, void *env) {
 // Glue regex backend to rest of system
 
 bool h_compile_regex(HRVMProg *prog, const HParser *parser) {
+    if (!parser->vtable->compile_to_rvm)
+        return false;
     return parser->vtable->compile_to_rvm(prog, parser->env);
 }
 

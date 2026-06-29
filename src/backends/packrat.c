@@ -233,6 +233,8 @@ HParseResult *h_do_parse(const HParser *parser, HParseState *state) {
             h_slist_pop(state->lr_stack);
             /* update the cached value to our new position */
             cached = h_hashtable_get_precomp(state->cache, key, keyhash);
+            if (cached == NULL)
+                return tmp_res;
             assert(cached != NULL);
             cached->input_stream = state->input_stream;
         }
@@ -376,8 +378,17 @@ bool h_packrat_parse_chunk(HSuspendedParser *s, HInputStream *input) {
         // we ran out of input and are expecting more
         // allocate and initialize an input stream to concatenate the chunks
         cat = h_new(HInputStream, 1);
+        if (!cat) {
+            s->backend_state = NULL;
+            return true;
+        }
         *cat = *input;
         cat->input = h_alloc(mm__, input->length);
+        if (!cat->input) {
+            h_free(cat);
+            s->backend_state = NULL;
+            return true;
+        }
         memcpy((void *)cat->input, input->input, input->length);
         s->backend_state = cat;
 
@@ -386,11 +397,24 @@ bool h_packrat_parse_chunk(HSuspendedParser *s, HInputStream *input) {
 
     // we have received additional input - append it to the saved stream
     cat = s->backend_state;
+    if (input->pos != cat->length) {
+        h_free((void *)cat->input);
+        h_free(cat);
+        s->backend_state = NULL;
+        return true;
+    }
     assert(input->pos == cat->length);
     if (input->length > SIZE_MAX - cat->length)
         h_platform_errx(1, "input length would overflow");
     newlen = cat->length + input->length;
-    cat->input = h_realloc(mm__, (void *)cat->input, newlen);
+    void *new_input = h_realloc(mm__, (void *)cat->input, newlen);
+    if (!new_input) {
+        h_free((void *)cat->input);
+        h_free(cat);
+        s->backend_state = NULL;
+        return true;
+    }
+    cat->input = new_input;
     memcpy((void *)((uint8_t *)cat->input + cat->length), input->input, input->length);
     cat->length = newlen;
     cat->last_chunk = input->last_chunk;
@@ -402,6 +426,12 @@ bool h_packrat_parse_chunk(HSuspendedParser *s, HInputStream *input) {
     cat->endianness = DEFAULT_ENDIANNESS;
     cat->overrun = false;
     res = h_packrat_parse(mm__, s->parser, cat);
+    if (cat->index > cat->length) {
+        h_free((void *)cat->input);
+        h_free(cat);
+        s->backend_state = NULL;
+        return true;
+    }
     assert(cat->index <= cat->length);
     input->overrun = cat->overrun;
 

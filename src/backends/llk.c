@@ -22,8 +22,12 @@ typedef struct HLLkTable_ {
 const HCFSequence *h_llk_lookup(const HLLkTable *table, const HCFChoice *x,
                                 const HInputStream *stream) {
     const HStringMap *row = h_hashtable_get(table->rows, x);
+    if (row == NULL)
+        return NULL;
     assert(row != NULL); // the table should have one row for each nonterminal
 
+    if (row->epsilon_branch)
+        return NULL;
     assert(!row->epsilon_branch); // would match without looking at the input
                                   // XXX cases where this could be useful?
 
@@ -35,11 +39,21 @@ HLLkTable *h_llktable_new(HAllocator *mm__) {
     // NB the parse table gets an arena separate from the grammar so we can free
     //    the latter after table generation.
     HArena *arena = h_new_arena(mm__, 0); // default blocksize
+    if (arena == NULL)
+        return NULL;
     assert(arena != NULL);
     HHashTable *rows = h_hashtable_new(arena, h_eq_ptr, h_hash_ptr);
+    if (rows == NULL) {
+        h_delete_arena(arena);
+        return NULL;
+    }
     assert(rows != NULL);
 
     HLLkTable *table = h_new(HLLkTable, 1);
+    if (table == NULL) {
+        h_delete_arena(arena);
+        return NULL;
+    }
     assert(table != NULL);
     table->mm__ = mm__;
     table->arena = arena;
@@ -60,6 +74,11 @@ void *const CONFLICT = (void *)(uintptr_t)(-1);
 
 // helper for stringmap_merge
 static void *combine_entries(HHashSet *workset, void *dst, const void *src) {
+    if (!dst)
+        return (void *)src;
+    if (!src)
+        return dst;
+
     assert(dst != NULL);
     assert(src != NULL);
 
@@ -145,6 +164,10 @@ static int fill_table_row(size_t kmax, HCFGrammar *g, HStringMap *row, const HCF
                     continue;
 
                 HCFSequence *rhs = (void *)hte->key;
+                if (rhs == NULL || rhs == CONFLICT) {
+                    h_hashset_free(workset);
+                    return -1;
+                }
                 assert(rhs != NULL);
                 assert(rhs != CONFLICT); // just to be sure there's no mixup
 
@@ -189,6 +212,8 @@ static int fill_table(size_t kmax, HCFGrammar *g, HLLkTable *table) {
             if (hte->key == NULL)
                 continue;
             const HCFChoice *a = hte->key; // production's left-hand symbol
+            if (a->type != HCF_CHOICE)
+                return -1;
             assert(a->type == HCF_CHOICE);
 
             // create table row for this nonterminal
@@ -209,6 +234,8 @@ static int fill_table(size_t kmax, HCFGrammar *g, HLLkTable *table) {
 
 int h_llk_compile(HAllocator *mm__, HParser *parser, const void *params) {
     size_t kmax = params ? (uintptr_t)params : DEFAULT_KMAX;
+    if (kmax == 0)
+        return -1;
     assert(kmax > 0);
 
     // Convert parser to a CFG. This can fail as indicated by a NULL return.
@@ -222,6 +249,10 @@ int h_llk_compile(HAllocator *mm__, HParser *parser, const void *params) {
 
     // generate table and store in parser->backend_data.
     HLLkTable *table = h_llktable_new(mm__);
+    if (!table) {
+        h_cfgrammar_free(grammar);
+        return -1;
+    }
     if (fill_table(kmax, grammar, table) < 0) {
         // the table was ambiguous
         h_cfgrammar_free(grammar);
@@ -275,11 +306,23 @@ static void const *const MARK = &MARK; // stack frame delimiter
 
 static HLLkState *llk_parse_start_(HAllocator *mm__, const HParser *parser) {
     const HLLkTable *table = parser->backend_data;
+    if (table == NULL)
+        return NULL;
     assert(table != NULL);
 
     HLLkState *s = h_new(HLLkState, 1);
+    if (!s)
+        return NULL;
     s->arena = h_new_arena(mm__, 0);
     s->tarena = h_new_arena(mm__, 0);
+    if (!s->arena || !s->tarena) {
+        if (s->arena)
+            h_delete_arena(s->arena);
+        if (s->tarena)
+            h_delete_arena(s->tarena);
+        h_free(s);
+        return NULL;
+    }
     s->stack = h_slist_new(s->tarena);
     s->seq = h_carray_new(s->arena);
     s->buf = h_arena_malloc(s->tarena, 2 * table->kmax);
@@ -294,7 +337,11 @@ static HLLkState *llk_parse_start_(HAllocator *mm__, const HParser *parser) {
 }
 
 // helper: add new input to the lookahead window
-static void append_win(size_t kmax, HLLkState *s, HInputStream *stream) {
+static bool append_win(size_t kmax, HLLkState *s, HInputStream *stream) {
+    if (stream->bit_offset != 0 || s->win.input != s->buf || s->win.length != kmax ||
+        s->win.index >= kmax)
+        return false;
+
     assert(stream->bit_offset == 0);
     assert(s->win.input == s->buf);
     assert(s->win.length == kmax);
@@ -306,20 +353,28 @@ static void append_win(size_t kmax, HLLkState *s, HInputStream *stream) {
 
     memcpy(s->buf + kmax, stream->input + stream->index, n);
     s->win.length += n;
+    return true;
 }
 
 // helper: save old input to the lookahead window
-static void save_win(size_t kmax, HLLkState *s, HInputStream *stream) {
+static bool save_win(size_t kmax, HLLkState *s, HInputStream *stream) {
+    if (stream->bit_offset != 0)
+        return false;
+
     assert(stream->bit_offset == 0);
 
     size_t len = stream->length - stream->index;
+    if (len >= kmax)
+        return false;
     assert(len < kmax);
 
     if (len == 0) {
         // stream empty? nothing to do.
-        return;
+        return true;
     } else if (s->win.length > 0) {
         // window active? should contain all of stream.
+        if (s->win.length != kmax + len || s->win.index > kmax)
+            return false;
         assert(s->win.length == kmax + len);
         assert(s->win.index <= kmax);
 
@@ -333,6 +388,8 @@ static void save_win(size_t kmax, HLLkState *s, HInputStream *stream) {
         //
         s->win.pos += len; // position of the window shifts up
         len = s->win.length - s->win.index;
+        if (len > kmax)
+            return false;
         assert(len <= kmax);
         memmove(s->buf + kmax - len, s->buf + s->win.index, len);
     } else {
@@ -347,6 +404,7 @@ static void save_win(size_t kmax, HLLkState *s, HInputStream *stream) {
     s->win.input = s->buf;
     s->win.index = kmax - len;
     s->win.length = kmax;
+    return true;
 }
 
 // returns partial result or NULL (no parse)
@@ -355,10 +413,14 @@ static HCountedArray *llk_parse_chunk_(HLLkState *s, const HParser *parser, HInp
     HCFChoice *x = NULL;      // current symbol (from top of stack)
     HInputStream *stream;
 
+    if (chunk->index != 0 || chunk->bit_offset != 0)
+        return NULL;
     assert(chunk->index == 0);
     assert(chunk->bit_offset == 0);
 
     const HLLkTable *table = parser->backend_data;
+    if (table == NULL)
+        return NULL;
     assert(table != NULL);
 
     HArena *arena = s->arena;
@@ -379,7 +441,8 @@ static HCountedArray *llk_parse_chunk_(HLLkState *s, const HParser *parser, HInp
     HCountedArray *seq = s->seq;
 
     if (s->win.length > 0) {
-        append_win(kmax, s, chunk);
+        if (!append_win(kmax, s, chunk))
+            goto no_parse;
         stream = &s->win;
     } else {
         stream = chunk;
@@ -391,6 +454,8 @@ static HCountedArray *llk_parse_chunk_(HLLkState *s, const HParser *parser, HInp
 
         // pop top of stack for inspection
         x = h_slist_pop(stack);
+        if (x == NULL)
+            goto no_parse;
         assert(x != NULL);
 
         if (x != MARK && x->type == HCF_CHOICE) {
@@ -401,11 +466,12 @@ static HCountedArray *llk_parse_chunk_(HLLkState *s, const HParser *parser, HInp
             if (p == NULL)
                 goto no_parse;
             if (p == NEED_INPUT) {
-                save_win(kmax, s, chunk);
                 goto need_input;
             }
 
             // an infinite loop case that shouldn't happen
+            if (p->items[0] == x)
+                goto no_parse;
             assert(!p->items[0] || p->items[0] != x);
 
             // push stack frame
@@ -436,7 +502,11 @@ static HCountedArray *llk_parse_chunk_(HLLkState *s, const HParser *parser, HInp
             // XXX would have to set token pos but we've forgotten pos of seq
 
             // recover original nonterminal and result sequence
+            if (h_slist_empty(stack))
+                goto no_parse;
             x = h_slist_pop(stack);
+            if (h_slist_empty(stack))
+                goto no_parse;
             seq = h_slist_pop(stack);
             // tok becomes next left-most element of higher-level sequence
         } else {
@@ -515,6 +585,8 @@ static HCountedArray *llk_parse_chunk_(HLLkState *s, const HParser *parser, HInp
     // success
     // since we started with a single nonterminal on the stack, seq should
     // contain exactly the parse result.
+    if (seq->used != 1)
+        goto no_parse;
     assert(seq->used == 1);
 
 end:
@@ -531,6 +603,8 @@ need_input:
         goto no_parse;
     if (tok)
         h_arena_free(arena, tok); // no result, yet
+    if (!save_win(kmax, s, chunk))
+        goto no_parse;
     h_slist_push(stack, x);       // try this symbol again next time
     goto end;
 }
@@ -539,8 +613,13 @@ static HParseResult *llk_parse_finish_(HAllocator *mm__, HLLkState *s) {
     HParseResult *res = NULL;
 
     if (s->seq) {
-        assert(s->seq->used == 1);
-        res = make_result(s->arena, s->seq->elements[0]);
+        if (s->seq->used != 1) {
+            h_delete_arena(s->arena);
+            res = NULL;
+        } else {
+            assert(s->seq->used == 1);
+            res = make_result(s->arena, s->seq->elements[0]);
+        }
     } else {
         h_delete_arena(s->arena);
     }
@@ -552,8 +631,14 @@ static HParseResult *llk_parse_finish_(HAllocator *mm__, HLLkState *s) {
 
 HParseResult *h_llk_parse(HAllocator *mm__, const HParser *parser, HInputStream *stream) {
     HLLkState *s = llk_parse_start_(mm__, parser);
+    if (!s)
+        return NULL;
 
     assert(stream->last_chunk);
+    if (!stream->last_chunk) {
+        llk_parse_finish_(mm__, s);
+        return NULL;
+    }
     s->seq = llk_parse_chunk_(s, parser, stream);
 
     HParseResult *res = llk_parse_finish_(mm__, s);
@@ -569,6 +654,8 @@ void h_llk_parse_start(HSuspendedParser *s) {
 
 bool h_llk_parse_chunk(HSuspendedParser *s, HInputStream *input) {
     HLLkState *state = s->backend_state;
+    if (!state)
+        return true;
 
     state->seq = llk_parse_chunk_(state, s->parser, input);
 
@@ -579,6 +666,8 @@ bool h_llk_parse_chunk(HSuspendedParser *s, HInputStream *input) {
 }
 
 HParseResult *h_llk_parse_finish(HSuspendedParser *s) {
+    if (!s->backend_state)
+        return NULL;
     return llk_parse_finish_(s->mm__, s->backend_state);
 }
 

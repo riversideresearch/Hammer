@@ -88,6 +88,8 @@ HLRItem *h_lritem_new(HArena *a, HCFChoice *lhs, HCFChoice **rhs, size_t mark) {
     size_t len = 0;
     for (HCFChoice **p = rhs; *p; p++)
         len++;
+    if (mark > len)
+        return NULL;
     assert(mark <= len);
 
     ret->lhs = lhs;
@@ -102,9 +104,15 @@ HLRState *h_lrstate_new(HArena *arena) { return h_hashset_new(arena, eq_lr_item,
 
 HLRTable *h_lrtable_new(HAllocator *mm__, size_t nrows) {
     HArena *arena = h_new_arena(mm__, 0); // default blocksize
+    if (arena == NULL)
+        return NULL;
     assert(arena != NULL);
 
     HLRTable *ret = h_new(HLRTable, 1);
+    if (ret == NULL) {
+        h_delete_arena(arena);
+        return NULL;
+    }
     ret->nrows = nrows;
     ret->ntmap = h_arena_malloc(arena, nrows * sizeof(HHashTable *));
     ret->tmap = h_arena_malloc(arena, nrows * sizeof(HStringMap *));

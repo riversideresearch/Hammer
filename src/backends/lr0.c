@@ -5,6 +5,8 @@
 /* Constructing the characteristic automaton (handle recognizer) */
 
 static HLRItem *advance_mark(HArena *arena, const HLRItem *item) {
+    if (item->rhs[item->mark] == NULL)
+        return NULL;
     assert(item->rhs[item->mark] != NULL);
     HLRItem *ret = h_arena_malloc(arena, sizeof(HLRItem));
     *ret = *item;
@@ -33,6 +35,8 @@ static void expand_to_closure(HCFGrammar *g, HHashSet *items) {
             if (sym->type == HCF_CHOICE) {
                 for (HCFSequence **p = sym->seq; *p; p++) {
                     HLRItem *it = h_lritem_new(arena, sym, (*p)->items, 0);
+                    if (it == NULL)
+                        continue;
                     if (!h_hashset_present(items, it)) {
                         h_hashset_put(items, it);
                         h_slist_push(work, it);
@@ -74,9 +78,15 @@ HLRDFA *h_lr0_dfa(HCFGrammar *g) {
 
     // make initial state (kernel)
     HLRState *start = h_lrstate_new(arena);
+    if (g->start->type != HCF_CHOICE)
+        return NULL;
     assert(g->start->type == HCF_CHOICE);
-    for (HCFSequence **p = g->start->seq; *p; p++)
-        h_hashset_put(start, h_lritem_new(arena, g->start, (*p)->items, 0));
+    for (HCFSequence **p = g->start->seq; *p; p++) {
+        HLRItem *item = h_lritem_new(arena, g->start, (*p)->items, 0);
+        if (item == NULL)
+            return NULL;
+        h_hashset_put(start, item);
+    }
     expand_to_closure(g, start);
     h_hashtable_put(states, start, 0);
     h_slist_push(work, start);
@@ -112,7 +122,10 @@ HLRDFA *h_lr0_dfa(HCFGrammar *g) {
             }
 
             // ...and add the advanced item to it
-            h_hashset_put(neighbor, advance_mark(arena, item));
+            HLRItem *advanced = advance_mark(arena, item);
+            if (advanced == NULL)
+                return NULL;
+            h_hashset_put(neighbor, advanced);
         }
         H_END_FOREACH
 
@@ -174,8 +187,12 @@ static inline void put_shift(HLRTable *table, size_t state, const HCFChoice *sym
 
 HLRTable *h_lr0_table(HCFGrammar *g, const HLRDFA *dfa) {
     HAllocator *mm__ = g->mm__;
+    if (!dfa || dfa->nstates == 0)
+        return NULL;
 
     HLRTable *table = h_lrtable_new(mm__, dfa->nstates);
+    if (table == NULL)
+        return NULL;
     HArena *arena = table->arena;
 
     // remember start symbol
