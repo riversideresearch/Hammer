@@ -85,10 +85,6 @@ static HParseResult *parse_dispatch(void *env, HParseState *state) {
     // Extract opcode value from discriminator
     size_t opcode = extract_opcode(disc_result);
 
-    // Validate range
-
-    fprintf(stderr, "Size is: %lu\n", d->size);
-
     // O(1) lookup
     size_t mask = d->bucket_count - 1;
     size_t h = (opcode ^ (opcode >> 16)) & mask;
