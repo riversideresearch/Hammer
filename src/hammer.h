@@ -175,7 +175,6 @@ typedef struct HParseResult_ {
 typedef struct HBitWriter_ HBitWriter;
 
 typedef struct HCFChoice_ HCFChoice;
-typedef struct HCFDispatch_ HCFDispatch;
 typedef struct HRVMProg_ HRVMProg;
 typedef struct HParserVtable_ HParserVtable;
 
@@ -757,7 +756,7 @@ HParser *h_dispatch__s(HParser *discriminator, const OpcodeMap *map, size_t coun
  * h_uint8())
  * @param map An OpcodeMap struct that acts as a dictionary, linking each opcode to a parser.
  * @param default_parser Parser that will be applied when opcode isn't in dictionary, may be NULL.
- * @return Parser that reads discriminator and dispatches to the linked parser. returns 
+ * @return Parser that reads discriminator and dispatches to the linked parser. returns NULL on error. 
  */
 #define h_dispatch(discriminator, map, default_parser)                                                             \
     h_dispatch__s((discriminator), (map), (sizeof(map) / sizeof((map)[0])), default_parser)

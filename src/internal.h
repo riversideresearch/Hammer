@@ -474,19 +474,7 @@ struct HCFChoice_ {
     HAction action;
     HPredicate pred;
     void *user_data;
-};
-
-struct HCFDispatch_ { // TODO: refine this struct
-    enum HCFDispatchType { HCF_Dispatch } type;
-    union {
-        HCharset charset;
-        HCFSequence **seq;
-        uint8_t chr;
-    } data;
-    HAction reshape;
-    HAction action;
-    HPredicate pred;
-    void *user_data;
+    size_t dispatch_opcode;
 };
 
 struct HCFSequence_ {
@@ -571,13 +559,6 @@ static inline HCFChoice *h_cfstack_new_choice_raw(HAllocator *mm__, HCFStack *st
     return ret;
 }
 
-static inline HCFChoice *h_cfstack_new_dispatch_raw(HAllocator *mm__, HCFStack *stk__) {
-    // TODO: Create this function
-    (void)mm__;
-    (void)stk__;
-    return NULL;
-}
-
 static inline void h_cfstack_add_charset(HAllocator *mm__, HCFStack *stk__, HCharset charset) {
     HCFChoice *ni = h_cfstack_new_choice_raw(mm__, stk__);
     ni->type = HCF_CHARSET;
@@ -617,10 +598,6 @@ static inline void h_cfstack_begin_choice(HAllocator *mm__, HCFStack *stk__) {
     stk__->stack[stk__->count++] = choice;
 }
 
-static inline void h_cfstack_begin_dispatch(HAllocator *mm__, HCFStack *stk__) {
-    // TODO: create this function
-}
-
 static inline void h_cfstack_begin_seq(HAllocator *mm__, HCFStack *stk__) {
     HCFChoice *top = stk__->stack[stk__->count - 1];
     for (size_t i = 0;; i++) {
@@ -639,11 +616,6 @@ static inline void h_cfstack_begin_seq(HAllocator *mm__, HCFStack *stk__) {
     }
 }
 
-static inline void h_cfstack_end_dispatch(HAllocator *mm__, HCFStack *stk__) UNUSED;
-static inline void h_cfstack_end_dispatch(HAllocator *mm__, HCFStack *stk__) {
-    // TODO: figure out what to do here
-}
-
 static inline void h_cfstack_end_seq(HAllocator *mm__, HCFStack *stk__) UNUSED;
 static inline void h_cfstack_end_seq(HAllocator *mm__, HCFStack *stk__) {
     // do nothing. You should call this anyway.
@@ -656,6 +628,7 @@ static inline void h_cfstack_end_choice(HAllocator *mm__, HCFStack *stk__) {
     stk__->count--;
 }
 
+
 #define HCFS_APPEND(choice) h_cfstack_add_to_seq(mm__, stk__, (choice))
 #define HCFS_DESUGAR(parser) h_desugar(mm__, stk__, parser)
 #define HCFS_ADD_CHARSET(charset) h_cfstack_add_charset(mm__, stk__, (charset))
@@ -664,12 +637,12 @@ static inline void h_cfstack_end_choice(HAllocator *mm__, HCFStack *stk__) {
 // The semicolons on BEGIN macros are intentional; pretend that they
 // are control structures.
 #define HCFS_BEGIN_CHOICE() h_cfstack_begin_choice(mm__, stk__);
-#define HCFS_BEGIN_DISPATCH() h_cfstack_begin_dispatch(mm__, stk__);
 #define HCFS_BEGIN_SEQ() h_cfstack_begin_seq(mm__, stk__);
 #define HCFS_END_CHOICE() h_cfstack_end_choice(mm__, stk__)
-#define HCFS_END_DISPATCH() h_cfstack_end_dispatch(mm__, stk__)
 #define HCFS_END_SEQ() h_cfstack_end_seq(mm__, stk__)
 #define HCFS_THIS_CHOICE (stk__->stack[stk__->count - 1])
+#define HCFS_SET_DISPATCH_OPCODE(op) \
+    (HCFS_THIS_CHOICE->dispatch_opcode = (op))
 
 struct HParserVtable_ {
     HParseResult *(*parse)(void *env, HParseState *state);

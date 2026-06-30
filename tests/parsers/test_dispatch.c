@@ -33,7 +33,7 @@ static void test_dispatch_incorrect_opcode(void) {
 
     uint8_t buf[256];
     int buf_size = 1 + BODY_SIZE;
-    buf[0] = 0; // Incorrect opcode byte
+    buf[0] = 2; // Incorrect opcode byte
 
     buf[1] = (uint8_t){0x41};
 
@@ -142,7 +142,7 @@ static void test_dispatch_does_not_mutate_cached_body(void) {
     HParser *discriminator = h_uint8();
     HParser *message = h_dispatch(discriminator, entries, NULL);
     g_check_cmp_ptr(message, !=, NULL);
-    
+
     HParseResult *dispatch_res = h_parse(message, buf, buf_size);
     g_check_cmp_ptr(dispatch_res, !=, NULL);
 
@@ -188,13 +188,40 @@ static void test_dispatch_incorrect_discriminator(void) {
 
     OpcodeMap entries[] = {{1, h_ch(0x41)}, {2013, h_uint32()}};
     HParser *discriminator = h_ch(0x41);
-    HParser *default_parser = h_sequence(h_ch(0x32),h_ch(0x42),NULL);
+    HParser *default_parser = h_sequence(h_ch(0x32), h_ch(0x42), NULL);
 
     HParser *message = h_dispatch(discriminator, entries, default_parser);
 
     HParseResult *res = h_parse(message, buf, buf_size);
 
     g_check_cmp_ptr(res, ==, NULL);
+}
+
+static void test_dispatch_bytes(void) {
+
+    uint8_t buf[256];
+    buf[0] = 0x00; // start opcode bytes
+    buf[1] = 0x00;
+    buf[2] = 0x00;
+    buf[3] = 0x01; // end opcode bytes
+    buf[4] = 0x41; // body byte
+
+    size_t buf_size = 5;
+
+    /* discriminator produces TT_BYTES */
+    HParser *discriminator = h_bytes(4);
+
+    OpcodeMap entries[] = {{1, h_ch(0x41)}, {2, h_ch(0x42)}, {2013, h_uint32()}};
+
+    HParser *message = h_dispatch(discriminator, entries, NULL);
+
+    HParseResult *res = h_parse(message, buf, buf_size);
+
+    g_check_cmp_ptr(res, !=, NULL);
+    g_check_cmp_ptr(res->ast, !=, NULL);
+
+    // Expected bit_length: 4 byte discriminator + 1 byte body = 40 bits
+    g_check_cmp_int(res->bit_length, ==, 40);
 }
 
 void register_dispatch_tests(void) {
@@ -204,8 +231,8 @@ void register_dispatch_tests(void) {
     g_test_add_func("/core/dispatch/bit_length", test_dispatch_bit_length_sequence);
     g_test_add_func("/core/dispatch/cached_body_mutation",
                     test_dispatch_does_not_mutate_cached_body);
-    g_test_add_func("/core/dispatch/default_case",
-                    test_dispatch_default_case);
+    g_test_add_func("/core/dispatch/default_case", test_dispatch_default_case);
     g_test_add_func("/core/dispatch/incorrect_discriminator",
                     test_dispatch_incorrect_discriminator);
+    g_test_add_func("/core/dispatch/bytes", test_dispatch_bytes);
 }
