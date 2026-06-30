@@ -26,7 +26,7 @@ typedef struct {
 typedef struct {
     HParser *discriminator;
     HArena *arena;
-
+    HParser *default_parser;
     DispatchBucket *buckets;
     size_t bucket_count;
 } HDispatch;
@@ -82,13 +82,13 @@ static size_t extract_opcode(HParseResult *result) {
     return opcode;
 }
 
-HParser *extract_parser(HDispatch *d, size_t h, size_t mask, size_t opcode) {
+HParser *extract_parser(HDispatch *d, size_t h, size_t mask, size_t opcode, HParser *default_parser) {
     while (d->buckets[h].used) {
         if (d->buckets[h].opcode == opcode)
             return d->buckets[h].parser;
         h = (h + 1) & mask;
     }
-    return NULL;
+    return default_parser;
 }
 
 static HParseResult *parse_dispatch(void *env, HParseState *state) {
@@ -108,7 +108,7 @@ static HParseResult *parse_dispatch(void *env, HParseState *state) {
     size_t mask = d->bucket_count - 1;
     size_t h = (opcode ^ (opcode >> 16)) & mask;
 
-    HParser *body = extract_parser(d, h, mask, opcode);
+    HParser *body = extract_parser(d, h, mask, opcode, d->default_parser);
     if (!body) {
         fprintf(stderr, "Parser Extraction failed!\n");
         return NULL;
@@ -204,17 +204,17 @@ static const HParserVtable dispatch_vt = {
     .higher = true,
 };
 
-HParser *h_dispatch__s(HParser *discriminator, const OpcodeMap *map, size_t size) {
+HParser *h_dispatch__s(HParser *discriminator, const OpcodeMap *map, size_t size, HParser *default_parser) {
     if (map == NULL || size == 0) {
         fprintf(stderr, "Map is NULL!\n");
         return NULL;
     }
-    HParser *ret = h_dispatch__m(&system_allocator, discriminator, map, size);
+    HParser *ret = h_dispatch__m(&system_allocator, discriminator, map, size, default_parser);
     return ret;
 }
 
 HParser *h_dispatch__m(HAllocator *mm__, HParser *discriminator, const OpcodeMap *map,
-                       size_t size) {
+                       size_t size, HParser *default_parser) {
 
     HDispatch *env = h_new(HDispatch, 1);
     if (!env) {
@@ -223,6 +223,7 @@ HParser *h_dispatch__m(HAllocator *mm__, HParser *discriminator, const OpcodeMap
     }
     env->discriminator = discriminator;
     env->arena = h_new_arena(mm__, 0);
+    env->default_parser = default_parser;
 
     // build hash table
     env->bucket_count = next_pow2(size * 2);

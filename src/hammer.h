@@ -747,8 +747,8 @@ typedef struct {
 } OpcodeMap;
 
 HParser *h_dispatch__m(HAllocator *mm__, HParser *discriminator, const OpcodeMap *map,
-                       size_t count);
-HParser *h_dispatch__s(HParser *discriminator, const OpcodeMap *map, size_t count);
+                       size_t count, HParser *default_parser);
+HParser *h_dispatch__s(HParser *discriminator, const OpcodeMap *map, size_t count, HParser *default_parser);
 // public macro — zero runtime cost for compile-time arrays
 /**
  * Create a parser that dispatches based on a discriminator value.
@@ -756,10 +756,11 @@ HParser *h_dispatch__s(HParser *discriminator, const OpcodeMap *map, size_t coun
  * @param discriminator Parser that produces an integer value that represent the opcode (e.g.,
  * h_uint8())
  * @param map An OpcodeMap struct that acts as a dictionary, linking each opcode to a parser.
- * @return Parser that reads discriminator and dispatches to the linked parser.
+ * @param default_parser Parser that will be applied when opcode isn't in dictionary, may be NULL.
+ * @return Parser that reads discriminator and dispatches to the linked parser. returns 
  */
-#define h_dispatch(discriminator, map)                                                             \
-    h_dispatch__s((discriminator), (map), (sizeof(map) / sizeof((map)[0])))
+#define h_dispatch(discriminator, map, default_parser)                                                             \
+    h_dispatch__s((discriminator), (map), (sizeof(map) / sizeof((map)[0])), default_parser)
 
 /**
  * @brief Given a null-terminated list of parsers, match a permutation phrase of these parsers, i.e.

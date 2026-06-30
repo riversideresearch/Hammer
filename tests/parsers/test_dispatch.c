@@ -21,7 +21,7 @@ static void test_dispatch_basic_functionality(void) {
     OpcodeMap entries[] = {{1, h_ch(0x41)}, {2, h_ch(0x42)}, {2013, h_uint32()}};
     HParser *discriminator = h_uint8();
 
-    HParser *message = h_dispatch(discriminator, entries);
+    HParser *message = h_dispatch(discriminator, entries, NULL);
 
     HParseResult *res = h_parse(message, buf, buf_size);
 
@@ -40,8 +40,9 @@ static void test_dispatch_incorrect_opcode(void) {
     OpcodeMap entries[] = {{1, h_ch(0x41)}, {2, h_ch(0x42)}, {2013, h_uint32()}};
 
     HParser *discriminator = h_uint8();
+    HParser *default_parser = h_ch(0x43);
 
-    HParser *message = h_dispatch(discriminator, entries);
+    HParser *message = h_dispatch(discriminator, entries, default_parser);
 
     HParseResult *res = h_parse(message, buf, buf_size);
 
@@ -67,7 +68,7 @@ static void test_dispatch_32_bits(void) {
 
     OpcodeMap entries[] = {{1, h_ch(0x41)}, {2, h_ch(0x42)}, {2013, h_uint32()}};
 
-    HParser *message = h_dispatch(h_uint32(), entries);
+    HParser *message = h_dispatch(h_uint32(), entries, NULL);
 
     HParseResult *res = h_parse(message, buf, buf_size);
 
@@ -99,9 +100,9 @@ static void test_dispatch_bit_length_sequence(void) {
     OpcodeMap entries3[] = {{3, h_ch(0x43)}};
 
     /* Each dispatch parses one opcode + one body byte */
-    HParser *d1 = h_dispatch(h_uint8(), entries1);
-    HParser *d2 = h_dispatch(h_uint8(), entries2);
-    HParser *d3 = h_dispatch(h_uint8(), entries3);
+    HParser *d1 = h_dispatch(h_uint8(), entries1, NULL);
+    HParser *d2 = h_dispatch(h_uint8(), entries2, NULL);
+    HParser *d3 = h_dispatch(h_uint8(), entries3, NULL);
 
     /* Sequence of three dispatches */
     HParser *seq = h_sequence(d1, d2, d3, NULL);
@@ -139,7 +140,7 @@ static void test_dispatch_does_not_mutate_cached_body(void) {
 
     // Build and run the dispatch parser (which should not mutate cached body result)
     HParser *discriminator = h_uint8();
-    HParser *message = h_dispatch(discriminator, entries);
+    HParser *message = h_dispatch(discriminator, entries, NULL);
     g_check_cmp_ptr(message, !=, NULL);
     
     HParseResult *dispatch_res = h_parse(message, buf, buf_size);
@@ -157,6 +158,45 @@ static void test_dispatch_does_not_mutate_cached_body(void) {
     g_check_cmp_int(body_first->ast->token_data.uint, ==, body_second->ast->token_data.uint);
 }
 
+static void test_dispatch_default_case(void) {
+
+    uint8_t buf[256];
+    int buf_size = 1 + BODY_SIZE;
+    buf[0] = 2; // Opcode byte
+
+    buf[1] = (uint8_t){0x42};
+
+    OpcodeMap entries[] = {{1, h_ch(0x41)}, {2013, h_uint32()}};
+    HParser *discriminator = h_uint8();
+    HParser *default_parser = h_ch(0x42);
+
+    HParser *message = h_dispatch(discriminator, entries, default_parser);
+
+    HParseResult *res = h_parse(message, buf, buf_size);
+
+    g_check_cmp_ptr(res, !=, NULL);
+    g_check_cmp_ptr(res->ast, !=, NULL);
+}
+
+static void test_dispatch_incorrect_discriminator(void) {
+
+    uint8_t buf[256];
+    int buf_size = 1 + BODY_SIZE;
+    buf[0] = 2; // Opcode byte
+
+    buf[1] = (uint8_t){0x42};
+
+    OpcodeMap entries[] = {{1, h_ch(0x41)}, {2013, h_uint32()}};
+    HParser *discriminator = h_ch(0x41);
+    HParser *default_parser = h_sequence(h_ch(0x32),h_ch(0x42),NULL);
+
+    HParser *message = h_dispatch(discriminator, entries, default_parser);
+
+    HParseResult *res = h_parse(message, buf, buf_size);
+
+    g_check_cmp_ptr(res, ==, NULL);
+}
+
 void register_dispatch_tests(void) {
     g_test_add_func("/core/dispatch/basic_functionality", test_dispatch_basic_functionality);
     g_test_add_func("/core/dispatch/incorrect_opcode", test_dispatch_incorrect_opcode);
@@ -164,4 +204,8 @@ void register_dispatch_tests(void) {
     g_test_add_func("/core/dispatch/bit_length", test_dispatch_bit_length_sequence);
     g_test_add_func("/core/dispatch/cached_body_mutation",
                     test_dispatch_does_not_mutate_cached_body);
+    g_test_add_func("/core/dispatch/default_case",
+                    test_dispatch_default_case);
+    g_test_add_func("/core/dispatch/incorrect_discriminator",
+                    test_dispatch_incorrect_discriminator);
 }
