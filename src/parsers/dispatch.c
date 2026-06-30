@@ -68,6 +68,11 @@ static size_t extract_opcode(HParseResult *result) {
         }
         size_t val = 0;
         for (size_t i = 0; i < b.len; i++) {
+            if (val > (SIZE_MAX >> 8)) { 
+                opcode = (size_t)-1; //overflow: opcode can't be represented as type size_t
+                break;
+            }
+
             val = (val << 8) | b.token[i];
         }
         opcode = val;
