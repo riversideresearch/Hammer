@@ -37,6 +37,7 @@ endif
 CFLAGS = \
     $(TARGET_FLAGS) \
 	-std=c99 \
+	-O2 \
 	-D_POSIX_C_SOURCE=200809L \
     -DRTEMS_BUILD -DSIMULATOR_LIMITED\
 	-Wall -Wextra -Wno-unused-parameter -Wno-unused-variable \
