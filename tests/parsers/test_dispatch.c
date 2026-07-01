@@ -1,5 +1,6 @@
 /* Copyright (c) 2026 Riverside Research */
 #include "cfgrammar.h"
+#include "glue.h"
 #include "hammer.h"
 #include "internal.h"
 #include "test_suite.h"
@@ -224,6 +225,148 @@ static void test_dispatch_bytes(void) {
     g_check_cmp_int(res->bit_length, ==, 40);
 }
 
+static void test_dispatch_5_bytes(void) {
+
+    // opcode still functions over >4 bytes if the largest bytes aren't used
+    uint8_t buf[256];
+    buf[0] = 0x00; // start opcode bytes
+    buf[1] = 0x00;
+    buf[2] = 0x00;
+    buf[3] = 0x00;
+    buf[4] = 0x01; // end opcode bytes
+    buf[5] = 0x41; // body byte
+
+    size_t buf_size = 6;
+
+    /* discriminator produces TT_BYTES */
+    HParser *discriminator = h_bytes(5);
+
+    OpcodeMap entries[] = {{1, h_ch(0x41)}, {2, h_ch(0x42)}, {2013, h_uint32()}};
+
+    HParser *message = h_dispatch(discriminator, entries, NULL);
+
+    HParseResult *res = h_parse(message, buf, buf_size);
+
+    g_check_cmp_ptr(res, !=, NULL);
+    g_check_cmp_ptr(res->ast, !=, NULL);
+
+    // Expected bit_length: 5 byte discriminator + 1 byte body = 48 bits
+    g_check_cmp_int(res->bit_length, ==, 48);
+
+    // check that parse fails with a 40 bit number.
+    buf[0] = 0xFF; // NEW opcode byte overflow
+    buf[1] = 0x00;
+    buf[2] = 0x00;
+    buf[3] = 0x00;
+    buf[4] = 0x01; // end opcode bytes
+    buf[5] = 0x41;
+
+    res = h_parse(message, buf, buf_size);
+
+    g_check_cmp_ptr(res, ==, NULL);
+}
+
+// Helpers for testing for memory leaks
+typedef struct {
+    HAllocator base;
+    size_t allocs;
+    size_t frees;
+} LeakAlloc;
+
+static void *leak_malloc(HAllocator *mm, size_t n) {
+    LeakAlloc *la = (LeakAlloc *)mm;
+    la->allocs++;
+    return malloc(n);
+}
+
+static void leak_free(HAllocator *mm, void *p) {
+    LeakAlloc *la = (LeakAlloc *)mm;
+    la->frees++;
+    free(p);
+}
+
+static void leak_init(LeakAlloc *la) {
+    la->allocs = 0;
+    la->frees  = 0;
+    la->base.alloc = leak_malloc;
+    la->base.free   = leak_free;
+}
+
+static void test_dispatch_no_parse_failure_leak(void) {
+    LeakAlloc la;
+    leak_init(&la);
+
+    HArena *arena = h_new_arena(&la.base, 0);
+
+    uint8_t buf[] = {1, 0x99};  //opcode 1, mismatched character
+    HParser *discriminator = h_uint8();
+    HParser *body = h_ch(0x41);
+
+    OpcodeMap entries[] = {
+        {1, body}
+    };
+
+    HParser *message = h_dispatch(discriminator, entries, NULL);
+
+    HParseResult *res = h_parse(message, buf, sizeof(buf));
+
+    g_check_cmp_ptr(res, ==, NULL);
+
+    h_delete_arena(arena);
+
+    g_check_cmp_int(la.frees, ==, la.allocs);
+}
+
+static void test_dispatch_parser_reuse(void) {
+    HParser *shared = h_ch(0x41);
+
+    OpcodeMap entries[] = {
+        {1, shared},
+        {2, shared},
+        {2013, shared}
+    };
+
+    HParser *discriminator = h_uint8();
+    HParser *message = h_dispatch(discriminator, entries, NULL);
+
+    HCFStack *stk;
+    stk = h_cfstack_new(&system_allocator);
+
+    h_desugar(&system_allocator, stk, message);
+
+    int count = 0;
+    
+    fprintf(stderr, "count = %d\n", stk->cap);
+
+     /* Find the outer choice node */
+    HCFChoice *choice = NULL;
+    for (int i = 0; i < 2; i++) {
+        if (stk->stack[i]->type == HCF_CHOICE) {
+            choice = (HCFChoice *)stk->stack[i];
+            break;
+        }
+    }
+
+    g_check_cmp_ptr(choice, !=, NULL);
+
+    /* Now inspect each branch */
+    HCFChoice *first_body_node = NULL;
+
+    for (size_t i = 0; i < 2; i++) {
+        HCFSequence *seq = choice->data.seq[i];
+
+        /* seq->elems[1] is the body parser */
+        HCFChoice *body = seq->items[1];
+
+        if (first_body_node == NULL){
+            first_body_node = body;}
+        else{
+            g_check_cmp_ptr(body, ==, first_body_node);}
+    }
+
+    h_cfstack_free(&system_allocator, stk);
+}
+
 void register_dispatch_tests(void) {
     g_test_add_func("/core/dispatch/basic_functionality", test_dispatch_basic_functionality);
     g_test_add_func("/core/dispatch/incorrect_opcode", test_dispatch_incorrect_opcode);
@@ -235,4 +378,7 @@ void register_dispatch_tests(void) {
     g_test_add_func("/core/dispatch/incorrect_discriminator",
                     test_dispatch_incorrect_discriminator);
     g_test_add_func("/core/dispatch/bytes", test_dispatch_bytes);
+    g_test_add_func("/core/dispatch/5_bytes", test_dispatch_5_bytes);
+    g_test_add_func("/core/dispatch/no_parse_failure_leak", test_dispatch_no_parse_failure_leak);
+    g_test_add_func("/core/dispatch/parser_reuse", test_dispatch_parser_reuse);
 }
