@@ -3,8 +3,8 @@
 #include "glue.h"
 #include "hammer.h"
 #include "internal.h"
+#include "parsers/parser_internal.h"
 #include "test_suite.h"
-
 #include <glib.h>
 
 #define ITERATIONS 100
@@ -334,10 +334,6 @@ static void test_dispatch_parser_reuse(void) {
 
     h_desugar(&system_allocator, stk, message);
 
-    int count = 0;
-    
-    fprintf(stderr, "count = %d\n", stk->cap);
-
      /* Find the outer choice node */
     HCFChoice *choice = NULL;
     for (int i = 0; i < 2; i++) {
@@ -367,6 +363,16 @@ static void test_dispatch_parser_reuse(void) {
     h_cfstack_free(&system_allocator, stk);
 }
 
+static void test_dispatch_prettyprint(gconstpointer backend) {
+    HParser *disc = h_ch('a');
+    HParser *body = h_ch('b');
+    OpcodeMap map[] = {{97, body}};
+    HParser *dispatch = h_dispatch__s(disc, map, 1, NULL);
+
+    /* The pretty-printer should show the sequence with both tokens */
+    g_check_parse_match(dispatch, (HParserBackend)GPOINTER_TO_INT(backend), "ab", 2, "u0x62");
+}
+
 void register_dispatch_tests(void) {
     g_test_add_func("/core/dispatch/basic_functionality", test_dispatch_basic_functionality);
     g_test_add_func("/core/dispatch/incorrect_opcode", test_dispatch_incorrect_opcode);
@@ -381,4 +387,5 @@ void register_dispatch_tests(void) {
     g_test_add_func("/core/dispatch/5_bytes", test_dispatch_5_bytes);
     g_test_add_func("/core/dispatch/no_parse_failure_leak", test_dispatch_no_parse_failure_leak);
     g_test_add_func("/core/dispatch/parser_reuse", test_dispatch_parser_reuse);
+    g_test_add_data_func("/core/dispatch/prettyprint",GINT_TO_POINTER(PB_PACKRAT), test_dispatch_prettyprint);
 }

@@ -25,21 +25,10 @@ typedef struct {
 
 typedef struct {
     HParser *discriminator;
-    HArena *arena;
     HParser *default_parser;
     DispatchBucket *buckets;
     size_t bucket_count;
 } HDispatch;
-
-// Wrapper node for dispatch sequence (discriminator + body ASTs)
-typedef struct {
-    int tag; // identifies this as a dispatch sequence node
-    uint32_t bit_offset;
-    const HParsedToken *left;  // discriminator AST
-    const HParsedToken *right; // body AST
-} DispatchSeqNode;
-
-#define DISPATCH_SEQ_NODE_TAG 0xD15F4C
 
 // Helper functions
 static size_t next_pow2(size_t n) {
@@ -131,10 +120,6 @@ static HParseResult *parse_dispatch(void *env, HParseState *state) {
         return NULL;
     }
 
-    HArena *target_arena = d->arena;
-    if (!target_arena) {
-        return NULL;
-    }
     // Dispatch-owned result to avoid mutating cached body_result
     HParseResult *dispatch_result = a_new(HParseResult, 1);
     if (!dispatch_result) {
@@ -142,22 +127,8 @@ static HParseResult *parse_dispatch(void *env, HParseState *state) {
     }
 
     dispatch_result->bit_length = body_result->bit_length + disc_result->bit_length;
-    dispatch_result->arena = target_arena;
-
-    // Wrapper node that references child ASTs without mutating them
-    DispatchSeqNode *seq = (DispatchSeqNode *)h_arena_malloc(target_arena, sizeof(DispatchSeqNode));
-    if (!seq) {
-        return NULL;
-    }
-
-    seq->tag = DISPATCH_SEQ_NODE_TAG;
-    seq->bit_offset = disc_result->ast ? disc_result->ast->bit_offset : 0; // sequence start
-    seq->left = disc_result->ast;
-    seq->right = body_result->ast;
-
-    // Store wrapper as the AST for the dispatch result
-    dispatch_result->ast = (const HParsedToken *)seq;
-
+    dispatch_result->ast = body_result->ast;
+    
     return dispatch_result;
 }
 
@@ -225,7 +196,6 @@ HParser *h_dispatch__m(HAllocator *mm__, HParser *discriminator, const OpcodeMap
         return NULL;
     }
     env->discriminator = discriminator;
-    env->arena = h_new_arena(mm__, 0);
     env->default_parser = default_parser;
 
     // build hash table
