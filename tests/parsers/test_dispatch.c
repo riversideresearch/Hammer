@@ -369,7 +369,7 @@ static void test_dispatch_prettyprint(gconstpointer backend) {
     OpcodeMap map[] = {{97, body}};
     HParser *dispatch = h_dispatch__s(disc, map, 1, NULL);
 
-    /* The pretty-printer should show the sequence with both tokens */
+    /* The pretty-printer should show just the body */
     g_check_parse_match(dispatch, (HParserBackend)GPOINTER_TO_INT(backend), "ab", 2, "u0x62");
 }
 
