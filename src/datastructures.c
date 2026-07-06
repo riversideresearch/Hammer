@@ -336,7 +336,7 @@ void h_hashtable_free(HHashTable *ht) {
         HHashTableEntry *hten, *hte = &ht->contents[i];
         hte = hte->next;
         while (hte != NULL) {
-            hten = hte->next;=
+            hten = hte->next;
             hte = hten;
         }
     }

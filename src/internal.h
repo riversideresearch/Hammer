@@ -417,6 +417,15 @@ static inline HParser *h_new_parser(HAllocator *mm__, const HParserVtable *vt, v
 
 HCFChoice *h_desugar(HAllocator *mm__, HCFStack *stk__, const HParser *parser);
 
+/*
+ * Correct Usage:
+ *   - These data structures allocate all internal storage from the given HArena.
+ *   - They do NOT free individual nodes, buffers, or entries; memory is reclaimed
+ *     only when the arena itself is destroyed via h_delete_arena().
+ *   - They are safe and leak-free ONLY when the arena has a well-defined,
+ *     short lifetime (e.g., per-parse). Using them in long-lived arenas will
+ *     cause memory to grow without being reclaimed.
+ */
 HCountedArray *h_carray_new_sized(HArena *arena, size_t size);
 HCountedArray *h_carray_new(HArena *arena);
 void h_carray_append(HCountedArray *array, void *item);
@@ -531,8 +540,8 @@ static inline void h_cfstack_add_to_seq(HAllocator *mm__, HCFStack *stk__, HCFCh
             assert(cur_top->data.seq[i]->items != NULL);
             for (size_t j = 0;; j++) {
                 if (cur_top->data.seq[i]->items[j] == NULL) {
-                    cur_top->data.seq[i]->items =
-                        mm__->realloc(mm__, cur_top->data.seq[i]->items, sizeof(HCFChoice *) * (j + 2));
+                    cur_top->data.seq[i]->items = mm__->realloc(mm__, cur_top->data.seq[i]->items,
+                                                                sizeof(HCFChoice *) * (j + 2));
                     if (!cur_top->data.seq[i]->items) {
                         stk__->error = 1;
                     }
@@ -591,7 +600,8 @@ static inline void h_cfstack_begin_choice(HAllocator *mm__, HCFStack *stk__) {
     if (stk__->count + 1 > stk__->cap) {
         assert(stk__->cap > 0);
         stk__->cap *= 2;
-        stk__->stack = mm__->realloc(mm__, stk__->stack, (size_t)(stk__->cap) * sizeof(HCFChoice *));
+        stk__->stack =
+            mm__->realloc(mm__, stk__->stack, (size_t)(stk__->cap) * sizeof(HCFChoice *));
         if (!stk__->stack) {
             stk__->error = 1;
         }
