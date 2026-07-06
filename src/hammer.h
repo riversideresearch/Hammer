@@ -751,13 +751,15 @@ HParser *h_dispatch__s(HParser *discriminator, const OpcodeMap *map, size_t coun
 // public macro — zero runtime cost for compile-time arrays
 /**
  * Create a parser that dispatches based on a discriminator value.
- *
+ * @brief Given a dictionary-like struct of parsers linked with opcodes, apply the parser linked to 
+ * the opcode read by the discriminator. Apply default parser if opcode doesn't match to a parser.
+ * 
  * @param discriminator Parser that produces an integer value that represent the opcode (e.g.,
  * h_uint8())
  * @param map An OpcodeMap struct that acts as a dictionary, linking each opcode to a parser.
  * @param default_parser Parser that will be applied when opcode isn't in dictionary, may be NULL.
  * @return Parser that reads discriminator and dispatches to the linked parser. returns NULL on error. 
- * @brief Only works with Packrat and Regex backends
+ * @note Only works with Packrat.
  */
 #define h_dispatch(discriminator, map, default_parser)                                                             \
     h_dispatch__s((discriminator), (map), (sizeof(map) / sizeof((map)[0])), default_parser)
