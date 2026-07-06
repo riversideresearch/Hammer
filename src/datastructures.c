@@ -127,7 +127,6 @@ HSlist *h_slist_remove_all(HSlist *slist, const void *item) {
                 prev->next = next;
             else
                 slist->head = next;
-            // FIXME free the removed node! this leaks.
             node = next;
         } else {
             prev = node;
@@ -320,7 +319,6 @@ void h_hashtable_del(HHashTable *ht, const void *key) {
         if (hte->hashval != hashval)
             continue;
         if (ht->equalFunc(key, hte->key)) {
-            // FIXME: Leaks keys and values.
             HHashTableEntry *hten = hte->next;
             if (hten != NULL) {
                 *hte = *hten;
@@ -338,10 +336,11 @@ void h_hashtable_free(HHashTable *ht) {
         HHashTableEntry *hten, *hte = &ht->contents[i];
         hte = hte->next;
         while (hte != NULL) {
-            hten = hte->next;
+            hten = hte->next;=
             hte = hten;
         }
     }
+    h_arena_free(ht->arena, ht->contents);
 }
 
 // helper for hte_equal
