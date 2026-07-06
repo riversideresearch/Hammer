@@ -210,9 +210,7 @@ HParser *h_drop_from___v(HParser *p, va_list ap) {
 }
 
 HParser *h_drop_from___mv(HAllocator *mm__, HParser *p, va_list ap) {
-    /* Ok, here's where things get funny.
-     *
-     * Saying `h_drop_from(h_sequence(a, b, c, d, e, NULL), 0, 4, -1)` is functionally
+    /* Saying `h_drop_from(h_sequence(a, b, c, d, e, NULL), 0, 4, -1)` is functionally
      * equivalent to `h_sequence(h_ignore(a), b, c, d, h_ignore(e), NULL)`. Thus, this
      * term rewrites itself, becoming an h_sequence where some parsers are ignored.
      */

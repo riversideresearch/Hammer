@@ -22,7 +22,6 @@
 #include <setjmp.h>
 #include <stdint.h>
 #include <string.h>
-#include <sys/types.h>
 
 struct arena_link {
     struct arena_link *next;
@@ -279,10 +278,6 @@ static void *h_arena_malloc_raw(HArena *arena, size_t size, bool need_zero) {
     return ret;
 }
 
-void h_arena_free(HArena *arena, void *ptr) {
-    // To be used later...
-}
-
 void h_delete_arena(HArena *arena) {
     HAllocator *mm__ = arena->mm__;
     struct arena_link *link = arena->head;
@@ -341,7 +336,7 @@ void *h_arena_realloc(HArena *arena, void *ptr, size_t n) {
     ret = h_arena_malloc_noinit(arena, n);
     assert(ret != NULL);
     memcpy(ret, ptr, ncopy);
-    h_arena_free(arena, ptr);
+    // free arena?
 
     return ret;
 }

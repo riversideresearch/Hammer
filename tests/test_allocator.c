@@ -128,19 +128,6 @@ static void test_allocator_stats(void) {
     }
 }
 
-static void test_arena_free(void) {
-    HArena *arena = h_new_arena(&system_allocator, 4096);
-    g_check_cmp_ptr(arena, !=, NULL);
-    if (arena) {
-        void *ptr = h_arena_malloc(arena, 100);
-        g_check_cmp_ptr(ptr, !=, NULL);
-
-        h_arena_free(arena, ptr);
-
-        h_delete_arena(arena);
-    }
-}
-
 static void test_delete_arena(void) {
     HArena *arena = h_new_arena(&system_allocator, 4096);
     g_check_cmp_ptr(arena, !=, NULL);
@@ -247,7 +234,6 @@ void register_allocator_tests(void) {
     g_test_add_func("/core/allocator/arena_set_except", test_arena_set_except);
     g_test_add_func("/core/allocator/arena_realloc", test_arena_realloc);
     g_test_add_func("/core/allocator/allocator_stats", test_allocator_stats);
-    g_test_add_func("/core/allocator/arena_free", test_arena_free);
     g_test_add_func("/core/allocator/delete_arena", test_delete_arena);
     g_test_add_func("/core/allocator/wrap_sets_fields", test_wrap_sets_fields);
     g_test_add_func("/core/allocator/alloc_dispatches", test_alloc_dispatches);

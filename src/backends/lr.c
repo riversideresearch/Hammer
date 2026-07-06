@@ -318,8 +318,6 @@ bool h_lrengine_step(HLREngine *engine, const HLRAction *action) {
             if (v) {
                 v->index = value->index;
                 v->bit_offset = value->bit_offset;
-            } else {
-                h_arena_free(arena, value);
             }
             value = v;
         }
