@@ -1,5 +1,7 @@
 /* Copyright (c) 2026 Riverside Research */
 #include "params.h"
+#include <inttypes.h>
+#include <errno.h>
 
 size_t h_get_param_k(void *param) {
     uintptr_t params_int;
@@ -66,8 +68,6 @@ char *h_format_name_with_param_k(HAllocator *mm__, const char *backend_name, siz
     return name;
 }
 
-#define MAX_LENGTH 10 // On a 32-bit system ASCII representation of 2^32 is 10 digits.
-
 int h_extract_param_k(HParserBackendWithParams *be_with_params,
                       backend_with_params_t *be_with_params_t) {
 
@@ -76,18 +76,12 @@ int h_extract_param_k(HParserBackendWithParams *be_with_params,
 
     be_with_params->params = NULL;
 
-    int param_0 = -1;
-    int success = 0;
-    uintptr_t param;
-
     backend_params_t params_t = be_with_params_t->params;
 
     if (params_t.params == NULL || params_t.len == 0) {
         return -2; // NULL params in be_with_params_t->params
     }
-
-    size_t num_of_params = params_t.len;
-
+    
     backend_param_with_name_t param_t = params_t.params[0];
     if (param_t.param.param == NULL)
         return -3; // NULL param
@@ -101,11 +95,23 @@ int h_extract_param_k(HParserBackendWithParams *be_with_params,
     char tmp[MAX_LENGTH + 1];
     memcpy(tmp, param_t.param.param, len);
     tmp[len] = '\0';
-    success = sscanf((char *)tmp, "%d", &param_0);
-    if ((size_t)success <= num_of_params && success > 0) {
-        param = (uintptr_t)param_0;
-        be_with_params->params = (void *)param;
-    }
 
-    return success;
+    errno = 0;
+    char *endptr = NULL;
+    
+    intmax_t val = strtoumax(tmp, &endptr, 10);
+
+    if (endptr == tmp) {
+        return 0; // No conversion performed
+    }
+    if (errno == ERANGE) {
+        return -4;
+    }
+    if (val > UINTPTR_MAX)
+    return -4; // does not fit in uintptr_t
+
+    uintptr_t param = (uintptr_t)val;
+    be_with_params->params = (void *)param;
+
+    return 1; // Success
 }
