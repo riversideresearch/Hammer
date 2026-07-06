@@ -318,8 +318,9 @@ bool h_lrengine_step(HLREngine *engine, const HLRAction *action) {
             if (v) {
                 v->index = value->index;
                 v->bit_offset = value->bit_offset;
+                value = v;
             }
-            value = v;
+            else value = NULL;
         }
 
         // call validation and semantic action, if present

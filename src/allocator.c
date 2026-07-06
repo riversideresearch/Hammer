@@ -203,10 +203,6 @@ static void *h_arena_malloc_raw(HArena *arena, size_t size, bool need_zero) {
             return NULL;
         }
         uint8_t *block = (uint8_t *)alloc_block(arena, size);
-        if (block == NULL) {
-            free(link);
-            return NULL;
-        }
         arena->used += size;
         arena->wasted += sizeof(struct arena_link);
         link->block = block;
@@ -234,10 +230,6 @@ static void *h_arena_malloc_raw(HArena *arena, size_t size, bool need_zero) {
             return NULL;
         }
         uint8_t *block = (uint8_t *)alloc_block(arena, arena->block_size);
-        if (block == NULL) {
-            free(link);
-            return NULL;
-        }
 #ifdef DETAILED_ARENA_STATS
         arena->mm_malloc_count += 2; /* link and block allocations */
         arena->mm_malloc_bytes += sizeof(struct arena_link) + arena->block_size;
