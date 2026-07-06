@@ -340,7 +340,6 @@ void h_hashtable_free(HHashTable *ht) {
             hte = hten;
         }
     }
-    h_arena_free(ht->arena, ht->contents);
 }
 
 // helper for hte_equal
