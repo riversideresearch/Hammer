@@ -603,6 +603,68 @@ HParser *h_uint8__m(HAllocator *mm__);
 
 /** @} */
 
+/**
+ * @defgroup floating point Parsers
+ * @{
+ */
+
+/**
+ * @brief Parse am IEEE-754 16-bit binary float
+ * @return Result token type: TT_FLOAT
+ */
+HParser *h_float16(void);
+HParser *h_float16__m(HAllocator *mm__);
+
+// HParser *h_bfloat16(void);
+// HParser *h_bfloat16__m(HAllocator *mm__);
+
+/**
+ * @brief Parse am IEEE-754 32-bit binary float
+ * @return Result token type: TT_FLOAT
+ */
+HParser *h_float32(void);
+HParser *h_float32__m(HAllocator *mm__);
+
+/**
+ * @brief Parse am IEEE-754 64-bit binary double
+ * @return Result token type: TT_DOUBLE
+ */
+HParser *h_double64(void);
+HParser *h_double64__m(HAllocator *mm__);
+
+// HParser *h_double128(void);
+// HParser *h_double128__m(HAllocator *mm__);
+
+/**
+ * @brief Parse am IEEE-754 32-bit decimal float
+ * @return Result token type: TT_FLOAT
+ */
+HParser *h_decimal_float(void);
+HParser *h_decimal_float__m(HAllocator *mm__);
+
+/**
+ * @brief Parse am IEEE-754 64-bit decimal double
+ * @return Result token type: TT_DOUBLE
+ */
+HParser *h_decimal_double(void);
+HParser *h_decimal_double__m(HAllocator *mm__);
+
+// HParser *h_decimal_long_double(void);
+// HParser *h_decimal_long_double__m(HAllocator *mm__);
+
+/** @} */
+
+/**
+ * @brief Returns a parser that parses the specified number of bytes. The input does not have to be
+ * aligned to a byte boundary.
+ *
+ * @param len Number of bytes
+ * @return Result token type: TT_BYTES
+ * @note Consumes 'len * 8' bits from the input stream
+ */
+HParser *h_bytes(size_t len);
+HParser *h_bytes__m(HAllocator *mm__, size_t len);
+
 /** @defgroup combinators Parser Combinators
  * @{
  */
