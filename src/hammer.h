@@ -622,15 +622,15 @@ HParser *h_float16__m(HAllocator *mm__);
  * @brief Parse an IEEE-754 32-bit binary float
  * @return Result token type: TT_FLOAT
  */
-HParser *h_float32(void);
-HParser *h_float32__m(HAllocator *mm__);
+HParser *h_float(void);
+HParser *h_float__m(HAllocator *mm__);
 
 /**
  * @brief Parse an IEEE-754 64-bit binary double
  * @return Result token type: TT_DOUBLE
  */
-HParser *h_double64(void);
-HParser *h_double64__m(HAllocator *mm__);
+HParser *h_double(void);
+HParser *h_double__m(HAllocator *mm__);
 
 // HParser *h_double128(void);
 // HParser *h_double128__m(HAllocator *mm__);
