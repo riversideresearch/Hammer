@@ -613,7 +613,7 @@ HParser *h_uint8__m(HAllocator *mm__);
  * @return Result token type: TT_FLOAT
  */
 HParser *h_float16(void);
-HParser *h_float16__m(HAllocator *mm__);
+//HParser *h_float16__m(HAllocator *mm__);
 
 // HParser *h_bfloat16(void);
 // HParser *h_bfloat16__m(HAllocator *mm__);
@@ -623,35 +623,31 @@ HParser *h_float16__m(HAllocator *mm__);
  * @return Result token type: TT_FLOAT
  */
 HParser *h_float(void);
-HParser *h_float__m(HAllocator *mm__);
 
 /**
  * @brief Parse an IEEE-754 64-bit binary double
  * @return Result token type: TT_DOUBLE
  */
 HParser *h_double(void);
-HParser *h_double__m(HAllocator *mm__);
-
-// HParser *h_double128(void);
-// HParser *h_double128__m(HAllocator *mm__);
 
 /**
  * @brief Parse an IEEE-754 32-bit decimal float
  * @return Result token type: TT_FLOAT
  */
-HParser *h_decimal_float(void);
-HParser *h_decimal_float__m(HAllocator *mm__);
+HParser *h_decimal_float(void); // WIP
+//HParser *h_decimal_float__m(HAllocator *mm__);
 
 /**
  * @brief Parse an IEEE-754 64-bit decimal double
  * @return Result token type: TT_DOUBLE
  */
-HParser *h_decimal_double(void);
-HParser *h_decimal_double__m(HAllocator *mm__);
+HParser *h_decimal_double(void); // WIP
+//HParser *h_decimal_double__m(HAllocator *mm__);
 
 // HParser *h_decimal_long_double(void);
 // HParser *h_decimal_long_double__m(HAllocator *mm__);
 
+HParser *h_floating_point__m(HAllocator * mm__, int bits, int radix, int digits);
 /** @} */
 
 /**

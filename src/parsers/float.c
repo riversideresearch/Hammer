@@ -249,7 +249,7 @@ static HParseResult *parse_float(void *env_, HParseState *state) {
                 // +/- infinity
                 result->token_type = TT_NONE;
                 return make_result(state->arena, result);
-            } else if (bid) { // Binary Integer Decimal (32bit)
+            } else if (env->bid) { // Binary Integer Decimal (32bit)
                 if (combination >= 1536) {
 
                     // Exponent = combination[1:8]
@@ -370,7 +370,7 @@ static HParseResult *parse_float(void *env_, HParseState *state) {
                 // +/- infinity
                 result->token_type = TT_NONE;
                 return make_result(state->arena, result);
-            } else if (bid) { // Binary Integer Decimal
+            } else if (env->bid) { // Binary Integer Decimal
                 if (combination >= 6144) {
                     // significand_bits = 100+combination[0]+trailing_significand bits
                     // exponent_bits = combination[1:10] bits
@@ -381,7 +381,7 @@ static HParseResult *parse_float(void *env_, HParseState *state) {
                     uint64_t leading_bit = (combination >> 0) & 0x1u; // single bit m0.
 
                     // Significand = 100 + m0 + 20 trailing significand btis
-                    significand_bits = (4u << 51) + (leading_bit << 50) +
+                    significand_bits = (4ULL << 51) + (leading_bit << 50) +
                                         (trailing_significand & 0x3FFFFFFFFFFFFu);
                 } else { // combination < 6144
                     // significand_bits = 0+combination[0:2]+trailing_significand bits
@@ -398,10 +398,10 @@ static HParseResult *parse_float(void *env_, HParseState *state) {
                 }
                 if (exponent != 0) {
                     // Add leading 1
-                    significand = 1.0 + (significand_bits / (double)(1u << 52));
+                    significand = 1.0 + (significand_bits / (double)(1ULL << 52));
                 } else {
                     // No implicit 1
-                    significand = significand_bits / (double)(1u << 52);
+                    significand = significand_bits / (double)(1ULL << 52);
                 }
             } else { // Densely Packed Decimal (DPD)
                 uint8_t leading_digit;
@@ -458,58 +458,68 @@ static HParseResult *parse_float(void *env_, HParseState *state) {
     }
 }
 
-    static bool float_ctrvm(HRVMProg * prog, void *env) {
-        // not implemented yet
-        return false;
-    }
+static bool float_ctrvm(HRVMProg * prog, void *env) {
+    // not implemented yet
+    return false;
+}
 
-    static void desugar_float(HAllocator * mm__, HCFStack * stk__, void *env) {
-        // not fixed yet
-        struct float_env *env_ = env;
+static void desugar_float(HAllocator * mm__, HCFStack * stk__, void *env) {
+    // not fixed yet
+    struct float_env *env_ = env;
 
-        HCharset match_all = new_charset(mm__);
-        for (int i = 0; i < 256; i++)
-            charset_set(match_all, i, 1);
+    HCharset match_all = new_charset(mm__);
+    for (int i = 0; i < 256; i++)
+        charset_set(match_all, i, 1);
 
-        HCFS_BEGIN_CHOICE() {
-            HCFS_BEGIN_SEQ() {
-                size_t n = env_->bits / 8;
-                for (size_t i = 0; i < n; ++i) {
-                    HCFS_ADD_CHARSET(match_all);
-                }
+    HCFS_BEGIN_CHOICE() {
+        HCFS_BEGIN_SEQ() {
+            size_t n = env_->bits / 8;
+            for (size_t i = 0; i < n; ++i) {
+                HCFS_ADD_CHARSET(match_all);
             }
-            HCFS_END_SEQ();
-            HCFS_THIS_CHOICE->reshape = h_act_first;
-            HCFS_THIS_CHOICE->user_data = NULL;
         }
-        HCFS_END_CHOICE();
+        HCFS_END_SEQ();
+        HCFS_THIS_CHOICE->reshape = h_act_first;
+        HCFS_THIS_CHOICE->user_data = NULL;
     }
+    HCFS_END_CHOICE();
+}
 
-    static const HParserVtable float_vt = {
-        .parse = parse_float,
-        .desugar = desugar_float,
-        .isValidRegular = h_true,
-        .isValidCF = h_true,
-        .compile_to_rvm = float_ctrvm,
-        .higher = false,
-    };
+static const HParserVtable float_vt = {
+    .parse = parse_float,
+    .desugar = desugar_float,
+    .isValidRegular = h_true,
+    .isValidCF = h_true,
+    .compile_to_rvm = float_ctrvm,
+    .higher = false,
+};
 
-    HParser *h_float__m(HAllocator * mm__, int bits, int radix, int digits) {
-        struct float_env *env = h_new(struct float_env, 1);
-        env->bits = bits;
-        env->radix = radix;
-        env->digits = digits;
-        env->bid = true;
-        return h_new_parser(mm__, &float_vt, env);
-    }
+HParser *h_floating_point__m(HAllocator * mm__, int bits, int radix, int digits) {
+    struct float_env *env = h_new(struct float_env, 1);
+    env->bits = bits;
+    env->radix = radix;
+    env->digits = digits;
+    env->bid = true;
+    return h_new_parser(mm__, &float_vt, env);
+}
 
-    HParser *h_float(int bits, int radix, int digits) {
-        return h_float__m(&system_allocator, bits, radix, digits);
-    }
+HParser *h_float16(void) {
+    return h_floating_point__m(&system_allocator, 16, 2, 10);
+}
+HParser *h_float(void) {
+    return h_floating_point__m(&system_allocator, 32, 2, 23);
+}
+HParser *h_double(void) {
+    return h_floating_point__m(&system_allocator, 64, 2, 52);
+}
+HParser *h_decimal_float(void) { // WIP
+    return h_floating_point__m(&system_allocator, 32, 10, 20);
+}
+HParser *h_decimal_double(void) { // WIP
+    return h_floating_point__m(&system_allocator, 64, 10, 50);
+}
 
-    HParser *h_float32(void) { return h_float(32, 2, 23); }
-    HParser *h_float32__m(HAllocator * mm__) { return h_float__m(&system_allocator, 32, 2, 23); }
-
+/*
 #define SIZED_FLOAT(name_pre, bits, radix, digits)                                                 \
     HParser *h_##name_pre##len() { return h_float(bits, radix, digits); }                          \
     HParser *h_##name_pre##len##__m(HAllocator *mm__) {                                            \
@@ -520,6 +530,7 @@ static HParseResult *parse_float(void *env_, HParseState *state) {
     SIZED_FLOAT(float32, 32, 2, 23)
     SIZED_FLOAT(double64, 64, 2, 52)
     // SIZED_FLOAT(double128, 8, 113)
-    SIZED_FLOAT(decimal_float, 32, 10, 7)
-    SIZED_FLOAT(decimal_double, 64, 10, 16)
+    SIZED_FLOAT(decimal_float, 32, 10, 20)
+    SIZED_FLOAT(decimal_double, 64, 10, 50)
     SIZED_FLOAT(decimal_long_double, 128, 10, 34)
+*/
