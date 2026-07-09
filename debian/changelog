@@ -4,11 +4,16 @@ libhammer (2.1.0-1) unstable; urgency=medium
   * Update Debian source and binary package names from libmicrohammer to libhammer
   * Remove obsolete pkg-config variant metadata now that only one Hammer variant ships
   * Add Go language bindings, tests, and documentation
-  * Clean generated Java binding outputs before regeneration to prevent stale SWIG wrappers
-    from breaking binding builds
+  * Add DNS, NTP, and TFTP protocol parser examples
+  * Add DNS valid and malformed packet fixtures and TFTP parser tests
+  * Move legacy examples under examples/old
+  * Update example builds to prefer the checkout-local Hammer build and fall back to pkg-config libhammer
+  * Add gcc to build dependencies and documented prerequisites
+  * Clean generated Java binding outputs before regeneration to prevent stale SWIG wrappers from breaking binding builds
+  * Fix Python binding version detection to read the top-level VERSION file
   * Bump project and Python binding package versions to 2.1.0
 
- -- Mahmoud Elbasiouny <melbasiouny@riversideresearch.org>  Wed, 20 May 2026 12:00:00 -0400
+ -- Mahmoud Elbasiouny <melbasiouny@riversideresearch.org>  Thu, 09 Jul 2026 12:00:00 -0400
 
 libmicrohammer (2.0.1-1) unstable; urgency=medium
 
