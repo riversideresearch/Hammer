@@ -25,7 +25,7 @@ def test_directory(directory, should_pass):
     for f in files:
         passed, output = run_test(f)
         if passed == should_pass:
-            if should_pass == False:
+            if not should_pass:
                 print(f"[PASS] (packet rejected) {f}")
             else:
                 print(f"[PASS] (packet accepted) {f}")

@@ -1,9 +1,9 @@
 #ifndef DNS_PARSER_H
 #define DNS_PARSER_H
 
-#include <stdint.h>
-#include <stddef.h>
 #include <hammer/hammer.h>
+#include <stddef.h>
+#include <stdint.h>
 
 typedef struct {
     uint16_t qdcount;
