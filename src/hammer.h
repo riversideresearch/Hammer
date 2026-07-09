@@ -609,7 +609,7 @@ HParser *h_uint8__m(HAllocator *mm__);
  */
 
 /**
- * @brief Parse am IEEE-754 16-bit binary float
+ * @brief Parse an IEEE-754 16-bit binary float
  * @return Result token type: TT_FLOAT
  */
 HParser *h_float16(void);
@@ -619,14 +619,14 @@ HParser *h_float16__m(HAllocator *mm__);
 // HParser *h_bfloat16__m(HAllocator *mm__);
 
 /**
- * @brief Parse am IEEE-754 32-bit binary float
+ * @brief Parse an IEEE-754 32-bit binary float
  * @return Result token type: TT_FLOAT
  */
 HParser *h_float32(void);
 HParser *h_float32__m(HAllocator *mm__);
 
 /**
- * @brief Parse am IEEE-754 64-bit binary double
+ * @brief Parse an IEEE-754 64-bit binary double
  * @return Result token type: TT_DOUBLE
  */
 HParser *h_double64(void);
@@ -636,14 +636,14 @@ HParser *h_double64__m(HAllocator *mm__);
 // HParser *h_double128__m(HAllocator *mm__);
 
 /**
- * @brief Parse am IEEE-754 32-bit decimal float
+ * @brief Parse an IEEE-754 32-bit decimal float
  * @return Result token type: TT_FLOAT
  */
 HParser *h_decimal_float(void);
 HParser *h_decimal_float__m(HAllocator *mm__);
 
 /**
- * @brief Parse am IEEE-754 64-bit decimal double
+ * @brief Parse an IEEE-754 64-bit decimal double
  * @return Result token type: TT_DOUBLE
  */
 HParser *h_decimal_double(void);

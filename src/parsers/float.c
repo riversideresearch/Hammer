@@ -146,7 +146,7 @@ static uint32_t decode_dpd_20bit(uint32_t dpd20) {
     return (uint32_t)hi_val * 1000u + (uint32_t)lo_val; // 0..999999
 }
 
-static uint64_t decode_dpd_50bit(uin64_t dpd50) {
+static uint64_t decode_dpd_50bit(uint64_t dpd50) {
     uint16_t declet_highest = (dpd50 >> 10) & 0x3FFu;
     uint16_t declet_midhigh = dpd50 & 0x3FFu;
     uint16_t declet_middle = (dpd50 >> 10) & 0x3FFu;
@@ -173,7 +173,7 @@ struct float_env {
     int bits;
     int radix;
     int digits;      // currently unused
-    bool bid = true; // currently hardcoded
+    bool bid; // currently hardcoded
 };
 
 static HParseResult *parse_float(void *env_, HParseState *state) {
@@ -203,7 +203,7 @@ static HParseResult *parse_float(void *env_, HParseState *state) {
             result->token_type = TT_FLOAT;
             result->token_data.flt = flt;
             return make_result(state->arena, result);
-        }
+        } else return NULL;
     } else if (env->bits == 32) {
         // radix is either 2 (binary) or 10 (decimal)
         float flt;
@@ -228,8 +228,7 @@ static HParseResult *parse_float(void *env_, HParseState *state) {
             result->token_type = TT_FLOAT;
             result->token_data.flt = flt;
             return make_result(state->arena, result);
-        }
-        if (env->radix == 10) {
+        } else if (env->radix == 10) {
             uint32_t sign = bits >> 31;                     // 1 bit
             uint32_t combination = (bits >> 20) & 0x7FF;    // 11 bit combination field
             uint32_t trailing_significand = bits & 0xFFFFF; // 20 bits
@@ -285,181 +284,179 @@ static HParseResult *parse_float(void *env_, HParseState *state) {
                     // No implicit 1
                     significand = significand_bits / (double)(1ULL << 20);
                 }
-                flt = ((int32_t)power(-1, sign)) * power(10, ((int)exponent - 101)) * significand;
-                else { // Densely Packed Decimal (DPD)
-                    uint8_t leading_digit;
-                    uint32_t tail_digits;
-                    if (combination >= 1536) {
-                        // Exponent = combination[7:8] + combination[0:5], gives the byte: [m8 m7 m5
-                        // m4 m3 m2 m1 m0]
-                        exponent = (uint8_t)((((combination >> 7) & 0x3u) << 6) |
-                                             ((combination >> 0) & 0x3Fu));
+            } else { // Densely Packed Decimal (DPD)
+                uint8_t leading_digit;
+                uint32_t tail_digits;
+                if (combination >= 1536) {
+                    // Exponent = combination[7:8] + combination[0:5], gives the byte: [m8 m7 m5
+                    // m4 m3 m2 m1 m0]
+                    exponent = (uint8_t)((((combination >> 7) & 0x3u) << 6) |
+                                            ((combination >> 0) & 0x3Fu));
 
-                        leading_digit = (uint8_t)((combination >> 6) & 0x1u) +
-                                        8; // either 8 or 9 (1000 or 1001)
+                    leading_digit = (uint8_t)((combination >> 6) & 0x1u) +
+                                    8; // either 8 or 9 (1000 or 1001)
 
-                        // bits t0-t9 and t10-t19 make up 2 densely packed decimal encodings
-                        tail_digits = decode_dpd_20bit(trailing_significand);
+                    // bits t0-t9 and t10-t19 make up 2 densely packed decimal encodings
+                    tail_digits = decode_dpd_20bit(trailing_significand);
 
-                        significand = (float)leading_digit + (tail_digits / (double)(1ULL << 20));
-                    } else { // combination < 1536
-                        // Exponent = combination[9:10] + combination[0:5], gives the byte: [m10 m9
-                        // m5 m4 m3 m2 m1 m0]
-                        exponent = (uint8_t)((((combination >> 9) & 0x3u) << 6) |
-                                             ((combination >> 0) & 0x3Fu));
+                    significand = (float)leading_digit + (tail_digits / (double)(1ULL << 20));
+                } else { // combination < 1536
+                    // Exponent = combination[9:10] + combination[0:5], gives the byte: [m10 m9
+                    // m5 m4 m3 m2 m1 m0]
+                    exponent = (uint8_t)((((combination >> 9) & 0x3u) << 6) |
+                                            ((combination >> 0) & 0x3Fu));
 
-                        leading_digit = (uint8_t)((combination >> 6) & 0x1u) + 8; // 0-7
+                    leading_digit = (uint8_t)((combination >> 6) & 0x1u) + 8; // 0-7
 
-                        // bits t0-t9 and t10-t19 make up 2 densely packed decimal encodings
-                        tail_digits = decode_dpd_20bit(trailing_significand);
+                    // bits t0-t9 and t10-t19 make up 2 densely packed decimal encodings
+                    tail_digits = decode_dpd_20bit(trailing_significand);
 
-                        significand = (float)leading_digit + (tail_digits / (double)(1ULL << 20));
-                    }
-                    if (significand > 9999999u)
-                        coefficient = 0u; // treat illegal as zero (or error)
+                    significand = (float)leading_digit + (tail_digits / (double)(1ULL << 20));
                 }
-
-                flt = ((int32_t)power(-1, sign)) * power(10, ((int)exponent - 101)) * significand;
-
-                result->token_type = TT_FLOAT;
-                result->token_data.flt = flt;
-                return make_result(state->arena, result);
+                if (significand > 9999999u)
+                    significand = 0u; // treat illegal as zero (or error)
             }
-        } else if (env->bits == 64) // double is 64 bits,
+
+            flt = ((int32_t)power(-1, sign)) * power(10, ((int)exponent - 101)) * significand;
+
+            result->token_type = TT_FLOAT;
+            result->token_data.flt = flt;
+            return make_result(state->arena, result);
+        } else return NULL;
+    } else if (env->bits == 64) // double is 64 bits,
         {
-            double dbl;
-            uint64_t bits = h_read_bits(&state->input_stream, 64, false);
-            if (env->radix == 2) // Binary
-            {
+        double dbl;
+        uint64_t bits = h_read_bits(&state->input_stream, 64, false);
+        if (env->radix == 2) // Binary
+        {
 
-                uint64_t sign = bits >> 63;                 // 1 bit
-                uint64_t exponent = (bits >> 52) & 0x7FF;   // 11 bits
-                uint64_t fraction = bits & 0xFFFFFFFFFFFFF; // 52 bits
+            uint64_t sign = bits >> 63;                 // 1 bit
+            uint64_t exponent = (bits >> 52) & 0x7FF;   // 11 bits
+            uint64_t fraction = bits & 0xFFFFFFFFFFFFF; // 52 bits
 
-                double significand;
+            double significand;
 
+            if (exponent != 0) {
+                // Add leading 1
+                significand = 1.0 + (fraction / (double)(1ULL << 52));
+            } else {
+                // No implicit 1
+                significand = fraction / (double)(1ULL << 52);
+            }
+
+            dbl = ((int64_t)power(-1, sign)) * significand * power(2, (exponent - 1023));
+            result->token_type = TT_DOUBLE;
+            result->token_data.dbl = dbl;
+            return make_result(state->arena, result);
+        }else if (env->radix == 10) // Decimal
+        {
+            int64_t sign = bits >> 63;                              // 1 bit
+            uint64_t combination = (bits >> 50) & 0x1FFF;           // 13 bits
+            uint64_t trailing_significand = bits & 0x3FFFFFFFFFFFF; // 50 bits
+
+            uint64_t significand_bits;
+            double significand;
+            int16_t exponent;
+
+            if (combination >= 8064) {
+                // Signalling NaN (with payload in significand)
+                result->token_type = TT_NONE;
+                return make_result(state->arena, result);
+            } else if (combination >= 7936) {
+                // quiet NaN
+                result->token_type = TT_NONE;
+                return make_result(state->arena, result);
+            } else if (combination >= 7680) {
+                // +/- infinity
+                result->token_type = TT_NONE;
+                return make_result(state->arena, result);
+            } else if (bid) { // Binary Integer Decimal
+                if (combination >= 6144) {
+                    // significand_bits = 100+combination[0]+trailing_significand bits
+                    // exponent_bits = combination[1:10] bits
+
+                    exponent = (combination >> 1) & 0x3FFu; // bits m1-m10
+
+                    // Leading bit = combination[0]
+                    uint64_t leading_bit = (combination >> 0) & 0x1u; // single bit m0.
+
+                    // Significand = 100 + m0 + 20 trailing significand btis
+                    significand_bits = (4u << 51) + (leading_bit << 50) +
+                                        (trailing_significand & 0x3FFFFFFFFFFFFu);
+                } else { // combination < 6144
+                    // significand_bits = 0+combination[0:2]+trailing_significand bits
+                    // exponent_bits = combination[3:12] bits
+
+                    exponent = (combination >> 3) & 0x3FFu; // bits m1-m10
+
+                    // Leading bit = combination[0:2]
+                    uint64_t leading_bits = (combination >> 0) & 0x7u; // bits m0-m2
+
+                    // Significand = 100 + m0 + 20 trailing significand btis
+                    significand_bits =
+                        (leading_bits << 50) + (trailing_significand & 0x3FFFFFFFFFFFFu);
+                }
                 if (exponent != 0) {
                     // Add leading 1
-                    significand = 1.0 + (fraction / (double)(1ULL << 52));
+                    significand = 1.0 + (significand_bits / (double)(1u << 52));
                 } else {
                     // No implicit 1
-                    significand = fraction / (double)(1ULL << 52);
+                    significand = significand_bits / (double)(1u << 52);
                 }
+            } else { // Densely Packed Decimal (DPD)
+                uint8_t leading_digit;
+                uint32_t tail_digits;
+                if (combination >= 6144) {
+                    // significand_bits = 100+combination[8]+trailing_significand bits
+                    // exponent_bits = combination[9:10]+combination[0:7] bits
+                    exponent = (int16_t)((((combination >> 9) & 0x3u) << 8) |
+                                            ((combination >> 0) & 0xFFu));
 
-                dbl = ((int64_t)power(-1, sign)) * significand * power(2, (exponent - 1023));
-                result->token_type = TT_DOUBLE;
-                result->token_data.dbl = dbl;
-                return make_result(state->arena, result);
-            }
-            if (env->radix == 10) // Decimal
-            {
-                int64_t sign = bits >> 63;                              // 1 bit
-                uint64_t combination = (bits >> 50) & 0x1FFF;           // 13 bits
-                uint64_t trailing_significand = bits & 0x3FFFFFFFFFFFF; // 50 bits
+                    leading_digit = (uint8_t)((combination >> 8) & 0x1u) +
+                                    8; // either 8 or 9 (1000 or 1001)
 
-                uint64_t significand_bits;
-                double significand;
-                int16_t exponent;
+                    // bits t0-t9 and t10-t19 make up 2 densely packed decimal encodings
+                    tail_digits = decode_dpd_50bit(trailing_significand);
 
-                if (combination >= 8064) {
-                    // Signalling NaN (with payload in significand)
-                    result->token_type = TT_NONE;
-                    return make_result(state->arena, result);
-                } else if (combination >= 7936) {
-                    // quiet NaN
-                    result->token_type = TT_NONE;
-                    return make_result(state->arena, result);
-                } else if (combination >= 7680) {
-                    // +/- infinity
-                    result->token_type = TT_NONE;
-                    return make_result(state->arena, result);
-                } else if (bid) { // Binary Integer Decimal
-                    if (combination >= 6144) {
-                        // significand_bits = 100+combination[0]+trailing_significand bits
-                        // exponent_bits = combination[1:10] bits
+                    significand = (float)leading_digit + (tail_digits / (double)(1ULL << 50));
+                } else { // combination < 6144
+                    // significand_bits = 0+combination[8:10]+trailing_significand bits
+                    // exponent_bits = combination[11:12]+combination[0:7] bits
+                    exponent = (int16_t)((((combination >> 11) & 0x3u) << 8) |
+                                            ((combination >> 0) & 0xFFu));
 
-                        exponent = (combination >> 1) & 0x3FFu; // bits m1-m10
+                    leading_digit = (uint8_t)((combination >> 8) & 0x7u) +
+                                    8; // g8-g10, 0-7
 
-                        // Leading bit = combination[0]
-                        uint64_t leading_bit = (combination >> 0) & 0x1u; // single bit m0.
+                    // bits t0-t49 make up 5 densely packed decimal encodings
+                    tail_digits = decode_dpd_50bit(trailing_significand);
 
-                        // Significand = 100 + m0 + 20 trailing significand btis
-                        significand_bits = (4u << 51) + (leading_bit << 50) +
-                                           (trailing_significand & 0x3FFFFFFFFFFFFu);
-                    } else { // combination < 6144
-                        // significand_bits = 0+combination[0:2]+trailing_significand bits
-                        // exponent_bits = combination[3:12] bits
-
-                        exponent = (combination >> 3) & 0x3FFu; // bits m1-m10
-
-                        // Leading bit = combination[0:2]
-                        uint64_t leading_bits = (combination >> 0) & 0x7u; // bits m0-m2
-
-                        // Significand = 100 + m0 + 20 trailing significand btis
-                        significand_bits =
-                            (leading_bits << 50) + (trailing_significand & 0x3FFFFFFFFFFFFu);
-                    }
-                    if (exponent != 0) {
-                        // Add leading 1
-                        significand = 1.0 + (significand_bits / (double)(1u << 52));
-                    } else {
-                        // No implicit 1
-                        significand = significand_bits / (double)(1u << 52);
-                    }
-                } else { // Densely Packed Decimal (DPD)
-                    uint8_t leading_digit;
-                    uint32_t tail_digits;
-                    if (combination >= 6144) {
-                        // significand_bits = 100+combination[8]+trailing_significand bits
-                        // exponent_bits = combination[9:10]+combination[0:7] bits
-                        exponent = (int16_t)((((combination >> 9) & 0x3u) << 8) |
-                                             ((combination >> 0) & 0xFFu));
-
-                        leading_digit = (uint8_t)((combination >> 8) & 0x1u) +
-                                        8; // either 8 or 9 (1000 or 1001)
-
-                        // bits t0-t9 and t10-t19 make up 2 densely packed decimal encodings
-                        tail_digits = decode_dpd_50bit(trailing_significand);
-
-                        significand = (float)leading_digit + (tail_digits / (double)(1ULL << 50));
-                    } else { // combination < 6144
-                        // significand_bits = 0+combination[8:10]+trailing_significand bits
-                        // exponent_bits = combination[11:12]+combination[0:7] bits
-                        exponent = (int16_t)((((combination >> 11) & 0x3u) << 8) |
-                                             ((combination >> 0) & 0xFFu));
-
-                        leading_digits = (uint8_t)((combination >> 8) & 0x7u) +
-                                        8; // g8-g10, 0-7
-
-                        // bits t0-t49 make up 5 densely packed decimal encodings
-                        tail_digits = decode_dpd_50bit(trailing_significand);
-
-                        significand = (float)leading_digit + (tail_digits / (double)(1ULL << 50));
-                    }
+                    significand = (float)leading_digit + (tail_digits / (double)(1ULL << 50));
                 }
-                dbl = ((uint64_t)power(-1, sign)) * power(10, ((int)exponent - 398)) * significand;
-                result->token_type = TT_DOUBLE;
-                result->token_data.dbl = dbl;
-                return make_result(state->arena, result);
             }
-        } else if (env->bits == 80) // x87 long double extended precision
-        {
-            // not implemented yet
-            return NULL;
-            // 1 sign bit
-            // 15 bit exponent
-            // 1 bit explicit integer bit
-            // 63 bit fraction
+            dbl = ((uint64_t)power(-1, sign)) * power(10, ((int)exponent - 398)) * significand;
+            result->token_type = TT_DOUBLE;
+            result->token_data.dbl = dbl;
+            return make_result(state->arena, result);
+        } else return NULL;
+    } else if (env->bits == 80) // x87 long double extended precision
+    {
+        // not implemented yet
+        return NULL;
+        // 1 sign bit
+        // 15 bit exponent
+        // 1 bit explicit integer bit
+        // 63 bit fraction
 
-        } else if (env->bits == 128) // long double quadruple precision. IEEE‑754 quad
-        {
-            // not implemented yet
-            return NULL;
-        } else // unknown type
-        {
-            return NULL;
-        }
+    } else if (env->bits == 128) // long double quadruple precision. IEEE‑754 quad
+    {
+        // not implemented yet
+        return NULL;
+    } else // unknown type
+    {
+        return NULL;
     }
+}
 
     static bool float_ctrvm(HRVMProg * prog, void *env) {
         // not implemented yet
@@ -502,6 +499,7 @@ static HParseResult *parse_float(void *env_, HParseState *state) {
         env->bits = bits;
         env->radix = radix;
         env->digits = digits;
+        env->bid = true;
         return h_new_parser(mm__, &float_vt, env);
     }
 
