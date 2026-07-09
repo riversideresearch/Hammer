@@ -6,9 +6,9 @@
 
 #ifndef HAMMER_PARSER_INTERNAL__H
 #define HAMMER_PARSER_INTERNAL__H
+#include "../backends/regex.h"
 #include "../hammer.h"
 #include "../internal.h"
-#include "../backends/regex.h"
 
 #define a_new_(arena, typ, count) ((typ *)h_arena_malloc_noinit((arena), sizeof(typ) * (count)))
 #define a_new(typ, count) a_new_(state->arena, typ, count)

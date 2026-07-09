@@ -72,7 +72,7 @@ HParsedToken *act_base64_n(int n, const HParseResult *p, void *user_data) {
         HParsedToken *item = H_MAKE_UINT(x & 0xFF);
 
         res->token_data.seq->elements[n - 1 - i] = item; // output the last byte and
-        x >>= 8;                              // discard it
+        x >>= 8;                                         // discard it
     }
     res->token_data.seq->used = n;
 

@@ -286,8 +286,7 @@ HParseResult *run_trace(HAllocator *mm__, HRVMProg *orig_prog, HRVMTrace *trace,
         case SVM_CAPTURE:
             // Top of stack must be a mark
             // This replaces said mark in-place with a TT_BYTES.
-            if (ctx->stack_count == 0 ||
-                ctx->stack[ctx->stack_count - 1]->token_type != TT_MARK)
+            if (ctx->stack_count == 0 || ctx->stack[ctx->stack_count - 1]->token_type != TT_MARK)
                 goto fail;
             assert(ctx->stack[ctx->stack_count - 1]->token_type == TT_MARK);
 

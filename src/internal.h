@@ -531,8 +531,8 @@ static inline void h_cfstack_add_to_seq(HAllocator *mm__, HCFStack *stk__, HCFCh
             assert(cur_top->data.seq[i]->items != NULL);
             for (size_t j = 0;; j++) {
                 if (cur_top->data.seq[i]->items[j] == NULL) {
-                    cur_top->data.seq[i]->items =
-                        mm__->realloc(mm__, cur_top->data.seq[i]->items, sizeof(HCFChoice *) * (j + 2));
+                    cur_top->data.seq[i]->items = mm__->realloc(mm__, cur_top->data.seq[i]->items,
+                                                                sizeof(HCFChoice *) * (j + 2));
                     if (!cur_top->data.seq[i]->items) {
                         stk__->error = 1;
                     }
@@ -591,7 +591,8 @@ static inline void h_cfstack_begin_choice(HAllocator *mm__, HCFStack *stk__) {
     if (stk__->count + 1 > stk__->cap) {
         assert(stk__->cap > 0);
         stk__->cap *= 2;
-        stk__->stack = mm__->realloc(mm__, stk__->stack, (size_t)(stk__->cap) * sizeof(HCFChoice *));
+        stk__->stack =
+            mm__->realloc(mm__, stk__->stack, (size_t)(stk__->cap) * sizeof(HCFChoice *));
         if (!stk__->stack) {
             stk__->error = 1;
         }

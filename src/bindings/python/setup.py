@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 import os
 import os.path
-import sys
 
 from setuptools import Extension, setup
 

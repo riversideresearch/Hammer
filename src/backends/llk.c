@@ -605,7 +605,7 @@ need_input:
         h_arena_free(arena, tok); // no result, yet
     if (!save_win(kmax, s, chunk))
         goto no_parse;
-    h_slist_push(stack, x);       // try this symbol again next time
+    h_slist_push(stack, x); // try this symbol again next time
     goto end;
 }
 

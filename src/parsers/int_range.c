@@ -19,7 +19,8 @@ static HParseResult *parse_int_range(void *env, HParseState *state) {
         else
             return NULL;
     case TT_UINT:
-        if ((uint64_t)r_env->lower <= ret->ast->token_data.uint && (uint64_t)r_env->upper >= ret->ast->token_data.uint)
+        if ((uint64_t)r_env->lower <= ret->ast->token_data.uint &&
+            (uint64_t)r_env->upper >= ret->ast->token_data.uint)
             return ret;
         else
             return NULL;

@@ -825,7 +825,7 @@ HParser *h_many__m(HAllocator *mm__, const HParser *p);
  */
 HParser *h_many1(const HParser *p);
 HParser *h_many1__m(HAllocator *mm__, const HParser *p);
-  
+
 /**
  * @brief Given a parser, p, this parser succeeds for zero or more up to N repetitions of p.
  * @param p Parser to repeat

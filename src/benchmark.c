@@ -129,7 +129,8 @@ void h_benchmark_report(FILE *stream, HBenchmarkResults *result) {
             }
             fprintf(stream, "Case %zd: %zd ns/parse, %zd ns/byte\n", j,
                     result->results[i].cases[j].timestamp.parse_time,
-                    result->results[i].cases[j].timestamp.parse_time / result->results[i].cases[j].length);
+                    result->results[i].cases[j].timestamp.parse_time /
+                        result->results[i].cases[j].length);
         }
     }
 }
