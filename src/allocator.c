@@ -22,7 +22,6 @@
 #include <setjmp.h>
 #include <stdint.h>
 #include <string.h>
-#include <sys/types.h>
 
 struct arena_link {
     struct arena_link *next;
@@ -204,10 +203,6 @@ static void *h_arena_malloc_raw(HArena *arena, size_t size, bool need_zero) {
             return NULL;
         }
         uint8_t *block = (uint8_t *)alloc_block(arena, size);
-        if (block == NULL) {
-            free(link);
-            return NULL;
-        }
         arena->used += size;
         arena->wasted += sizeof(struct arena_link);
         link->block = block;
@@ -235,10 +230,6 @@ static void *h_arena_malloc_raw(HArena *arena, size_t size, bool need_zero) {
             return NULL;
         }
         uint8_t *block = (uint8_t *)alloc_block(arena, arena->block_size);
-        if (block == NULL) {
-            free(link);
-            return NULL;
-        }
 #ifdef DETAILED_ARENA_STATS
         arena->mm_malloc_count += 2; /* link and block allocations */
         arena->mm_malloc_bytes += sizeof(struct arena_link) + arena->block_size;
@@ -277,10 +268,6 @@ static void *h_arena_malloc_raw(HArena *arena, size_t size, bool need_zero) {
     }
 
     return ret;
-}
-
-void h_arena_free(HArena *arena, void *ptr) {
-    // To be used later...
 }
 
 void h_delete_arena(HArena *arena) {
@@ -341,7 +328,7 @@ void *h_arena_realloc(HArena *arena, void *ptr, size_t n) {
     ret = h_arena_malloc_noinit(arena, n);
     assert(ret != NULL);
     memcpy(ret, ptr, ncopy);
-    h_arena_free(arena, ptr);
+    // free arena?
 
     return ret;
 }

@@ -38,12 +38,7 @@ void h_carray_append(HCountedArray *array, void *item) {
             elements[i] = array->elements[i];
         for (size_t i = array->used; i < array->capacity; i++)
             elements[i] = 0;
-        /*
-         * XXX I hope we don't use this much, because h_arena_free() doesn't
-         * quite seem to be there and doing a lot of this would get pretty
-         * wasteful.
-         */
-        h_arena_free(array->arena, array->elements);
+
         array->elements = elements;
     }
     array->elements[array->used++] = item;
@@ -98,7 +93,6 @@ void *h_slist_pop(HSlist *slist) {
         return NULL;
     void *ret = head->elem;
     slist->head = head->next;
-    h_arena_free(slist->arena, head);
     return ret;
 }
 
@@ -133,7 +127,6 @@ HSlist *h_slist_remove_all(HSlist *slist, const void *item) {
                 prev->next = next;
             else
                 slist->head = next;
-            // FIXME free the removed node! this leaks.
             node = next;
         } else {
             prev = node;
@@ -146,7 +139,6 @@ HSlist *h_slist_remove_all(HSlist *slist, const void *item) {
 void h_slist_free(HSlist *slist) {
     while (slist->head != NULL)
         h_slist_pop(slist);
-    h_arena_free(slist->arena, slist);
 }
 
 HHashTable *h_hashtable_new(HArena *arena, HEqualFunc equalFunc, HHashFunc hashFunc) {
@@ -222,7 +214,6 @@ void h_hashtable_ensure_capacity(HHashTable *ht, size_t n) {
                 }
             }
         }
-        /* h_arena_free(ht->arena, old_contents); */
     }
 }
 
@@ -328,11 +319,9 @@ void h_hashtable_del(HHashTable *ht, const void *key) {
         if (hte->hashval != hashval)
             continue;
         if (ht->equalFunc(key, hte->key)) {
-            // FIXME: Leaks keys and values.
             HHashTableEntry *hten = hte->next;
             if (hten != NULL) {
                 *hte = *hten;
-                h_arena_free(ht->arena, hten);
             } else {
                 hte->key = hte->value = NULL;
                 hte->hashval = 0;
@@ -345,16 +334,12 @@ void h_hashtable_del(HHashTable *ht, const void *key) {
 void h_hashtable_free(HHashTable *ht) {
     for (size_t i = 0; i < ht->capacity; i++) {
         HHashTableEntry *hten, *hte = &ht->contents[i];
-        // FIXME: Free key and value
         hte = hte->next;
         while (hte != NULL) {
-            // FIXME: leaks keys and values.
             hten = hte->next;
-            h_arena_free(ht->arena, hte);
             hte = hten;
         }
     }
-    h_arena_free(ht->arena, ht->contents);
 }
 
 // helper for hte_equal

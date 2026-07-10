@@ -417,6 +417,15 @@ static inline HParser *h_new_parser(HAllocator *mm__, const HParserVtable *vt, v
 
 HCFChoice *h_desugar(HAllocator *mm__, HCFStack *stk__, const HParser *parser);
 
+/*
+ * Correct Usage:
+ *   - These data structures allocate all internal storage from the given HArena.
+ *   - They do NOT free individual nodes, buffers, or entries; memory is reclaimed
+ *     only when the arena itself is destroyed via h_delete_arena().
+ *   - They are safe and leak-free ONLY when the arena has a well-defined,
+ *     short lifetime (e.g., per-parse). Using them in long-lived arenas will
+ *     cause memory to grow without being reclaimed.
+ */
 HCountedArray *h_carray_new_sized(HArena *arena, size_t size);
 HCountedArray *h_carray_new(HArena *arena);
 void h_carray_append(HCountedArray *array, void *item);

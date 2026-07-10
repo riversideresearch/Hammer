@@ -530,7 +530,6 @@ static HCountedArray *llk_parse_chunk_(HLLkState *s, const HParser *parser, HInp
                     goto no_parse;
                 if (!stream->last_chunk)
                     goto need_input;
-                h_arena_free(arena, tok);
                 tok = NULL;
                 break;
 
@@ -566,10 +565,10 @@ static HCountedArray *llk_parse_chunk_(HLLkState *s, const HParser *parser, HInp
             if (t && tok) {
                 t->index = tok->index;
                 t->bit_offset = tok->bit_offset;
+                tok = t;
             } else {
-                h_arena_free(arena, tok);
+                tok = NULL;
             }
-            tok = t;
         }
 
         // call validation and semantic action, if present
@@ -601,8 +600,6 @@ no_parse:
 need_input:
     if (stream->last_chunk)
         goto no_parse;
-    if (tok)
-        h_arena_free(arena, tok); // no result, yet
     if (!save_win(kmax, s, chunk))
         goto no_parse;
     h_slist_push(stack, x); // try this symbol again next time
