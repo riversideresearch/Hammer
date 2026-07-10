@@ -33,7 +33,7 @@ static HParsedToken *reshape_bytes(const HParseResult *p, void *user_data) {
 
     for (size_t i = 0; i < seq->used; i++) {
         HParsedToken *t = seq->elements[i];
-        assert(t->token_type == TT_UINT);
+        assert(t->token_type == TT_UINT && t->token_data.uint <= 255);
         arr[i] = (uint8_t)t->token_data.uint;
     }
 
@@ -50,15 +50,15 @@ static HParsedToken *reshape_bytes(const HParseResult *p, void *user_data) {
 static void desugar_bytes(HAllocator *mm__, HCFStack *stk__, void *env) {
     struct bytes_env *be = (struct bytes_env *)env;
     if (!be) {
-        HCFS_BEGIN_SEQ();
-        HCFS_END_SEQ();
+        HCFS_BEGIN_CHOICE() {}
+        HCFS_END_CHOICE();
         return;
     }
     size_t len = be->length;
     if (len == 0) {
         // empty sequence
-        HCFS_BEGIN_SEQ();
-        HCFS_END_SEQ();
+        HCFS_BEGIN_CHOICE() {}
+        HCFS_END_CHOICE();
         return;
     }
 
@@ -67,7 +67,8 @@ static void desugar_bytes(HAllocator *mm__, HCFStack *stk__, void *env) {
         charset_set(cs, i, 1);
 
     HCFS_BEGIN_CHOICE() {
-        HCFS_BEGIN_SEQ(); {
+        HCFS_BEGIN_SEQ();
+        {
             for (size_t i = 0; i < len; ++i) {
                 HCFS_ADD_CHARSET(cs);
             }
@@ -79,7 +80,7 @@ static void desugar_bytes(HAllocator *mm__, HCFStack *stk__, void *env) {
     HCFS_END_CHOICE();
 }
 
-static bool bytes_ctrvm(HRVMProg *prog, void *env)  {
+static bool bytes_ctrvm(HRVMProg *prog, void *env) {
     struct bytes_env *env_ = (struct bytes_env *)env;
     h_rvm_insert_insn(prog, RVM_PUSH, 0);
     for (size_t i = 0; i < env_->length; ++i) {
@@ -90,14 +91,12 @@ static bool bytes_ctrvm(HRVMProg *prog, void *env)  {
     return true;
 }
 
-static const HParserVtable bytes_vt = {
-    .parse = parse_bytes,
-    .desugar = desugar_bytes,
-    .isValidRegular = h_true,
-    .isValidCF = h_true, 
-    .compile_to_rvm = bytes_ctrvm,
-    .higher = false
-};
+static const HParserVtable bytes_vt = {.parse = parse_bytes,
+                                       .desugar = desugar_bytes,
+                                       .isValidRegular = h_true,
+                                       .isValidCF = h_true,
+                                       .compile_to_rvm = bytes_ctrvm,
+                                       .higher = false};
 
 HParser *h_bytes(size_t len) { return h_bytes__m(&system_allocator, len); }
 

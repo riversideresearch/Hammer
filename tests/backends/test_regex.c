@@ -33,7 +33,6 @@ static void test_regex_signed_integers(void) {
     g_check_parse_failed(h_int_range(h_int8(), -2, 0), PB_REGULAR, "\x7f", 1);
 }
 
-
 void register_regex_tests(void) {
     g_test_add_func("/core/backends/regex/registration", test_regex_backend_registration);
     g_test_add_func("/core/backends/regex/basic_parsers", test_regex_basic_parsers);

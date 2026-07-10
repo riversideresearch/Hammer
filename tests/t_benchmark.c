@@ -20,8 +20,7 @@ static void test_benchmark_1() {
 }
 static void test_benchmark_2() {
     static HParserTestcase simple_case[] = {
-        { (unsigned char *)"ab", 2, "<61.62>"},
-        { NULL, 0, NULL } // sentinel
+        {(unsigned char *)"ab", 2, "<61.62>"}, {NULL, 0, NULL} // sentinel
     };
     HParser *parser = h_bytes(2);
 
