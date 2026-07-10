@@ -68,6 +68,8 @@ char *h_format_name_with_param_k(HAllocator *mm__, const char *backend_name, siz
     return name;
 }
 
+#define MAX_LENGTH 10
+
 int h_extract_param_k(HParserBackendWithParams *be_with_params,
                       backend_with_params_t *be_with_params_t) {
 
@@ -107,7 +109,7 @@ int h_extract_param_k(HParserBackendWithParams *be_with_params,
     if (errno == ERANGE) {
         return -4;
     }
-    if (val > UINTPTR_MAX)
+    if ((uintmax_t)val > UINTPTR_MAX)
     return -4; // does not fit in uintptr_t
 
     uintptr_t param = (uintptr_t)val;
