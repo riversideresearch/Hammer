@@ -139,17 +139,17 @@ void h_lrtable_free(HLRTable *table) {
 HLRAction *h_shift_action(HArena *arena, size_t nextstate) {
     HLRAction *action = h_arena_malloc(arena, sizeof(HLRAction));
     action->type = HLR_SHIFT;
-    action->nextstate = nextstate;
+    action->data.nextstate = nextstate;
     return action;
 }
 
 HLRAction *h_reduce_action(HArena *arena, const HLRItem *item) {
     HLRAction *action = h_arena_malloc(arena, sizeof(HLRAction));
     action->type = HLR_REDUCE;
-    action->production.lhs = item->lhs;
-    action->production.length = item->len;
+    action->data.production.lhs = item->lhs;
+    action->data.production.length = item->len;
 #ifndef NDEBUG
-    action->production.rhs = item->rhs;
+    action->data.production.rhs = item->rhs;
 #endif
     return action;
 }
@@ -162,19 +162,19 @@ HLRAction *h_lr_conflict(HArena *arena, HLRAction *action, HLRAction *new) {
         HLRAction *old = action;
         action = h_arena_malloc(arena, sizeof(HLRAction));
         action->type = HLR_CONFLICT;
-        action->branches = h_slist_new(arena);
-        h_slist_push(action->branches, old);
-        h_slist_push(action->branches, new);
+        action->data.branches = h_slist_new(arena);
+        h_slist_push(action->data.branches, old);
+        h_slist_push(action->data.branches, new);
     } else {
         // check if 'new' is already among branches
         HSlistNode *x;
-        for (x = action->branches->head; x; x = x->next) {
+        for (x = action->data.branches->head; x; x = x->next) {
             if (x->elem == new)
                 break;
         }
         // add 'new' if it is not already in list
         if (x == NULL)
-            h_slist_push(action->branches, new);
+            h_slist_push(action->data.branches, new);
     }
 
     return action;
@@ -278,8 +278,8 @@ bool h_lrengine_step(HLREngine *engine, const HLRAction *action) {
         return false;
 
     if (action->type == HLR_REDUCE) {
-        size_t len = action->production.length;
-        HCFChoice *symbol = action->production.lhs;
+        size_t len = action->data.production.length;
+        HCFChoice *symbol = action->data.production.lhs;
         if (!symbol)
             return false;
 
@@ -342,7 +342,7 @@ bool h_lrengine_step(HLREngine *engine, const HLRAction *action) {
         // piggy-back the shift right here, never touching the input
         h_slist_push(stack, (void *)(uintptr_t)engine->state);
         h_slist_push(stack, value);
-        engine->state = shift->nextstate;
+        engine->state = shift->data.nextstate;
 
         // check for success
         if (engine->state == HLR_SUCCESS) {
@@ -356,7 +356,7 @@ bool h_lrengine_step(HLREngine *engine, const HLRAction *action) {
         HParsedToken *value = consume_input(engine);
         h_slist_push(stack, (void *)(uintptr_t)engine->state);
         h_slist_push(stack, value);
-        engine->state = action->nextstate;
+        engine->state = action->data.nextstate;
     }
 
     return true;
@@ -565,27 +565,27 @@ void h_pprint_lrdfa(FILE *f, const HCFGrammar *g, const HLRDFA *dfa, unsigned in
 void pprint_lraction(FILE *f, const HCFGrammar *g, const HLRAction *action) {
     switch (action->type) {
     case HLR_SHIFT:
-        if (action->nextstate == HLR_SUCCESS)
+        if (action->data.nextstate == HLR_SUCCESS)
             fputs("s~", f);
         else
-            fprintf(f, "s%zu", action->nextstate);
+            fprintf(f, "s%zu", action->data.nextstate);
         break;
     case HLR_REDUCE:
         fputs("r(", f);
-        h_pprint_symbol(f, g, action->production.lhs);
+        h_pprint_symbol(f, g, action->data.production.lhs);
         fputs(" -> ", f);
 #ifdef NDEBUG
         // if we can't print the production, at least print its length
-        fprintf(f, "[%zu]", action->production.length);
+        fprintf(f, "[%zu]", action->data.production.length);
 #else
-        HCFSequence seq = {action->production.rhs};
+        HCFSequence seq = {action->data.production.rhs};
         h_pprint_sequence(f, g, &seq);
 #endif
         fputc(')', f);
         break;
     case HLR_CONFLICT:
         fputc('!', f);
-        for (HSlistNode *x = action->branches->head; x; x = x->next) {
+        for (HSlistNode *x = action->data.branches->head; x; x = x->next) {
             HLRAction *branch = x->elem;
             assert(branch->type != HLR_CONFLICT); // no nesting
             pprint_lraction(f, g, branch);

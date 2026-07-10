@@ -156,10 +156,10 @@ static bool glr_step(HParseResult **result, HSlist *engines, HLREngine *engine,
     if (action) {
         if (action->type == HLR_CONFLICT) {
             // fork engine on conflicts
-            action = handle_conflict(result, engines, engine, action->branches);
+            action = handle_conflict(result, engines, engine, action->data.branches);
         } else if (action->type == HLR_REDUCE) {
             // demerge/respawn as needed
-            size_t depth = action->production.length;
+            size_t depth = action->data.production.length;
             engine = demerge(result, engines, engine, action, depth);
             if (!engine)
                 return false;

@@ -33,10 +33,10 @@ static bool follow_transition(const HLRTable *table, size_t x, HCFChoice *A, siz
     // those are not what we are here for. so if action is a conflict, search it
     // for the shift. there will only be one and it will be the bottom element.
     if (action->type == HLR_CONFLICT) {
-        if (!action->branches)
+        if (!action->data.branches)
             return false;
         HSlistNode *x;
-        for (x = action->branches->head; x; x = x->next) {
+        for (x = action->data.branches->head; x; x = x->next) {
             action = x->elem;
             if (action->type == HLR_CONFLICT)
                 return false;
@@ -52,7 +52,7 @@ static bool follow_transition(const HLRTable *table, size_t x, HCFChoice *A, siz
         return false;
     assert(action->type == HLR_SHIFT);
 
-    *nextstate = action->nextstate;
+    *nextstate = action->data.nextstate;
     return true;
 }
 
