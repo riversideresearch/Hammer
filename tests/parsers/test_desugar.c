@@ -75,6 +75,14 @@ static void test_desugar_bits_signed(void) {
     g_check_cmp_int(desugared->type, ==, HCF_CHOICE);
 }
 
+static void test_desugar_float(void) {
+    const HParser *p = h_float();
+    HCFChoice *desugared = h_desugar(&system_allocator, NULL, p);
+    g_check_cmp_ptr(desugared, !=, NULL);
+    g_check_cmp_int(desugared->type, ==, HCF_CHOICE);
+    g_check_cmp_ptr(desugared->reshape, !=, NULL);
+}
+
 static void test_desugar_int_range(void) {
     const HParser *p = h_int_range(h_uint8(), 0, 255);
     HCFChoice *desugared = h_desugar(&system_allocator, NULL, p);
@@ -112,14 +120,14 @@ static void test_desugar_many1(void) {
 }
 
 static void test_desugar_many_cap(void) {
-    const HParser *p = h_many_cap(h_ch('a'),1);
+    const HParser *p = h_many_cap(h_ch('a'), 1);
     HCFChoice *desugared = h_desugar(&system_allocator, NULL, p);
     g_check_cmp_ptr(desugared, !=, NULL);
     g_check_cmp_int(desugared->type, ==, HCF_CHOICE);
 }
 
 static void test_desugar_many1_cap(void) {
-    const HParser *p = h_many1_cap(h_ch('a'),1);
+    const HParser *p = h_many1_cap(h_ch('a'), 1);
     HCFChoice *desugared = h_desugar(&system_allocator, NULL, p);
     g_check_cmp_ptr(desugared, !=, NULL);
     g_check_cmp_int(desugared->type, ==, HCF_CHOICE);
@@ -251,6 +259,7 @@ void register_desugar_tests(void) {
     g_test_add_func("/core/desugar/charset_not_in", test_desugar_charset_not_in);
     g_test_add_func("/core/desugar/bits", test_desugar_bits);
     g_test_add_func("/core/desugar/bits_signed", test_desugar_bits_signed);
+    g_test_add_func("/core/desugar/float", test_desugar_float);
     g_test_add_func("/core/desugar/int_range", test_desugar_int_range);
     g_test_add_func("/core/desugar/sequence", test_desugar_sequence);
     g_test_add_func("/core/desugar/choice", test_desugar_choice);
