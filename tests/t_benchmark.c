@@ -18,6 +18,16 @@ static void test_benchmark_1() {
     h_benchmark_report(stderr, res);
     // Free the results (if there's a free function, otherwise just check it doesn't crash)
 }
+static void test_benchmark_2() {
+    static HParserTestcase simple_case[] = {
+        {(unsigned char *)"ab", 2, "<61.62>"}, {NULL, 0, NULL} // sentinel
+    };
+    HParser *parser = h_bytes(2);
+
+    HBenchmarkResults *res = h_benchmark(parser, simple_case);
+    g_check_cmp_ptr(res, !=, NULL);
+    h_benchmark_report(stderr, res);
+}
 
 static void test_benchmark_m() {
     HParser *parser = h_ch('x');
@@ -76,13 +86,12 @@ static void test_benchmark_multiple_backends(void) {
     HBenchmarkResults *res = h_benchmark__m(&system_allocator, parser, cases);
     g_check_cmp_ptr(res, !=, NULL);
 
-    FILE *tmp = tmpfile();
-    h_benchmark_report(tmp, res);
-    fclose(tmp);
+    h_benchmark_report(stderr, res);
 }
 
 void register_benchmark_tests(void) {
     g_test_add_func("/core/benchmark/1", test_benchmark_1);
+    g_test_add_func("/core/benchmark/2", test_benchmark_2);
     g_test_add_func("/core/benchmark/m", test_benchmark_m);
     g_test_add_func("/core/benchmark/failed_compile", test_benchmark_failed_compile);
     g_test_add_func("/core/benchmark/failed_testcases", test_benchmark_failed_testcases);

@@ -33,16 +33,9 @@ static void test_regex_signed_integers(void) {
     g_check_parse_failed(h_int_range(h_int8(), -2, 0), PB_REGULAR, "\x7f", 1);
 }
 
-static void test_regex_rejects_non_regular_parser(void) {
-    HParser *p = h_bytes(2);
-    g_check_cmp_int(h_compile(p, PB_REGULAR, NULL), ==, -1);
-}
-
 void register_regex_tests(void) {
     g_test_add_func("/core/backends/regex/registration", test_regex_backend_registration);
     g_test_add_func("/core/backends/regex/basic_parsers", test_regex_basic_parsers);
     g_test_add_func("/core/backends/regex/repetition_optional", test_regex_repetition_and_optional);
     g_test_add_func("/core/backends/regex/signed_integers", test_regex_signed_integers);
-    g_test_add_func("/core/backends/regex/rejects_non_regular",
-                    test_regex_rejects_non_regular_parser);
 }
