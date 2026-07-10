@@ -43,7 +43,7 @@ typedef struct HLRAction_ {
 
         // used with HLR_CONFLICT
         HSlist *branches; // list of possible HLRActions
-    };
+    } data;
 } HLRAction;
 
 typedef struct HLRTable_ {
