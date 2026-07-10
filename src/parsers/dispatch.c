@@ -26,8 +26,8 @@ typedef struct {
 typedef struct {
     HParser *discriminator;
     HParser *default_parser;
-    DispatchBucket *buckets;
-    size_t bucket_count;
+    const OpcodeMap *map;
+    size_t size;
 } HDispatch;
 
 // Helper functions
@@ -57,8 +57,8 @@ static size_t extract_opcode(HParseResult *result) {
         }
         size_t val = 0;
         for (size_t i = 0; i < b.len; i++) {
-            if (val > (SIZE_MAX >> 8)) { 
-                opcode = (size_t)-1; //overflow: opcode can't be represented as type size_t
+            if (val > (SIZE_MAX >> 8)) {
+                opcode = (size_t)-1; // overflow: opcode can't be represented as type size_t
                 break;
             }
 
@@ -84,11 +84,11 @@ static size_t extract_opcode(HParseResult *result) {
     return opcode;
 }
 
-HParser *extract_parser(HDispatch *d, size_t h, size_t mask, size_t opcode,
-                        HParser *default_parser) {
-    while (d->buckets[h].used) {
-        if (d->buckets[h].opcode == opcode)
-            return d->buckets[h].parser;
+static HParser *extract_parser(DispatchBucket *buckets, size_t bucket_count, size_t h, size_t mask,
+                               size_t opcode, HParser *default_parser) {
+    while (buckets[h].used) {
+        if (buckets[h].opcode == opcode)
+            return buckets[h].parser;
         h = (h + 1) & mask;
     }
     return default_parser;
@@ -106,11 +106,37 @@ static HParseResult *parse_dispatch(void *env, HParseState *state) {
     // Extract opcode value from discriminator
     size_t opcode = extract_opcode(disc_result);
 
-    // O(1) lookup
-    size_t mask = d->bucket_count - 1;
-    size_t h = (opcode ^ (opcode >> 16)) & mask;
+    size_t bucket_count = next_pow2(d->size * 2);
+    if (bucket_count == SIZE_MAX || bucket_count < d->size) {
+        return NULL;
+    }
 
-    HParser *body = extract_parser(d, h, mask, opcode, d->default_parser);
+    DispatchBucket *buckets = h_arena_malloc(state->arena, bucket_count * sizeof(*buckets));
+    if (!buckets) {
+        return NULL;
+    }
+    memset(buckets, 0, bucket_count * sizeof(*buckets));
+
+    size_t mask = bucket_count - 1;
+    for (size_t i = 0; i < d->size; ++i) {
+        uint32_t op = d->map[i].opcode;
+        HParser *p = d->map[i].parser; // preserve the original parser pointer from the map
+        size_t h = (op ^ (op >> 16)) & mask;
+        size_t probe_count = 0;
+        while (buckets[h].used && probe_count < bucket_count) {
+            h = (h + 1) & mask;
+            probe_count++;
+        }
+        if (probe_count >= bucket_count) {
+            return NULL;
+        }
+        buckets[h].opcode = op;
+        buckets[h].parser = p;
+        buckets[h].used = true;
+    }
+
+    size_t h = (opcode ^ (opcode >> 16)) & mask;
+    HParser *body = extract_parser(buckets, bucket_count, h, mask, opcode, d->default_parser);
     if (!body) {
         return NULL;
     }
@@ -126,9 +152,10 @@ static HParseResult *parse_dispatch(void *env, HParseState *state) {
         return NULL;
     }
 
+    dispatch_result->arena = state->arena;
     dispatch_result->bit_length = body_result->bit_length + disc_result->bit_length;
     dispatch_result->ast = body_result->ast;
-    
+
     return dispatch_result;
 }
 
@@ -137,10 +164,8 @@ static bool dispatch_isValidRegular(void *env) {
 
     if (!d->discriminator->vtable->isValidRegular(d->discriminator->env))
         return false;
-    for (size_t i = 0; i < d->bucket_count; ++i) {
-        if (!d->buckets[i].used)
-            continue;
-        HParser *p = d->buckets[i].parser;
+    for (size_t i = 0; i < d->size; ++i) {
+        HParser *p = d->map[i].parser;
         if (!p->vtable->isValidRegular(p->env))
             return false;
     }
@@ -150,17 +175,16 @@ static bool dispatch_isValidRegular(void *env) {
 static void desugar_dispatch(HAllocator *mm__, HCFStack *stk__, void *env) {
     HDispatch *d = (HDispatch *)env;
     HCFS_BEGIN_CHOICE() {
-        for (size_t i = 0; i < d->bucket_count; ++i) {
-            if (!d->buckets[i].used)
-                continue;
+        for (size_t i = 0; i < d->size; ++i) {
+            HParser *p = d->map[i].parser; // preserve the exact parser pointer from the map
             HCFS_BEGIN_SEQ() {
                 HCFS_DESUGAR(d->discriminator);
-                HCFS_DESUGAR(d->buckets[i].parser);
+                HCFS_DESUGAR(p);
             }
             HCFS_END_SEQ();
-            HCFS_SET_DISPATCH_OPCODE(d->buckets[i].opcode);
+            HCFS_SET_DISPATCH_OPCODE(d->map[i].opcode);
         }
-        HCFS_THIS_CHOICE->reshape = h_act_first;
+        HCFS_THIS_CHOICE->reshape = h_act_second;
     }
     HCFS_END_CHOICE();
 }
@@ -197,43 +221,8 @@ HParser *h_dispatch__m(HAllocator *mm__, HParser *discriminator, const OpcodeMap
     }
     env->discriminator = discriminator;
     env->default_parser = default_parser;
-
-    // build hash table
-    env->bucket_count = next_pow2(size * 2);
-    if (env->bucket_count == SIZE_MAX || env->bucket_count < size) {
-        // Overflow detected in next_pow2 or size multiplication
-        h_free(env);
-        return NULL;
-    }
-    env->buckets = h_alloc(mm__, env->bucket_count * sizeof(*env->buckets));
-    if (!env->buckets) {
-        h_free(env);
-        return NULL;
-    }
-    memset(env->buckets, 0, env->bucket_count * sizeof(*env->buckets));
-
-    size_t mask = env->bucket_count - 1;
-
-    for (size_t i = 0; i < size; ++i) {
-        uint32_t op = map[i].opcode;
-        HParser *p = map[i].parser;
-        size_t h = (op ^ (op >> 16)) & mask;
-        size_t probe_count = 0;
-        // Linear probing with cycle detection to prevent infinite loops
-        while (env->buckets[h].used && probe_count < env->bucket_count) {
-            h = (h + 1) & mask;
-            probe_count++;
-        }
-        if (probe_count >= env->bucket_count) {
-            // Hash table is full, cannot insert
-            // Note: buckets memory will be freed when env is freed by h_free
-            h_free(env);
-            return NULL;
-        }
-        env->buckets[h].opcode = op;
-        env->buckets[h].parser = p;
-        env->buckets[h].used = true;
-    }
+    env->map = map;
+    env->size = size;
 
     return h_new_parser(mm__, &dispatch_vt, env);
 }
