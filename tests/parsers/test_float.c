@@ -4,7 +4,10 @@
 #include "parsers/parser_internal.h"
 #include "test_suite.h"
 
+#include <float.h>
 #include <glib.h>
+#include <math.h>
+#include <stdint.h>
 
 static void test_float16(gconstpointer backend) {
     HParserBackend be = (HParserBackend)GPOINTER_TO_INT(backend);
@@ -36,8 +39,151 @@ static void test_double64(gconstpointer backend) {
     g_check_parse_match(p, be, input, 8, "d0x1.921fb54442d18p+1");
 }
 
+static void test_float16_edgecases(gconstpointer backend) {
+    HParserBackend be = (HParserBackend)GPOINTER_TO_INT(backend);
+    const HParser *p = h_float16();
+    HParseResult *result;
+    float v;
+
+    /* +Infinity (float16 0x7C00) */
+    const uint8_t inf16[2] = {0x7C, 0x00};
+    result = h_parse(p, inf16, 2);
+    v = result->ast->token_data.flt;
+    g_assert_true(isinf(v));
+    g_assert_true(v > 0);
+
+    /* -Infinity (float16 0xFC00) */
+    const uint8_t ninf16[2] = {0xFC, 0x00};
+    result = h_parse(p, ninf16, 2);
+    v = result->ast->token_data.flt;
+    g_assert_true(isinf(v));
+    g_assert_true(v < 0);
+
+    /* Quiet NaN (float16 0x7E00) */
+    const uint8_t nan16[2] = {0x7E, 0x01};
+    result = h_parse(p, nan16, 2);
+    v = result->ast->token_data.flt;
+    g_assert_true(isnan(v));
+
+    /* zero (float16 0x0000) */
+    const uint8_t zero16[2] = {0x00, 0x00};
+    result = h_parse(p, zero16, 2);
+    v = result->ast->token_data.flt;
+    g_assert_cmpfloat(v, ==, 0.0f);
+
+    /* Smallest positive subnormal (float16 0x0001) */
+    const uint8_t subnorm16[2] = {0x00, 0x01};
+    result = h_parse(p, subnorm16, 2);
+    v = result->ast->token_data.flt;
+    g_assert_true(v > 0.0f);
+
+    /* Largest finite (float16 0x7BFF) */
+    const uint8_t maxfin16[2] = {0x7B, 0xFF};
+    result = h_parse(p, maxfin16, 2);
+    v = result->ast->token_data.flt;
+    g_assert_true(isfinite(v));
+}
+
+static void test_float32_edgecases(gconstpointer backend) {
+    HParserBackend be = (HParserBackend)GPOINTER_TO_INT(backend);
+    const HParser *p = h_float();
+    HParseResult *result;
+    float v;
+
+    /* +Infinity (0x7F800000) */
+    const uint8_t inf32[4] = {0x7F, 0x80, 0x00, 0x00};
+    result = h_parse(p, inf32, 4);
+    v = result->ast->token_data.flt;
+    g_assert_true(isinf(v));
+    g_assert_true(v > 0);
+
+    /* -Infinity (0xFF800000) */
+    const uint8_t ninf32[4] = {0xFF, 0x80, 0x00, 0x00};
+    result = h_parse(p, ninf32, 4);
+    v = result->ast->token_data.flt;
+    g_assert_true(isinf(v));
+    g_assert_true(v < 0);
+
+    /* Quiet NaN (0x7FC00000) */
+    const uint8_t nan32[4] = {0x7F, 0xC0, 0x00, 0x00};
+    result = h_parse(p, nan32, 4);
+    v = result->ast->token_data.flt;
+    g_assert_true(isnan(v));
+
+    /* zero (0x00000000) */
+    const uint8_t zero32[4] = {0x00, 0x00, 0x00, 0x00};
+    result = h_parse(p, zero32, 4);
+    v = result->ast->token_data.flt;
+    g_check_cmpfloat(v, ==, 0.0f);
+
+    /* Smallest positive subnormal (0x00000001) */
+    const uint8_t subnorm32[4] = {0x00, 0x00, 0x00, 0x01};
+    result = h_parse(p, subnorm32, 4);
+    v = result->ast->token_data.flt;
+    g_assert_true(v > 0.0f);
+
+    /* Largest finite (0x7F7FFFFF) */
+    const uint8_t maxfin32[4] = {0x7F, 0x7F, 0xFF, 0xFF};
+    result = h_parse(p, maxfin32, 4);
+    v = result->ast->token_data.flt;
+    g_assert_true(isfinite(v));
+    g_check_cmpfloat(v, <=, FLT_MAX);
+}
+
+static void test_double64_edgecases(gconstpointer backend) {
+    HParserBackend be = (HParserBackend)GPOINTER_TO_INT(backend);
+    const HParser *p = h_double();
+    HParseResult *result;
+    double v;
+
+    /* +Infinity (0x7FF0000000000000) */
+    const uint8_t inf64[8] = {0x7F, 0xF0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+    result = h_parse(p, inf64, 8);
+    v = result->ast->token_data.dbl;
+    g_assert_true(isinf(v));
+    g_assert_true(v > 0);
+
+    /* -Infinity (0xFFF0000000000000) */
+    const uint8_t ninf64[8] = {0xFF, 0xF0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+    result = h_parse(p, ninf64, 8);
+    v = result->ast->token_data.dbl;
+    g_assert_true(isinf(v));
+    g_assert_true(v < 0);
+
+    /* Quiet NaN (0x7FF8000000000000) */
+    const uint8_t nan64[8] = {0x7F, 0xF8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+    result = h_parse(p, nan64, 8);
+    v = result->ast->token_data.dbl;
+    g_assert_true(isnan(v));
+
+    /* zero (0x0000000000000000) */
+    const uint8_t zero64[8] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+    result = h_parse(p, zero64, 8);
+    v = result->ast->token_data.dbl;
+    g_check_cmpdouble(v, ==, 0.0);
+
+    /* Smallest positive subnormal (0x0000000000000001) */
+    const uint8_t subnorm64[8] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01};
+    result = h_parse(p, subnorm64, 8);
+    v = result->ast->token_data.dbl;
+    g_assert_true(v > 0.0);
+
+    /* Largest finite (0x7FEFFFFFFFFFFFFF) */
+    const uint8_t maxfin64[8] = {0x7F, 0xEF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+    result = h_parse(p, maxfin64, 8);
+    v = result->ast->token_data.dbl;
+    g_assert_true(isfinite(v));
+    g_check_cmpdouble(v, <=, DBL_MAX);
+}
+
 void register_floating_point_parser_tests(void) {
     g_test_add_data_func("/core/parser/float/float16", GINT_TO_POINTER(PB_PACKRAT), test_float16);
     g_test_add_data_func("/core/parser/float/float32", GINT_TO_POINTER(PB_PACKRAT), test_float32);
     g_test_add_data_func("/core/parser/float/double64", GINT_TO_POINTER(PB_PACKRAT), test_double64);
+    g_test_add_data_func("/core/parser/float/float16-edgecases", GINT_TO_POINTER(PB_PACKRAT),
+                         test_float16_edgecases);
+    g_test_add_data_func("/core/parser/float/float32-edgecases", GINT_TO_POINTER(PB_PACKRAT),
+                         test_float32_edgecases);
+    g_test_add_data_func("/core/parser/float/double64-edgecases", GINT_TO_POINTER(PB_PACKRAT),
+                         test_double64_edgecases);
 }

@@ -34,15 +34,27 @@ static HParsedToken *reshape_float(const HParseResult *p, void *user_data) {
         uint16_t fraction = bits & 0x3FF;
 
         double significand;
-        if (exponent != 0) {
+        float flt;
+
+        if (exponent == 31) {
+            // 11111 = infinity
+            if (fraction != 0) { // NaN
+                flt = NAN;
+            } else if (sign == 1) { // negative
+                flt = -INFINITY;
+            } else {
+                flt = INFINITY;
+            }
+        } else if (exponent != 0) {
             significand = 1.0 + (fraction / (double)(1u << 10));
+            flt = (float)(pow(-1, sign)) * (float)(significand * pow(2.0, exponent - 15));
         } else {
             significand = fraction / (double)(1u << 10);
+            flt = (float)(pow(-1, sign)) * (float)(significand * pow(2.0, exponent - 15));
         }
 
         ret->token_type = TT_FLOAT;
-        ret->token_data.flt =
-            (float)(pow(-1, sign)) * (float)(significand * pow(2.0, exponent - 15));
+        ret->token_data.flt = flt;
         return ret;
     }
 
@@ -52,15 +64,26 @@ static HParsedToken *reshape_float(const HParseResult *p, void *user_data) {
         uint32_t fraction = bits & 0x7FFFFF;
 
         double significand;
-        if (exponent != 0) {
+        float flt;
+        if (exponent == 255) {
+            // 11111111 = infinity
+            if (fraction != 0) { // NaN
+                flt = NAN;
+            } else if (sign == 1) { // negative
+                flt = -INFINITY;
+            } else {
+                flt = INFINITY;
+            }
+        } else if (exponent != 0) {
             significand = 1.0 + (fraction / (double)(1u << 23));
+            flt = (float)(pow(-1, sign)) * (float)(significand * pow(2.0, exponent - 127));
         } else {
             significand = fraction / (double)(1u << 23);
+            flt = (float)(pow(-1, sign)) * (float)(significand * pow(2.0, exponent - 127));
         }
 
         ret->token_type = TT_FLOAT;
-        ret->token_data.flt =
-            (float)(pow(-1, sign)) * (float)(significand * pow(2.0, exponent - 127));
+        ret->token_data.flt = flt;
         return ret;
     }
 
@@ -70,14 +93,26 @@ static HParsedToken *reshape_float(const HParseResult *p, void *user_data) {
         uint64_t fraction = bits & 0xFFFFFFFFFFFFF;
 
         double significand;
-        if (exponent != 0) {
+        double dbl;
+        if (exponent == 2047) {
+            // 11111111111 = infinity
+            if (fraction != 0) { // NaN
+                dbl = NAN;
+            } else if (sign == 1) { // negative
+                dbl = -INFINITY;
+            } else {
+                dbl = INFINITY;
+            }
+        } else if (exponent != 0) {
             significand = 1.0 + (fraction / (double)(1ULL << 52));
+            dbl = (float)(pow(-1, sign)) * significand * pow(2.0, exponent - 1023);
         } else {
             significand = fraction / (double)(1ULL << 52);
+            dbl = (float)(pow(-1, sign)) * significand * pow(2.0, exponent - 1023);
         }
 
         ret->token_type = TT_DOUBLE;
-        ret->token_data.dbl = (float)(pow(-1, sign)) * significand * pow(2.0, exponent - 1023);
+        ret->token_data.dbl = dbl;
         return ret;
     }
 
@@ -87,6 +122,7 @@ static HParsedToken *reshape_float(const HParseResult *p, void *user_data) {
 static HParseResult *parse_float(void *env_, HParseState *state) {
     struct float_env *env = env_;
     HParsedToken *result = a_new(HParsedToken, 1);
+    double significand;
 
     if (env->bits == 16) {
         float flt;
@@ -95,17 +131,27 @@ static HParseResult *parse_float(void *env_, HParseState *state) {
         uint16_t exponent = (bits >> 10) & 0x1F; // 5 bits
         uint16_t fraction = bits & 0x3FF;        // 10 bits
 
-        double significand;
-
-        if (exponent != 0) {
+        if (exponent == 31) {
+            // 11111 = infinity
+            if (fraction != 0) { // NaN
+                flt = NAN;
+            } else if (sign == 1) { // negative
+                flt = -INFINITY;
+            } else {
+                flt = INFINITY;
+            }
+        } else if (exponent != 0) {
             // Add leading 1
             significand = 1.0 + (fraction / (double)(1u << 10));
+            flt = ((int16_t)pow(-1, sign)) * significand * pow(2, (exponent - 15));
         } else {
-            // No implicit 1
-            significand = fraction / (double)(1u << 10);
+            if (fraction == 0) {
+                flt = 0;
+            } else { // No implicit 1
+                significand = fraction / (double)(1u << 10);
+                flt = ((int16_t)pow(-1, sign)) * significand * pow(2, (exponent - 15));
+            }
         }
-
-        flt = ((int16_t)pow(-1, sign)) * significand * pow(2, (exponent - 15));
         result->token_type = TT_FLOAT;
         result->token_data.flt = flt;
         return make_result(state->arena, result);
@@ -116,17 +162,29 @@ static HParseResult *parse_float(void *env_, HParseState *state) {
         uint32_t exponent = (bits >> 23) & 0xFF; // 8 bits
         uint32_t fraction = bits & 0x7FFFFF;     // 23 bits
 
-        double significand;
-
-        if (exponent != 0) {
+        if (exponent == 255) {
+            // 11111111 = infinity
+            if (fraction != 0) { // NaN
+                flt = NAN;
+            } else if (sign == 1) { // negative
+                flt = -INFINITY;
+            } else {
+                flt = INFINITY;
+            }
+        } else if (exponent != 0) {
             // Add leading 1
             significand = 1.0 + (fraction / (double)(1u << 23));
+            flt = ((int32_t)pow(-1, sign)) * significand * pow(2, (exponent - 127));
         } else {
-            // No implicit 1
-            significand = fraction / (double)(1u << 23);
+            if (fraction == 0) {
+                flt = 0;
+            } else {
+                // No implicit 1
+                significand = fraction / (double)(1u << 23);
+                flt = ((int32_t)pow(-1, sign)) * significand * pow(2, (exponent - 127));
+            }
         }
 
-        flt = ((int32_t)pow(-1, sign)) * significand * pow(2, (exponent - 127));
         result->token_type = TT_FLOAT;
         result->token_data.flt = flt;
         return make_result(state->arena, result);
@@ -138,17 +196,28 @@ static HParseResult *parse_float(void *env_, HParseState *state) {
         uint64_t exponent = (bits >> 52) & 0x7FF;   // 11 bits
         uint64_t fraction = bits & 0xFFFFFFFFFFFFF; // 52 bits
 
-        double significand;
-
-        if (exponent != 0) {
+        if (exponent == 2047) {
+            // 11111111111 = infinity
+            if (fraction != 0) { // NaN
+                dbl = NAN;
+            } else if (sign == 1) { // negative
+                dbl = -INFINITY;
+            } else {
+                dbl = INFINITY;
+            }
+        } else if (exponent != 0) {
             // Add leading 1
             significand = 1.0 + (fraction / (double)(1ULL << 52));
+            dbl = ((int64_t)pow(-1, sign)) * significand * pow(2, (exponent - 1023));
         } else {
-            // No implicit 1
-            significand = fraction / (double)(1ULL << 52);
+            if (fraction == 0) {
+                dbl = 0;
+            } else { // No implicit 1
+                significand = fraction / (double)(1ULL << 52);
+                dbl = ((int64_t)pow(-1, sign)) * significand * pow(2, (exponent - 1023));
+            }
         }
 
-        dbl = ((int64_t)pow(-1, sign)) * significand * pow(2, (exponent - 1023));
         result->token_type = TT_DOUBLE;
         result->token_data.dbl = dbl;
         return make_result(state->arena, result);
