@@ -19,6 +19,20 @@ static void test_benchmark_1() {
     // Free the results (if there's a free function, otherwise just check it doesn't crash)
 }
 
+static void test_benchmark_2() {
+    HParserTestcase simple_cases[] = {{(unsigned char *)"xy", 2, "u0x79"},
+                                      {(unsigned char *)"yx", 2, "u0x78"}, {NULL, 0, NULL}};
+    OpcodeMap entries[2] = {{120,  h_ch('y')}, {121, h_ch('x')}};
+
+    HParser *dispatch = h_dispatch(h_uint8(), entries, NULL);
+    HParser *parser = dispatch;
+
+    HBenchmarkResults *res = h_benchmark(parser, simple_cases);
+    g_check_cmp_ptr(res, !=, NULL);
+    h_benchmark_report(stderr, res);
+    // Free the results (if there's a free function, otherwise just check it doesn't crash)
+}
+
 static void test_benchmark_m() {
     HParser *parser = h_ch('x');
     HParserTestcase simple_cases[] = {{(unsigned char *)"x", 1, "u0x78"}, {NULL, 0, NULL}};
@@ -83,6 +97,7 @@ static void test_benchmark_multiple_backends(void) {
 
 void register_benchmark_tests(void) {
     g_test_add_func("/core/benchmark/1", test_benchmark_1);
+    g_test_add_func("/core/benchmark/2", test_benchmark_2);
     g_test_add_func("/core/benchmark/m", test_benchmark_m);
     g_test_add_func("/core/benchmark/failed_compile", test_benchmark_failed_compile);
     g_test_add_func("/core/benchmark/failed_testcases", test_benchmark_failed_testcases);

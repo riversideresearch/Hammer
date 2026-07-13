@@ -363,6 +363,34 @@ static void test_dispatch_parser_reuse(void) {
     h_cfstack_free(&system_allocator, stk);
 }
 
+static HParser *make_dispatch_from_stack_map(void) {
+    OpcodeMap entries[] = {{1, h_ch(0x41)}};
+    return h_dispatch(h_uint8(), entries, NULL);
+}
+
+static void consume_stack_space(void) {
+    volatile uint8_t scratch[16384];
+    for (size_t i = 0; i < sizeof(scratch); ++i) {
+        scratch[i] = (uint8_t)i;
+    }
+}
+
+static void test_dispatch_copies_stack_local_opcode_map(void) {
+    HParser *message = make_dispatch_from_stack_map();
+    g_check_cmp_ptr(message, !=, NULL);
+
+    consume_stack_space();
+
+    uint8_t buf[] = {1, 0x41};
+    HParseResult *res = h_parse(message, buf, sizeof(buf));
+    g_check_cmp_ptr(res, !=, NULL);
+    g_check_cmp_ptr(res->ast, !=, NULL);
+
+    HCFStack *stk = h_cfstack_new(&system_allocator);
+    h_desugar(&system_allocator, stk, message);
+    h_cfstack_free(&system_allocator, stk);
+}
+
 static void test_dispatch_prettyprint(gconstpointer backend) {
     HParser *disc = h_ch('a');
     HParser *body = h_ch('b');
@@ -387,5 +415,6 @@ void register_dispatch_tests(void) {
     g_test_add_func("/core/dispatch/5_bytes", test_dispatch_5_bytes);
     g_test_add_func("/core/dispatch/no_parse_failure_leak", test_dispatch_no_parse_failure_leak);
     g_test_add_func("/core/dispatch/parser_reuse", test_dispatch_parser_reuse);
+    g_test_add_func("/core/dispatch/copies_stack_local_opcode_map", test_dispatch_copies_stack_local_opcode_map);
     g_test_add_data_func("/core/dispatch/prettyprint",GINT_TO_POINTER(PB_PACKRAT), test_dispatch_prettyprint);
 }

@@ -26,7 +26,7 @@ typedef struct {
 typedef struct {
     HParser *discriminator;
     HParser *default_parser;
-    const OpcodeMap *map;
+    OpcodeMap *map;
     size_t size;
 } HDispatch;
 
@@ -219,9 +219,17 @@ HParser *h_dispatch__m(HAllocator *mm__, HParser *discriminator, const OpcodeMap
     if (!env) {
         return NULL;
     }
+    env->map = h_new(OpcodeMap, size);
+    if (!env->map) {
+        return NULL;
+    }
+    for (size_t i = 0; i < size; ++i) {
+        env->map[i].opcode = map[i].opcode;
+        env->map[i].parser = map[i].parser;
+    }
+
     env->discriminator = discriminator;
     env->default_parser = default_parser;
-    env->map = map;
     env->size = size;
 
     return h_new_parser(mm__, &dispatch_vt, env);
