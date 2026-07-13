@@ -68,10 +68,18 @@ static void test_float16_edgecases(gconstpointer backend) {
     v = result->ast->token_data.flt;
     g_assert_cmpfloat(v, ==, 0.0f);
 
+    /* Negative zero (float16 0x8000) */
+    const uint8_t negzero16[2] = {0x80, 0x00};
+    result = h_parse(p, negzero16, 2);
+    v = result->ast->token_data.flt;
+    g_check_cmpdouble(v, ==, 0.0f);
+    g_assert_true(signbit(v));
+
     /* Smallest positive subnormal (float16 0x0001) */
     const uint8_t subnorm16[2] = {0x00, 0x01};
     result = h_parse(p, subnorm16, 2);
     v = result->ast->token_data.flt;
+    g_assert_cmpfloat(v, ==, 0.000000059604644775390625f);
     g_assert_true(v > 0.0f);
 
     /* Largest finite (float16 0x7BFF) */
@@ -113,11 +121,19 @@ static void test_float32_edgecases(gconstpointer backend) {
     v = result->ast->token_data.flt;
     g_check_cmpfloat(v, ==, 0.0f);
 
+    /* Negative zero (0x80000000) */
+    const uint8_t negzero32[4] = {0x80, 0x00, 0x00, 0x00};
+    result = h_parse(p, negzero32, 4);
+    v = result->ast->token_data.flt;
+    g_check_cmpdouble(v, ==, 0.0f);
+    g_assert_true(signbit(v));
+
     /* Smallest positive subnormal (0x00000001) */
     const uint8_t subnorm32[4] = {0x00, 0x00, 0x00, 0x01};
     result = h_parse(p, subnorm32, 4);
     v = result->ast->token_data.flt;
     g_assert_true(v > 0.0f);
+    g_assert_cmpfloat(v, ==, 0.0000000000000000000000000000000000000000000014012984643f);
 
     /* Largest finite (0x7F7FFFFF) */
     const uint8_t maxfin32[4] = {0x7F, 0x7F, 0xFF, 0xFF};
@@ -158,6 +174,13 @@ static void test_double64_edgecases(gconstpointer backend) {
     result = h_parse(p, zero64, 8);
     v = result->ast->token_data.dbl;
     g_check_cmpdouble(v, ==, 0.0);
+
+    /* Negative zero (0x8000000000000000) */
+    const uint8_t negzero64[8] = {0x80,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
+    result = h_parse(p, negzero64, 8);
+    v = result->ast->token_data.dbl;
+    g_check_cmpdouble(v, ==, 0.0);
+    g_assert_true(signbit(v));
 
     /* Smallest positive subnormal (0x0000000000000001) */
     const uint8_t subnorm64[8] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01};
