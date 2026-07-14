@@ -130,7 +130,7 @@ static HParsedToken *reshape_float(const HParseResult *p, void *user_data) {
                     dbl = 0.0;
                 }
             } else { // No implicit 1
-                significand = fraction / (double)(1u << 10);
+                significand = fraction / (double)(1ULL << 10);
                 dbl = (float)(pow(-1, sign)) * significand * pow(2.0, -1022);
             }
         }
