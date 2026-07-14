@@ -487,6 +487,7 @@ struct HCFChoice_ {
     HAction action;
     HPredicate pred;
     void *user_data;
+    size_t dispatch_opcode;
 };
 
 struct HCFSequence_ {
@@ -640,6 +641,7 @@ static inline void h_cfstack_end_choice(HAllocator *mm__, HCFStack *stk__) {
     stk__->count--;
 }
 
+
 #define HCFS_APPEND(choice) h_cfstack_add_to_seq(mm__, stk__, (choice))
 #define HCFS_DESUGAR(parser) h_desugar(mm__, stk__, parser)
 #define HCFS_ADD_CHARSET(charset) h_cfstack_add_charset(mm__, stk__, (charset))
@@ -652,6 +654,8 @@ static inline void h_cfstack_end_choice(HAllocator *mm__, HCFStack *stk__) {
 #define HCFS_END_CHOICE() h_cfstack_end_choice(mm__, stk__)
 #define HCFS_END_SEQ() h_cfstack_end_seq(mm__, stk__)
 #define HCFS_THIS_CHOICE (stk__->stack[stk__->count - 1])
+#define HCFS_SET_DISPATCH_OPCODE(op) \
+    (HCFS_THIS_CHOICE->dispatch_opcode = (op))
 
 struct HParserVtable_ {
     HParseResult *(*parse)(void *env, HParseState *state);

@@ -233,6 +233,15 @@ static void test_desugar_to_cfg_choice(void) {
     h_cfgrammar_free(g);
 }
 
+static void test_desugar_to_cfg_dispatch(void) {
+    OpcodeMap entries[] = {{1, h_ch(0x41)}, {2, h_ch(0x42)}, {2013, h_uint32()}};
+    HParser *discriminator = h_uint8();
+    const HParser *p = h_dispatch(discriminator, entries, NULL);
+    HCFChoice *desugared = h_desugar(&system_allocator, NULL, p);
+    g_check_cmp_ptr(desugared, !=, NULL);
+    g_check_cmp_int(desugared->type, ==, HCF_CHOICE);
+}
+
 static void test_desugar_to_cfg_many(void) {
     const HParser *p = h_many(h_ch('a'));
     HCFGrammar *g = h_cfgrammar(&system_allocator, p);
@@ -272,4 +281,6 @@ void register_desugar_tests(void) {
     g_test_add_func("/core/desugar/to_cfg", test_desugar_to_cfg);
     g_test_add_func("/core/desugar/to_cfg_choice", test_desugar_to_cfg_choice);
     g_test_add_func("/core/desugar/to_cfg_many", test_desugar_to_cfg_many);
+    g_test_add_func("/core/desugar/to_cfg_dispatch", test_desugar_to_cfg_dispatch);
+    
 }

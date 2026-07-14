@@ -29,6 +29,20 @@ static void test_benchmark_2() {
     h_benchmark_report(stderr, res);
 }
 
+static void test_benchmark_2() {
+    HParserTestcase simple_cases[] = {{(unsigned char *)"xy", 2, "u0x79"},
+                                      {(unsigned char *)"yx", 2, "u0x78"}, {NULL, 0, NULL}};
+    OpcodeMap entries[2] = {{120,  h_ch('y')}, {121, h_ch('x')}};
+
+    HParser *dispatch = h_dispatch(h_uint8(), entries, NULL);
+    HParser *parser = dispatch;
+
+    HBenchmarkResults *res = h_benchmark(parser, simple_cases);
+    g_check_cmp_ptr(res, !=, NULL);
+    h_benchmark_report(stderr, res);
+    // Free the results (if there's a free function, otherwise just check it doesn't crash)
+}
+
 static void test_benchmark_m() {
     HParser *parser = h_ch('x');
     HParserTestcase simple_cases[] = {{(unsigned char *)"x", 1, "u0x78"}, {NULL, 0, NULL}};
