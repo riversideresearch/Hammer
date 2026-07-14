@@ -18,16 +18,6 @@ static void test_benchmark_1() {
     h_benchmark_report(stderr, res);
     // Free the results (if there's a free function, otherwise just check it doesn't crash)
 }
-static void test_benchmark_2() {
-    static HParserTestcase simple_case[] = {
-        {(unsigned char *)"ab", 2, "<61.62>"}, {NULL, 0, NULL} // sentinel
-    };
-    HParser *parser = h_bytes(2);
-
-    HBenchmarkResults *res = h_benchmark(parser, simple_case);
-    g_check_cmp_ptr(res, !=, NULL);
-    h_benchmark_report(stderr, res);
-}
 
 static void test_benchmark_2() {
     HParserTestcase simple_cases[] = {{(unsigned char *)"xy", 2, "u0x79"},
