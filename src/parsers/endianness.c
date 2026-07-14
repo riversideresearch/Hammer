@@ -47,7 +47,7 @@ static const HParserVtable endianness_vt = {
 };
 
 HParser *h_with_endianness(char endianness, const HParser *p) {
-    return h_with_endianness__m(&system_allocator, endianness, p);
+    return h_with_endianness__m(h_default_allocator, endianness, p);
 }
 
 HParser *h_with_endianness__m(HAllocator *mm__, char endianness, const HParser *p) {

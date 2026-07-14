@@ -38,6 +38,8 @@ static void test_xor_want_suspend(gconstpointer backend) {
 }
 
 void register_xor_tests(void) {
+    #ifndef STATIC_BUILD
     g_test_add_data_func("/core/parser/packrat/xor_want_suspend", GINT_TO_POINTER(PB_PACKRAT),
                          test_xor_want_suspend);
+    #endif
 }

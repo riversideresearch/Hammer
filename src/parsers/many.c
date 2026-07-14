@@ -154,7 +154,7 @@ static const HParserVtable many_vt = {
     .higher = true,
 };
 
-HParser *h_many(const HParser *p) { return h_many__m(&system_allocator, p); }
+HParser *h_many(const HParser *p) { return h_many__m(h_default_allocator, p); }
 HParser *h_many__m(HAllocator *mm__, const HParser *p) {
     HRepeat *env = h_new(HRepeat, 1);
     env->p = p;
@@ -164,7 +164,7 @@ HParser *h_many__m(HAllocator *mm__, const HParser *p) {
     return h_new_parser(mm__, &many_vt, env);
 }
 
-HParser *h_many1(const HParser *p) { return h_many1__m(&system_allocator, p); }
+HParser *h_many1(const HParser *p) { return h_many1__m(h_default_allocator, p); }
 HParser *h_many1__m(HAllocator *mm__, const HParser *p) {
     HRepeat *env = h_new(HRepeat, 1);
     env->p = p;
@@ -175,7 +175,7 @@ HParser *h_many1__m(HAllocator *mm__, const HParser *p) {
 }
 
 HParser *h_repeat_n(const HParser *p, const size_t n) {
-    return h_repeat_n__m(&system_allocator, p, n);
+    return h_repeat_n__m(h_default_allocator, p, n);
 }
 HParser *h_repeat_n__m(HAllocator *mm__, const HParser *p, const size_t n) {
     HRepeat *env = h_new(HRepeat, 1);
@@ -187,7 +187,7 @@ HParser *h_repeat_n__m(HAllocator *mm__, const HParser *p, const size_t n) {
 }
 
 HParser *h_sepBy(const HParser *p, const HParser *sep) {
-    return h_sepBy__m(&system_allocator, p, sep);
+    return h_sepBy__m(h_default_allocator, p, sep);
 }
 HParser *h_sepBy__m(HAllocator *mm__, const HParser *p, const HParser *sep) {
     HRepeat *env = h_new(HRepeat, 1);
@@ -199,7 +199,7 @@ HParser *h_sepBy__m(HAllocator *mm__, const HParser *p, const HParser *sep) {
 }
 
 HParser *h_sepBy1(const HParser *p, const HParser *sep) {
-    return h_sepBy1__m(&system_allocator, p, sep);
+    return h_sepBy1__m(h_default_allocator, p, sep);
 }
 HParser *h_sepBy1__m(HAllocator *mm__, const HParser *p, const HParser *sep) {
     HRepeat *env = h_new(HRepeat, 1);
@@ -234,7 +234,7 @@ static const HParserVtable length_value_vt = {
 };
 
 HParser *h_length_value(const HParser *length, const HParser *value) {
-    return h_length_value__m(&system_allocator, length, value);
+    return h_length_value__m(h_default_allocator, length, value);
 }
 HParser *h_length_value__m(HAllocator *mm__, const HParser *length, const HParser *value) {
     HLenVal *env = h_new(HLenVal, 1);

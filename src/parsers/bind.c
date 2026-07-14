@@ -58,7 +58,7 @@ static const HParserVtable bind_vt = {
 };
 
 HParser *h_bind(const HParser *p, HContinuation k, void *env) {
-    return h_bind__m(&system_allocator, p, k, env);
+    return h_bind__m(h_default_allocator, p, k, env);
 }
 
 HParser *h_bind__m(HAllocator *mm__, const HParser *p, HContinuation k, void *env) {

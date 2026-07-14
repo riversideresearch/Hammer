@@ -46,7 +46,7 @@ static const HParserVtable butnot_vt = {
 };
 
 HParser *h_butnot(const HParser *p1, const HParser *p2) {
-    return h_butnot__m(&system_allocator, p1, p2);
+    return h_butnot__m(h_default_allocator, p1, p2);
 }
 HParser *h_butnot__m(HAllocator *mm__, const HParser *p1, const HParser *p2) {
     HTwoParsers *env = h_new(HTwoParsers, 1);

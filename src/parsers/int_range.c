@@ -103,7 +103,7 @@ static const HParserVtable int_range_vt = {
 };
 
 HParser *h_int_range(const HParser *p, const int64_t lower, const int64_t upper) {
-    return h_int_range__m(&system_allocator, p, lower, upper);
+    return h_int_range__m(h_default_allocator, p, lower, upper);
 }
 HParser *h_int_range__m(HAllocator *mm__, const HParser *p, const int64_t lower,
                         const int64_t upper) {

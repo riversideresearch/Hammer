@@ -97,21 +97,21 @@ static HParser *h_leftright__m(HAllocator *mm__, const HParser *p, const HParser
 }
 
 HParser *h_left(const HParser *p, const HParser *q) {
-    return h_leftright__m(&system_allocator, p, q, 0);
+    return h_leftright__m(h_default_allocator, p, q, 0);
 }
 HParser *h_left__m(HAllocator *mm__, const HParser *p, const HParser *q) {
     return h_leftright__m(mm__, p, q, 0);
 }
 
 HParser *h_right(const HParser *p, const HParser *q) {
-    return h_leftright__m(&system_allocator, p, q, 1);
+    return h_leftright__m(h_default_allocator, p, q, 1);
 }
 HParser *h_right__m(HAllocator *mm__, const HParser *p, const HParser *q) {
     return h_leftright__m(mm__, p, q, 1);
 }
 
 HParser *h_middle(const HParser *p, const HParser *x, const HParser *q) {
-    return h_middle__m(&system_allocator, p, x, q);
+    return h_middle__m(h_default_allocator, p, x, q);
 }
 HParser *h_middle__m(HAllocator *mm__, const HParser *p, const HParser *x, const HParser *q) {
     HIgnoreSeq *seq = h_new(HIgnoreSeq, 1);

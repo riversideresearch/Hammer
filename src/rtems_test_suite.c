@@ -2,7 +2,7 @@
 
 #include "rtems_test_suite.h"
 #include <stdio.h>
-
+#include "static_alloc.h"
 
 HTestEntry h_test_registry[MAX_TESTS];
 int h_test_count = 0;
@@ -51,6 +51,7 @@ int h_test_run_all(void){
             printf(" PASS: %s\n", h_test_registry[i].name);
             h_test_pass_count++;
         }
+        h_parse_pool_reset();
     }
 
     printf("\nRESULTS\n");

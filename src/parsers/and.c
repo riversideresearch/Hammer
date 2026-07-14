@@ -20,7 +20,7 @@ static const HParserVtable and_vt = {
     .higher = true,
 };
 
-HParser *h_and(const HParser *p) { return h_and__m(&system_allocator, p); }
+HParser *h_and(const HParser *p) { return h_and__m(h_default_allocator, p); }
 HParser *h_and__m(HAllocator *mm__, const HParser *p) {
     // zero-width postive lookahead
     void *env = (void *)p;

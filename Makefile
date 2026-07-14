@@ -34,12 +34,13 @@ $(error Unknown RTEMS_BSP architecture: $(RTEMS_BSP))
 endif
 
 # if not running on simultor, can probably safely remove -DSIMULATOR_LIMITED
+# if not using static build, remove -DSTATIC_BUILD
 CFLAGS = \
     $(TARGET_FLAGS) \
 	-std=c99 \
 	-O2 \
 	-D_POSIX_C_SOURCE=200809L \
-    -DRTEMS_BUILD -DSIMULATOR_LIMITED\
+    -DRTEMS_BUILD -DSIMULATOR_LIMITED -DSTATIC_BUILD\
 	-Wall -Wextra -Wno-unused-parameter -Wno-unused-variable \
 	-g \
 	-I$(RTEMS_BSP_LIB)/include \
@@ -51,6 +52,7 @@ CFLAGS = \
 SRCS = \
     $(HAMMER_SRC)/hammer.c \
     $(HAMMER_SRC)/allocator.c \
+    $(HAMMER_SRC)/static_alloc.c \
     $(HAMMER_SRC)/system_allocator.c \
     $(HAMMER_SRC)/sloballoc.c \
     $(HAMMER_SRC)/glue.c \
@@ -210,6 +212,7 @@ install:
 	cp $(HAMMER_SRC)/glue.h ~/install/include/
 	cp $(HAMMER_SRC)/compiler_specifics.h ~/install/include/
 	cp $(HAMMER_SRC)/allocator.h ~/install/include/
+	cp $(HAMMER_SRC)/static_alloc.h ~/install/include/
 	cp $(HAMMER_SRC)/rtems_test_suite.h ~/install/include/
 	cp $(HAMMER_SRC)/internal.h ~/install/include/
 	cp $(HAMMER_SRC)/platform.h ~/install/include/

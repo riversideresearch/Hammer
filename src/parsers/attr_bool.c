@@ -58,7 +58,7 @@ static const HParserVtable attr_bool_vt = {
 };
 
 HParser *h_attr_bool(const HParser *p, HPredicate pred, void *user_data) {
-    return h_attr_bool__m(&system_allocator, p, pred, user_data);
+    return h_attr_bool__m(h_default_allocator, p, pred, user_data);
 }
 HParser *h_attr_bool__m(HAllocator *mm__, const HParser *p, HPredicate pred, void *user_data) {
     HAttrBool *env = h_new(HAttrBool, 1);

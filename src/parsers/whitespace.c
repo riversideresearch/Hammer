@@ -65,7 +65,7 @@ static const HParserVtable whitespace_vt = {
     .higher = false,
 };
 
-HParser *h_whitespace(const HParser *p) { return h_whitespace__m(&system_allocator, p); }
+HParser *h_whitespace(const HParser *p) { return h_whitespace__m(h_default_allocator, p); }
 HParser *h_whitespace__m(HAllocator *mm__, const HParser *p) {
     void *env = (void *)p;
     return h_new_parser(mm__, &whitespace_vt, env);

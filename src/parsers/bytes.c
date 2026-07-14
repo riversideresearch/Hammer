@@ -30,7 +30,7 @@ static const HParserVtable bytes_vt = {
     .isValidCF = h_false,      // XXX need bytes_ctrvm
 };
 
-HParser *h_bytes(size_t len) { return h_bytes__m(&system_allocator, len); }
+HParser *h_bytes(size_t len) { return h_bytes__m(h_default_allocator, len); }
 
 HParser *h_bytes__m(HAllocator *mm__, size_t len) {
     struct bytes_env *env = h_new(struct bytes_env, 1);

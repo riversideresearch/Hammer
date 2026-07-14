@@ -380,7 +380,9 @@ static void test_pprint_write_result_unamb(void) {
 void register_misc_tests(void) {
     g_test_add_func("/core/misc/tt_user", test_tt_user);
     g_test_add_func("/core/misc/tt_registry", test_tt_registry);
+    #ifndef STATIC_BUILD
     g_test_add_func("/core/misc/oom", test_oom);
+    #endif
     g_test_add_func("/core/misc/glue_act_index", test_glue_act_index);
     g_test_add_func("/core/misc/glue_act_first_second_last", test_glue_act_first_second_last);
     g_test_add_func("/core/misc/glue_act_ignore", test_glue_act_ignore);

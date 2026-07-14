@@ -36,7 +36,7 @@ static const HParserVtable charset_vt = {
 };
 
 HParser *h_ch_range(const uint8_t lower, const uint8_t upper) {
-    return h_ch_range__m(&system_allocator, lower, upper);
+    return h_ch_range__m(h_default_allocator, lower, upper);
 }
 HParser *h_ch_range__m(HAllocator *mm__, const uint8_t lower, const uint8_t upper) {
     HCharset cs = new_charset(mm__);
@@ -56,7 +56,7 @@ static HParser *h_in_or_not__m(HAllocator *mm__, const uint8_t *options, size_t 
 }
 
 HParser *h_in(const uint8_t *options, size_t count) {
-    return h_in_or_not__m(&system_allocator, options, count, 1);
+    return h_in_or_not__m(h_default_allocator, options, count, 1);
 }
 
 HParser *h_in__m(HAllocator *mm__, const uint8_t *options, size_t count) {
@@ -64,7 +64,7 @@ HParser *h_in__m(HAllocator *mm__, const uint8_t *options, size_t count) {
 }
 
 HParser *h_not_in(const uint8_t *options, size_t count) {
-    return h_in_or_not__m(&system_allocator, options, count, 0);
+    return h_in_or_not__m(h_default_allocator, options, count, 0);
 }
 
 HParser *h_not_in__m(HAllocator *mm__, const uint8_t *options, size_t count) {

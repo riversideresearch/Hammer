@@ -34,7 +34,7 @@ static const HParserVtable put_vt = {
 };
 
 HParser *h_put_value(const HParser *p, const char *name) {
-    return h_put_value__m(&system_allocator, p, name);
+    return h_put_value__m(h_default_allocator, p, name);
 }
 
 HParser *h_put_value__m(HAllocator *mm__, const HParser *p, const char *name) {
@@ -62,7 +62,7 @@ static const HParserVtable get_vt = {
     .higher = true,
 };
 
-HParser *h_get_value(const char *name) { return h_get_value__m(&system_allocator, name); }
+HParser *h_get_value(const char *name) { return h_get_value__m(h_default_allocator, name); }
 
 HParser *h_get_value__m(HAllocator *mm__, const char *name) {
     HStoredValue *env = h_new(HStoredValue, 1);
@@ -94,7 +94,7 @@ static const HParserVtable free_vt = {
     .higher = true,
 };
 
-HParser *h_free_value(const char *name) { return h_free_value__m(&system_allocator, name); }
+HParser *h_free_value(const char *name) { return h_free_value__m(h_default_allocator, name); }
 
 HParser *h_free_value__m(HAllocator *mm__, const char *name) {
     HStoredValue *env = h_new(HStoredValue, 1);

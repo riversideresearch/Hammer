@@ -28,6 +28,6 @@ static const HParserVtable end_vt = {
     .higher = false,
 };
 
-HParser *h_end_p() { return h_end_p__m(&system_allocator); }
+HParser *h_end_p() { return h_end_p__m(h_default_allocator); }
 
 HParser *h_end_p__m(HAllocator *mm__) { return h_new_parser(mm__, &end_vt, NULL); }

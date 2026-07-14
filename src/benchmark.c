@@ -7,6 +7,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifdef STATIC_BUILD
+#include "static_alloc.h"
+#endif
 
 static const char *HParserBackendNames[] = {"Invalid", "Packrat"};
 
@@ -77,6 +80,9 @@ HBenchmarkResults *h_benchmark__m(HAllocator *mm__, HParser *parser, HParserTest
             }
             h_parse_result_free(res);
             (&system_allocator)->free(&system_allocator, res_unamb);
+            #ifdef STATIC_BUILD
+            h_parse_pool_reset();
+            #endif
         }
 
         if (tc_failed > 0) {
@@ -100,6 +106,9 @@ HBenchmarkResults *h_benchmark__m(HAllocator *mm__, HParser *parser, HParserTest
                 h_platform_stopwatch_reset(&stopwatch);
                 for (cur = 0; cur < count; cur++) {
                     h_parse_result_free(h_parse(parser, tc->input, tc->length));
+                    #ifdef STATIC_BUILD
+                    h_parse_pool_reset();
+                    #endif
                 }
                 time_diff = h_platform_stopwatch_ns(&stopwatch);
             } while (time_diff < 100000000);

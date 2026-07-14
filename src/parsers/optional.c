@@ -71,7 +71,7 @@ static const HParserVtable optional_vt = {
     .higher = true,
 };
 
-HParser *h_optional(const HParser *p) { return h_optional__m(&system_allocator, p); }
+HParser *h_optional(const HParser *p) { return h_optional__m(h_default_allocator, p); }
 HParser *h_optional__m(HAllocator *mm__, const HParser *p) {
     // TODO: re-add this
     // assert_message(p->vtable != &ignore_vt, "Thou shalt ignore an option, rather than the other

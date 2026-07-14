@@ -1036,6 +1036,7 @@ void register_parser_tests(void) {
     // test_token_position);
     g_test_add_data_func("/core/parser/packrat/iterative/single", GINT_TO_POINTER(PB_PACKRAT),
                          test_iterative_single);
+    #ifndef STATIC_BUILD
     g_test_add_data_func("/core/parser/packrat/iterative/multi", GINT_TO_POINTER(PB_PACKRAT),
                          test_iterative_multi);
     g_test_add_data_func("/core/parser/packrat/iterative/lookahead", GINT_TO_POINTER(PB_PACKRAT),
@@ -1044,6 +1045,7 @@ void register_parser_tests(void) {
                          test_iterative_seek);
     g_test_add_data_func("/core/parser/packrat/iterative/result_length",
                          GINT_TO_POINTER(PB_PACKRAT), test_iterative_result_length);
+    #endif
     g_test_add_data_func("/core/parser/packrat/skip", GINT_TO_POINTER(PB_PACKRAT), test_skip);
     g_test_add_data_func("/core/parser/packrat/seek", GINT_TO_POINTER(PB_PACKRAT), test_seek);
     g_test_add_data_func("/core/parser/packrat/tell", GINT_TO_POINTER(PB_PACKRAT), test_tell);

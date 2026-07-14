@@ -43,7 +43,7 @@ void h_bind_indirect(HParser *indirect, const HParser *inner) {
     ((HIndirectEnv *)indirect->env)->parser = inner;
 }
 
-HParser *h_indirect() { return h_indirect__m(&system_allocator); }
+HParser *h_indirect() { return h_indirect__m(h_default_allocator); }
 HParser *h_indirect__m(HAllocator *mm__) {
     HIndirectEnv *env = h_new(HIndirectEnv, 1);
     env->parser = NULL;

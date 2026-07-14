@@ -18,7 +18,7 @@ static const HParserVtable epsilon_vt = {
     .higher = false,
 };
 
-HParser *h_epsilon_p() { return h_epsilon_p__m(&system_allocator); }
+HParser *h_epsilon_p() { return h_epsilon_p__m(h_default_allocator); }
 HParser *h_epsilon_p__m(HAllocator *mm__) {
     HParser *epsilon_p = h_new(HParser, 1);
     epsilon_p->desugared = NULL;

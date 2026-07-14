@@ -96,7 +96,7 @@ static const HParserVtable sequence_vt = {
 HParser *h_sequence(HParser *p, ...) {
     va_list ap;
     va_start(ap, p);
-    HParser *ret = h_sequence__mv(&system_allocator, p, ap);
+    HParser *ret = h_sequence__mv(h_default_allocator, p, ap);
     va_end(ap);
     return ret;
 }
@@ -109,7 +109,7 @@ HParser *h_sequence__m(HAllocator *mm__, HParser *p, ...) {
     return ret;
 }
 
-HParser *h_sequence__v(HParser *p, va_list ap) { return h_sequence__mv(&system_allocator, p, ap); }
+HParser *h_sequence__v(HParser *p, va_list ap) { return h_sequence__mv(h_default_allocator, p, ap); }
 
 HParser *h_sequence__mv(HAllocator *mm__, HParser *p, va_list ap_) {
     HSequence *s = h_new(HSequence, 1);
@@ -144,7 +144,7 @@ HParser *h_sequence__mv(HAllocator *mm__, HParser *p, va_list ap_) {
     return h_new_parser(mm__, &sequence_vt, s);
 }
 
-HParser *h_sequence__a(void *args[]) { return h_sequence__ma(&system_allocator, args); }
+HParser *h_sequence__a(void *args[]) { return h_sequence__ma(h_default_allocator, args); }
 
 HParser *h_sequence__ma(HAllocator *mm__, void *args[]) {
     size_t len = -1; // because do...while
@@ -175,7 +175,7 @@ HParser *h_drop_from_(HParser *p, ...) {
     assert_message(p->vtable == &sequence_vt, "drop_from requires a sequence parser");
     va_list ap;
     va_start(ap, p);
-    HParser *ret = h_drop_from___mv(&system_allocator, p, ap);
+    HParser *ret = h_drop_from___mv(h_default_allocator, p, ap);
     va_end(ap);
     return ret;
 }
@@ -193,7 +193,7 @@ HParser *h_drop_from___m(HAllocator *mm__, HParser *p, ...) {
 
 HParser *h_drop_from___v(HParser *p, va_list ap) {
     assert_message(p->vtable == &sequence_vt, "drop_from requires a sequence parser");
-    return h_drop_from___mv(&system_allocator, p, ap);
+    return h_drop_from___mv(h_default_allocator, p, ap);
 }
 
 HParser *h_drop_from___mv(HAllocator *mm__, HParser *p, va_list ap) {
@@ -231,7 +231,7 @@ HParser *h_drop_from___mv(HAllocator *mm__, HParser *p, va_list ap) {
     return h_new_parser(mm__, &sequence_vt, rewrite);
 }
 
-HParser *h_drop_from___a(void *args[]) { return h_drop_from___ma(&system_allocator, args); }
+HParser *h_drop_from___a(void *args[]) { return h_drop_from___ma(h_default_allocator, args); }
 
 HParser *h_drop_from___ma(HAllocator *mm__, void *args[]) {
     HParser *p = (HParser *)(args[0]);

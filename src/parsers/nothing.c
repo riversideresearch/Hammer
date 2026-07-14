@@ -21,5 +21,5 @@ static const HParserVtable nothing_vt = {
     .higher = false,
 };
 
-HParser *h_nothing_p() { return h_nothing_p__m(&system_allocator); }
+HParser *h_nothing_p() { return h_nothing_p__m(h_default_allocator); }
 HParser *h_nothing_p__m(HAllocator *mm__) { return h_new_parser(mm__, &nothing_vt, NULL); }

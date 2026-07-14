@@ -41,6 +41,10 @@ extern "C" {
 
 typedef struct HParseState_ HParseState;
 
+/* Default Allocators */
+extern HAllocator *h_default_allocator;
+extern HAllocator *h_default_parse_allocator;
+
 /**
  * @enum HParserBackend
  * @brief Available parser backend implementations

@@ -77,7 +77,7 @@ static const HParserVtable choice_vt = {
 HParser *h_choice(HParser *p, ...) {
     va_list ap;
     va_start(ap, p);
-    HParser *ret = h_choice__mv(&system_allocator, p, ap);
+    HParser *ret = h_choice__mv(h_default_allocator, p, ap);
     va_end(ap);
     return ret;
 }
@@ -90,7 +90,7 @@ HParser *h_choice__m(HAllocator *mm__, HParser *p, ...) {
     return ret;
 }
 
-HParser *h_choice__v(HParser *p, va_list ap) { return h_choice__mv(&system_allocator, p, ap); }
+HParser *h_choice__v(HParser *p, va_list ap) { return h_choice__mv(h_default_allocator, p, ap); }
 
 HParser *h_choice__mv(HAllocator *mm__, HParser *p, va_list ap_) {
     va_list ap;
@@ -119,7 +119,7 @@ HParser *h_choice__mv(HAllocator *mm__, HParser *p, va_list ap_) {
     return h_new_parser(mm__, &choice_vt, s);
 }
 
-HParser *h_choice__a(void *args[]) { return h_choice__ma(&system_allocator, args); }
+HParser *h_choice__a(void *args[]) { return h_choice__ma(h_default_allocator, args); }
 
 HParser *h_choice__ma(HAllocator *mm__, void *args[]) {
     size_t len = -1; // because do...while

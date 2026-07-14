@@ -112,7 +112,7 @@ static const HParserVtable permutation_vt = {
 HParser *h_permutation(HParser *p, ...) {
     va_list ap;
     va_start(ap, p);
-    HParser *ret = h_permutation__mv(&system_allocator, p, ap);
+    HParser *ret = h_permutation__mv(h_default_allocator, p, ap);
     va_end(ap);
     return ret;
 }
@@ -126,7 +126,7 @@ HParser *h_permutation__m(HAllocator *mm__, HParser *p, ...) {
 }
 
 HParser *h_permutation__v(HParser *p, va_list ap) {
-    return h_permutation__mv(&system_allocator, p, ap);
+    return h_permutation__mv(h_default_allocator, p, ap);
 }
 
 HParser *h_permutation__mv(HAllocator *mm__, HParser *p, va_list ap_) {
@@ -156,7 +156,7 @@ HParser *h_permutation__mv(HAllocator *mm__, HParser *p, va_list ap_) {
     return h_new_parser(mm__, &permutation_vt, s);
 }
 
-HParser *h_permutation__a(void *args[]) { return h_permutation__ma(&system_allocator, args); }
+HParser *h_permutation__a(void *args[]) { return h_permutation__ma(h_default_allocator, args); }
 
 HParser *h_permutation__ma(HAllocator *mm__, void *args[]) {
     size_t len = -1; // because do...while

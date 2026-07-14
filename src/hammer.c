@@ -41,6 +41,10 @@ typedef struct {
     const HParser *p2;
 } HTwoParsers;
 
+/* Default allocators */
+HAllocator *h_default_allocator = &system_allocator;
+HAllocator *h_default_parse_allocator = &system_allocator;
+
 /* Backend-related inquiries */
 
 int h_is_backend_available(HParserBackend backend) {
@@ -65,7 +69,7 @@ HParserBackendVTable *h_get_default_backend_vtable(void) {
  */
 
 HParserBackendWithParams *h_copy_backend_with_params(HParserBackendWithParams *be_with_params) {
-    return h_copy_backend_with_params__m(&system_allocator, be_with_params);
+    return h_copy_backend_with_params__m(h_default_allocator, be_with_params);
 }
 
 HParserBackendWithParams *h_copy_backend_with_params__m(HAllocator *mm__,
@@ -269,7 +273,7 @@ char *h_get_name_for_backend_with_params__m(HAllocator *mm__,
 }
 
 char *h_get_name_for_backend_with_params(HParserBackendWithParams *be_with_params) {
-    return h_get_name_for_backend_with_params__m(&system_allocator, be_with_params);
+    return h_get_name_for_backend_with_params__m(h_default_allocator, be_with_params);
 }
 /*
  * Allocate and return some human-readable descriptive text for this backend
@@ -282,7 +286,7 @@ char *h_get_descriptive_text_for_backend_with_params__m(HAllocator *mm__,
 }
 
 char *h_get_descriptive_text_for_backend_with_params(HParserBackendWithParams *be_with_params) {
-    return h_get_descriptive_text_for_backend_with_params__m(&system_allocator, be_with_params);
+    return h_get_descriptive_text_for_backend_with_params__m(h_default_allocator, be_with_params);
 }
 
 /* Helpers for the above for backends with no params */
@@ -539,7 +543,7 @@ HParserBackendWithParams *h_get_backend_with_params_by_name(const char *name_wit
 }
 
 HParseResult *h_parse(const HParser *parser, const uint8_t *input, size_t length) {
-    return h_parse__m(&system_allocator, parser, input, length);
+    return h_parse__m(h_default_parse_allocator, parser, input, length);
 }
 HParseResult *h_parse__m(HAllocator *mm__, const HParser *parser, const uint8_t *input,
                          size_t length) {
@@ -601,7 +605,7 @@ int h_compile_for_backend_with_params__m(HAllocator *mm__, HParser *parser,
 }
 
 int h_compile(HParser *parser, HParserBackend backend, const void *params) {
-    return h_compile__m(&system_allocator, parser, backend, params);
+    return h_compile__m(h_default_allocator, parser, backend, params);
 }
 
 int h_compile__m(HAllocator *mm__, HParser *parser, HParserBackend backend, const void *params) {
@@ -621,7 +625,7 @@ int h_compile__m(HAllocator *mm__, HParser *parser, HParserBackend backend, cons
 }
 
 HSuspendedParser *h_parse_start(const HParser *parser) {
-    return h_parse_start__m(&system_allocator, parser);
+    return h_parse_start__m(h_default_parse_allocator, parser);
 }
 HSuspendedParser *h_parse_start__m(HAllocator *mm__, const HParser *parser) {
     if (!parser->backend_vtable || !parser->backend_vtable->parse_start)

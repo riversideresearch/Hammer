@@ -1298,12 +1298,14 @@ void register_additional_parser_tests(void) {
     g_test_add_data_func("/core/parser/packrat/bytes_edge_cases", GINT_TO_POINTER(PB_PACKRAT),
                          test_bytes_edge_cases);
     g_test_add_data_func("/core/parser/packrat/epsilon", GINT_TO_POINTER(PB_PACKRAT), test_epsilon);
+    #ifndef STATIC_BUILD
     g_test_add_data_func("/core/parser/packrat/many_internal", GINT_TO_POINTER(PB_PACKRAT),
                          test_many_internal);
     g_test_add_data_func("/core/parser/packrat/not_internal", GINT_TO_POINTER(PB_PACKRAT),
                          test_not_internal);
     g_test_add_data_func("/core/parser/packrat/optional_internal", GINT_TO_POINTER(PB_PACKRAT),
                          test_optional_internal);
+    #endif
     g_test_add_data_func("/core/parser/packrat/end_edge_cases", GINT_TO_POINTER(PB_PACKRAT),
                          test_end_edge_cases);
     g_test_add_data_func("/core/parser/packrat/ch_edge_cases", GINT_TO_POINTER(PB_PACKRAT),

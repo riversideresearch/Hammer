@@ -32,7 +32,7 @@ static const HParserVtable ch_vt = {
     .higher = false,
 };
 
-HParser *h_ch(const uint8_t c) { return h_ch__m(&system_allocator, c); }
+HParser *h_ch(const uint8_t c) { return h_ch__m(h_default_allocator, c); }
 HParser *h_ch__m(HAllocator *mm__, const uint8_t c) {
     return h_new_parser(mm__, &ch_vt, (void *)(uintptr_t)c);
 }

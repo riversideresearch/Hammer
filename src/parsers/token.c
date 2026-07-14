@@ -73,7 +73,7 @@ const HParserVtable token_vt = {
 };
 
 HParser *h_token(const uint8_t *str, const size_t len) {
-    return h_token__m(&system_allocator, str, len);
+    return h_token__m(h_default_allocator, str, len);
 }
 HParser *h_token__m(HAllocator *mm__, const uint8_t *str, const size_t len) {
     HToken *t = h_new(HToken, 1);

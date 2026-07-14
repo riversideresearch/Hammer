@@ -46,7 +46,7 @@ static const HParserVtable difference_vt = {
 };
 
 HParser *h_difference(const HParser *p1, const HParser *p2) {
-    return h_difference__m(&system_allocator, p1, p2);
+    return h_difference__m(h_default_allocator, p1, p2);
 }
 HParser *h_difference__m(HAllocator *mm__, const HParser *p1, const HParser *p2) {
     HTwoParsers *env = h_new(HTwoParsers, 1);

@@ -64,8 +64,10 @@ static void test_whitespace_isValidCF(gconstpointer backend) {
 }
 
 void register_whitespace_tests(void) {
+    #ifndef STATIC_BUILD
     g_test_add_data_func("/core/parser/packrat/whitespace_want_suspend",
                          GINT_TO_POINTER(PB_PACKRAT), test_whitespace_want_suspend);
+    #endif
     g_test_add_data_func("/core/parser/packrat/whitespace_isValidRegular",
                          GINT_TO_POINTER(PB_PACKRAT), test_whitespace_isValidRegular);
     g_test_add_data_func("/core/parser/packrat/whitespace_isValidCF", GINT_TO_POINTER(PB_PACKRAT),

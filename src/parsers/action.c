@@ -55,7 +55,7 @@ static const HParserVtable action_vt = {
 };
 
 HParser *h_action(const HParser *p, const HAction a, void *user_data) {
-    return h_action__m(&system_allocator, p, a, user_data);
+    return h_action__m(h_default_allocator, p, a, user_data);
 }
 
 HParser *h_action__m(HAllocator *mm__, const HParser *p, const HAction a, void *user_data) {
