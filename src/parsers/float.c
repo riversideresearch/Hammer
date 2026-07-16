@@ -130,7 +130,7 @@ static HParsedToken *reshape_float(const HParseResult *p, void *user_data) {
                     dbl = 0.0;
                 }
             } else { // No implicit 1
-                significand = fraction / (double)(1ULL << 10);
+                significand = fraction / (double)(1ULL << 52);
                 dbl = (float)(pow(-1, sign)) * significand * pow(2.0, -1022);
             }
         }
@@ -296,6 +296,7 @@ HParser *h_floating_point__m(HAllocator *mm__, int bits) {
     return h_new_parser(mm__, &float_vt, env);
 }
 
+HParser *h_float16(void) { return h_floating_point__m(&system_allocator, 16); }
 HParser *h_float16(void) { return h_floating_point__m(&system_allocator, 16); }
 HParser *h_float(void) { return h_floating_point__m(&system_allocator, 32); }
 HParser *h_double(void) { return h_floating_point__m(&system_allocator, 64); }
