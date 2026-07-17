@@ -147,7 +147,7 @@ env.MergeFlags(
 )
 
 # Linker options
-env.MergeFlags("-lrt")
+env.MergeFlags("-lrt -lm")
 
 if GetOption("coverage"):
     env.Append(CCFLAGS=["--coverage"], LDFLAGS=["--coverage"], LINKFLAGS=["--coverage"])

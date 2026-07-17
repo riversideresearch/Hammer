@@ -9,13 +9,13 @@
 
 // Helpers to construct the parameter structures used by the C functions.
 
-static backend_param_with_name_t *make_param_entry_from_cstr(const char *s ) {
+static backend_param_with_name_t *make_param_entry_from_cstr(const char *s) {
     backend_param_with_name_t *entry = g_malloc0(sizeof(*entry));
     if (!entry)
         return NULL;
 
     size_t len = s ? strlen(s) : 0;
-    //fprintf(stderr, "Len = %lu", len);
+    // fprintf(stderr, "Len = %lu", len);
     /* allocate buffer with space for terminating NUL so sscanf/str* are safe */
     uint8_t *buf = NULL;
     if (len > 0) {
@@ -212,7 +212,7 @@ static void *fail_realloc(HAllocator *mm__, void *ptr, size_t size) {
 
 // Helper function for out-of-memory test free
 static void fail_free(HAllocator *mm__, void *ptr) {
-    return system_allocator.free(&system_allocator, ptr);
+    system_allocator.free(&system_allocator, ptr);
 }
 static HAllocator fail_allocator = {fail_alloc, fail_realloc, fail_free, NULL, NULL};
 

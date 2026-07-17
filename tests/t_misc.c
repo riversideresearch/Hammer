@@ -49,7 +49,7 @@ static void *fail_realloc(HAllocator *mm__, void *ptr, size_t size) {
 
 // Helper function for out-of-memory test free
 static void fail_free(HAllocator *mm__, void *ptr) {
-    return system_allocator.free(&system_allocator, ptr);
+    system_allocator.free(&system_allocator, ptr);
 }
 static HAllocator fail_allocator = {fail_alloc, fail_realloc, fail_free, NULL, NULL};
 
@@ -74,15 +74,15 @@ static void test_oom(void) {
     g_check_parse_chunks_failed__m(mm__, p, PB_PACKRAT, "", 0, "x", 1);
 }
 
+// Use H_ACT_APPLY to create wrapper actions
+H_ACT_APPLY(act_index_0, h_act_index, 0)
+H_ACT_APPLY(act_index_1, h_act_index, 1)
+H_ACT_APPLY(act_index_2, h_act_index, 2)
+H_ACT_APPLY(act_index_neg, h_act_index, -1)
+H_ACT_APPLY(act_index_large, h_act_index, 10)
+
 static void test_glue_act_index(void) {
     HParser *p = h_sequence(h_ch('a'), h_ch('b'), h_ch('c'), NULL);
-
-    // Use H_ACT_APPLY to create wrapper actions
-    H_ACT_APPLY(act_index_0, h_act_index, 0);
-    H_ACT_APPLY(act_index_1, h_act_index, 1);
-    H_ACT_APPLY(act_index_2, h_act_index, 2);
-    H_ACT_APPLY(act_index_neg, h_act_index, -1);
-    H_ACT_APPLY(act_index_large, h_act_index, 10);
 
     HParser *act0 = h_action(p, act_index_0, NULL);
     HParser *act1 = h_action(p, act_index_1, NULL);
