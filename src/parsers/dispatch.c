@@ -49,7 +49,7 @@ static size_t extract_opcode(HParseResult *result) {
         return (size_t)-1;
     size_t opcode;
     switch (result->ast->token_type) {
-    case (TT_BYTES):
+    case (TT_BYTES): {
         const HBytes b = result->ast->token_data.bytes;
         if (b.len == 0) {
             opcode = (size_t)-1;
@@ -66,6 +66,7 @@ static size_t extract_opcode(HParseResult *result) {
         }
         opcode = val;
         break;
+        }
     case (TT_SINT):
         opcode = (size_t)(result->ast->token_data.sint);
         break;
@@ -147,14 +148,22 @@ static HParseResult *parse_dispatch(void *env, HParseState *state) {
     }
 
     // Dispatch-owned result to avoid mutating cached body_result
+    HCountedArray *seq = h_carray_new(state->arena);
+    h_carray_append(seq, (void *)disc_result->ast);
+    h_carray_append(seq, (void *)body_result->ast);
+    HParsedToken *tok = a_new(HParsedToken, 1);
+    tok->token_type = TT_SEQUENCE;
+    tok->token_data.seq = seq;
+    tok->bit_length = body_result->bit_length + disc_result->bit_length;
+
     HParseResult *dispatch_result = a_new(HParseResult, 1);
     if (!dispatch_result) {
         return NULL;
     }
-
+    
+    dispatch_result->ast = tok;
     dispatch_result->arena = state->arena;
     dispatch_result->bit_length = body_result->bit_length + disc_result->bit_length;
-    dispatch_result->ast = body_result->ast;
 
     return dispatch_result;
 }
