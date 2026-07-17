@@ -24,6 +24,7 @@
 extern void register_bitreader_tests();
 extern void register_bitwriter_tests();
 extern void register_parser_tests();
+extern void register_floating_point_parser_tests();
 extern void register_basic_parser_tests();
 extern void register_integer_parser_tests();
 extern void register_float_parser_tests();
@@ -44,6 +45,7 @@ extern void register_hammer_tests();
 extern void register_glue_tests();
 extern void register_registry_tests();
 extern void register_desugar_tests();
+extern void register_dispatch_tests();
 extern void register_internal_tests();
 extern void register_unimplemented_tests();
 extern void register_grammar_tests();
@@ -52,6 +54,7 @@ extern void register_platform_tests();
 extern void register_misc_tests();
 extern void register_mm_tests();
 extern void register_names_tests();
+extern void register_param_k_tests();
 extern void register_benchmark_tests();
 extern void register_regression_tests();
 extern void register_allocator_tests();
@@ -67,6 +70,7 @@ int main(int argc, char **argv) {
     register_bitreader_tests();
     register_bitwriter_tests();
     register_parser_tests();
+    register_floating_point_parser_tests();
     register_basic_parser_tests();
     register_integer_parser_tests();
     register_float_parser_tests();
@@ -87,6 +91,7 @@ int main(int argc, char **argv) {
     register_glue_tests();
     register_registry_tests();
     register_desugar_tests();
+    register_dispatch_tests();
     register_internal_tests();
     register_unimplemented_tests();
     register_grammar_tests();
@@ -99,6 +104,7 @@ int main(int argc, char **argv) {
     register_benchmark_tests(); // Always run for coverage
     register_allocator_tests();
     register_datastructures_tests();
+    register_param_k_tests();
     register_pprint_tests();
     register_sloballoc_tests();
     register_system_allocator_tests();
