@@ -66,7 +66,7 @@ static size_t extract_opcode(HParseResult *result) {
         }
         opcode = val;
         break;
-        }
+    }
     case (TT_SINT):
         opcode = (size_t)(result->ast->token_data.sint);
         break;
@@ -160,7 +160,7 @@ static HParseResult *parse_dispatch(void *env, HParseState *state) {
     if (!dispatch_result) {
         return NULL;
     }
-    
+
     dispatch_result->ast = tok;
     dispatch_result->arena = state->arena;
     dispatch_result->bit_length = body_result->bit_length + disc_result->bit_length;
