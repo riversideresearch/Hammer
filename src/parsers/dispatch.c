@@ -49,7 +49,7 @@ static size_t extract_opcode(HParseResult *result) {
         return (size_t)-1;
     size_t opcode;
     switch (result->ast->token_type) {
-    case (TT_BYTES):
+    case (TT_BYTES): {
         const HBytes b = result->ast->token_data.bytes;
         if (b.len == 0) {
             opcode = (size_t)-1;
@@ -66,6 +66,7 @@ static size_t extract_opcode(HParseResult *result) {
         }
         opcode = val;
         break;
+        }
     case (TT_SINT):
         opcode = (size_t)(result->ast->token_data.sint);
         break;

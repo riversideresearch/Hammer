@@ -20,8 +20,8 @@ static void test_benchmark_1() {
 }
 
 static void test_benchmark_2() {
-    HParserTestcase simple_cases[] = {{(unsigned char *)"xy", 2, "u0x79"},
-                                      {(unsigned char *)"yx", 2, "u0x78"}, {NULL, 0, NULL}};
+    HParserTestcase simple_cases[] = {{(unsigned char *)"xy", 2, "(u0x78 u0x79)"},
+                                      {(unsigned char *)"yx", 2, "(u0x79 u0x78)"}, {NULL, 0, NULL}};
     OpcodeMap entries[2] = {{120,  h_ch('y')}, {121, h_ch('x')}};
 
     HParser *dispatch = h_dispatch(h_uint8(), entries, NULL);
