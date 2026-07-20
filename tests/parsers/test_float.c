@@ -176,7 +176,7 @@ static void test_double64_edgecases(gconstpointer backend) {
     g_check_cmpdouble(v, ==, 0.0);
 
     /* Negative zero (0x8000000000000000) */
-    const uint8_t negzero64[8] = {0x80,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
+    const uint8_t negzero64[8] = {0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
     result = h_parse(p, negzero64, 8);
     v = result->ast->token_data.dbl;
     g_check_cmpdouble(v, ==, 0.0);

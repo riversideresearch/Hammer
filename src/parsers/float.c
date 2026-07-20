@@ -43,8 +43,7 @@ static float float16_from_bits(uint16_t bits) {
                 --normalized_exponent;
             }
             fraction &= UINT32_C(0x03ff);
-            float_bits = sign | ((uint32_t)(normalized_exponent + 127) << 23) |
-                         (fraction << 13);
+            float_bits = sign | ((uint32_t)(normalized_exponent + 127) << 23) | (fraction << 13);
         }
     } else if (exponent == UINT16_C(0x001f)) {
         /* Infinity or NaN; retain the payload and sign. */
