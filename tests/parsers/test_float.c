@@ -218,7 +218,7 @@ static HParsedToken *act_double(const HParseResult *p, void *u) {
     return H_MAKE_DOUBLE((double)H_FIELD_UINT(0) + (double)H_FIELD_UINT(1) / 10);
 }
 
-static void test_double(gconstpointer backend) {
+static void test_make_double(gconstpointer backend) {
     HParser *b = h_uint8();
     HParser *dbl = h_action(h_sequence(b, b, NULL), act_double, NULL);
     uint8_t input[] = {4, 2};
@@ -231,7 +231,7 @@ static HParsedToken *act_float(const HParseResult *p, void *u) {
     return H_MAKE_FLOAT((float)H_FIELD_UINT(0) + (float)H_FIELD_UINT(1) / 10);
 }
 
-static void test_float(gconstpointer backend) {
+static void test_make_float(gconstpointer backend) {
     HParser *b = h_uint8();
     HParser *flt = h_action(h_sequence(b, b, NULL), act_float, NULL);
     uint8_t input[] = {4, 2};
@@ -250,6 +250,6 @@ void register_floating_point_parser_tests(void) {
                          test_double64_edgecases);
     g_test_add_data_func("/core/parser/float/truncated", GINT_TO_POINTER(PB_PACKRAT),
                          test_float_truncated);
-    g_test_add_data_func("/core/parser/packrat/double", GINT_TO_POINTER(PB_PACKRAT), test_double);
-    g_test_add_data_func("/core/parser/packrat/float", GINT_TO_POINTER(PB_PACKRAT), test_float);
+    g_test_add_data_func("/core/parser/packrat/make_double", GINT_TO_POINTER(PB_PACKRAT), test_make_double);
+    g_test_add_data_func("/core/parser/packrat/make_float", GINT_TO_POINTER(PB_PACKRAT), test_make_float);
 }

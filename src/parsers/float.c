@@ -24,14 +24,14 @@ struct float_env {
  */
 static float float32_from_bits(uint32_t raw_bits) {
     float value;
-    assert_message(sizeof(float) == 4, "binary32 requires 32-bit float");
+    assert(sizeof(float) == 4); // "binary32 requires 32-bit float"
     memcpy(&value, &raw_bits, 4);
     return value;
 }
 
 static double float64_from_bits(uint64_t raw_bits) {
     double value;
-    assert_message(sizeof(double) == 8, "binary64 requires 64-bit double");
+    assert(sizeof(double) == 8); // "binary64 requires 64-bit double"
     memcpy(&value, &raw_bits, 8);
     return value;
 }
@@ -98,6 +98,7 @@ static HParsedToken *reshape_float(const HParseResult *p, void *user_data) {
     struct float_env *env = user_data;
     assert(p->ast);
     assert(p->ast->token_type == TT_SEQUENCE);
+    assert(p->ast->token_data.seq->used == (size_t)env->bit_len / 8);
 
     HCountedArray *seq = p->ast->token_data.seq;
     uint64_t bits = 0;
@@ -175,6 +176,8 @@ static const HParserVtable float_vt = {
 };
 
 HParser *h_floating_point__m(HAllocator *mm__, int bit_len) {
+    if (bit_len != 16 && bit_len != 32 && bit_len != 64)
+        return NULL;
     struct float_env *env = h_new(struct float_env, 1);
     env->bit_len = bit_len;
     return h_new_parser(mm__, &float_vt, env);
