@@ -212,7 +212,7 @@ static void test_float_truncated(gconstpointer backend) {
     g_check_parse_failed(p64, be, short64, sizeof short64);
 }
 
-// Merged test_floats.c 
+// Merged test_floats.c
 // Helper function for double parser test
 static HParsedToken *act_double(const HParseResult *p, void *u) {
     return H_MAKE_DOUBLE((double)H_FIELD_UINT(0) + (double)H_FIELD_UINT(1) / 10);
@@ -250,6 +250,8 @@ void register_floating_point_parser_tests(void) {
                          test_double64_edgecases);
     g_test_add_data_func("/core/parser/float/truncated", GINT_TO_POINTER(PB_PACKRAT),
                          test_float_truncated);
-    g_test_add_data_func("/core/parser/packrat/make_double", GINT_TO_POINTER(PB_PACKRAT), test_make_double);
-    g_test_add_data_func("/core/parser/packrat/make_float", GINT_TO_POINTER(PB_PACKRAT), test_make_float);
+    g_test_add_data_func("/core/parser/packrat/make_double", GINT_TO_POINTER(PB_PACKRAT),
+                         test_make_double);
+    g_test_add_data_func("/core/parser/packrat/make_float", GINT_TO_POINTER(PB_PACKRAT),
+                         test_make_float);
 }

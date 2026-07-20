@@ -275,9 +275,9 @@ typedef struct backend_with_params {
  */
 
 typedef struct HParserTestcase_ {
-    unsigned char *input;
+    const unsigned char *input;
     size_t length;
-    char *output_unambiguous;
+    const char *output_unambiguous;
 } HParserTestcase;
 
 #ifdef SWIG

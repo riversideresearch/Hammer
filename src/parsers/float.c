@@ -194,10 +194,10 @@ static const HParserVtable float_vt = {
 HParser *h_floating_point__m(HAllocator *mm__, int bit_len) {
     if (bit_len != 16 && bit_len != 32 && bit_len != 64)
         return NULL;
-    
+
     if ((bit_len == 16 || bit_len == 32) && !supports_binary32())
-          return NULL;
-    
+        return NULL;
+
     if (bit_len == 64 && !supports_binary64())
         return NULL;
     struct float_env *env = h_new(struct float_env, 1);

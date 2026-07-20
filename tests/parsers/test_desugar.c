@@ -291,5 +291,4 @@ void register_desugar_tests(void) {
     g_test_add_func("/core/desugar/to_cfg_choice", test_desugar_to_cfg_choice);
     g_test_add_func("/core/desugar/to_cfg_many", test_desugar_to_cfg_many);
     g_test_add_func("/core/desugar/to_cfg_dispatch", test_desugar_to_cfg_dispatch);
-    
 }
