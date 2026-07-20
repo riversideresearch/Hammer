@@ -2,28 +2,36 @@
 #include "parser_internal.h"
 
 #include <assert.h>
+#include <float.h>
 #include <stdint.h>
 #include <string.h>
-#include <float.h>
 
 struct float_env {
     int bit_len;
 };
 
 static bool supports_binary32(void) {
-    return FLT_RADIX == 2 &&
-           FLT_MANT_DIG == 24 &&
-           FLT_MIN_EXP == -125 &&
-           FLT_MAX_EXP == 128 &&
-           sizeof(float) == sizeof(uint32_t);
+    const float one = 1.0f;
+    uint32_t raw_bits;
+
+    if (sizeof(float) != sizeof(raw_bits))
+        return false;
+
+    memcpy(&raw_bits, &one, sizeof(raw_bits));
+    return FLT_RADIX == 2 && FLT_MANT_DIG == 24 && FLT_MIN_EXP == -125 && FLT_MAX_EXP == 128 &&
+           raw_bits == UINT32_C(0x3f800000);
 }
 
 static bool supports_binary64(void) {
-    return FLT_RADIX == 2 &&
-           DBL_MANT_DIG == 53 &&
-           DBL_MIN_EXP == -1021 &&
-           DBL_MAX_EXP == 1024 &&
-           sizeof(double) == sizeof(uint64_t);
+    const double one = 1.0;
+    uint64_t raw_bits;
+
+    if (sizeof(double) != sizeof(raw_bits))
+        return false;
+
+    memcpy(&raw_bits, &one, sizeof(raw_bits));
+    return FLT_RADIX == 2 && DBL_MANT_DIG == 53 && DBL_MIN_EXP == -1021 && DBL_MAX_EXP == 1024 &&
+           raw_bits == UINT64_C(0x3ff0000000000000);
 }
 
 /*
