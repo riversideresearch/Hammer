@@ -6,17 +6,25 @@
 #include <string.h>
 #include <float.h>
 
-#if FLT_RADIX != 2 || FLT_MANT_DIG != 24 || FLT_MAX_EXP != 128
-#error "float parser requires IEEE-754 binary32 float"
-#endif
-
-#if DBL_MANT_DIG != 53 || DBL_MAX_EXP != 1024
-#error "double parser requires IEEE-754 binary64 double"
-#endif
-
 struct float_env {
     int bit_len;
 };
+
+static bool supports_binary32(void) {
+    return FLT_RADIX == 2 &&
+           FLT_MANT_DIG == 24 &&
+           FLT_MIN_EXP == -125 &&
+           FLT_MAX_EXP == 128 &&
+           sizeof(float) == sizeof(uint32_t);
+}
+
+static bool supports_binary64(void) {
+    return FLT_RADIX == 2 &&
+           DBL_MANT_DIG == 53 &&
+           DBL_MIN_EXP == -1021 &&
+           DBL_MAX_EXP == 1024 &&
+           sizeof(double) == sizeof(uint64_t);
+}
 
 /*
  * These parsers decode IEEE-754 interchange formats.  Copying the completed
@@ -177,6 +185,12 @@ static const HParserVtable float_vt = {
 
 HParser *h_floating_point__m(HAllocator *mm__, int bit_len) {
     if (bit_len != 16 && bit_len != 32 && bit_len != 64)
+        return NULL;
+    
+    if (!supports_binary32())
+        return NULL;
+        
+    if (bit_len == 64 && !supports_binary64())
         return NULL;
     struct float_env *env = h_new(struct float_env, 1);
     env->bit_len = bit_len;
