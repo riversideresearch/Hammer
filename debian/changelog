@@ -1,3 +1,19 @@
+libhammer (3.0.0-1) unstable; urgency=medium
+
+  * Restore context-free and regular-expression parsing backends
+  * Add capped repetition parsers h_many_cap and h_many1_cap
+  * Add discriminator-based dispatch parsing and backend support
+  * Add sequence removal APIs and allocator reallocation support
+  * Extend h_bytes and related combinators across supported backends
+  * Add h_float16, h_float32, and h_float64 IEEE 754 parsers
+  * Improve parser parameter validation, runtime checks, and error handling
+  * Name public token and timestamp unions and widen token bit lengths to size_t
+  * Remove h_arena_free in favor of arena-owned allocation lifetimes
+  * Enforce strict C99 compliance
+  * Bump project, package, shared-library, and language-binding versions to 3.0.0
+
+ -- Mahmoud Elbasiouny <melbasiouny@riversideresearch.org>  Mon, 20 Jul 2026 12:00:00 -0400
+
 libhammer (2.1.0-1) unstable; urgency=medium
 
   * Rename MicroHammer packaging and documentation back to Hammer
