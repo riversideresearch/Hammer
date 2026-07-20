@@ -76,7 +76,7 @@ static void test_desugar_bits_signed(void) {
 }
 
 static void test_desugar_float(void) {
-    const HParser *p = h_float();
+    const HParser *p = h_float32();
     HCFChoice *desugared = h_desugar(&system_allocator, NULL, p);
     g_check_cmp_ptr(desugared, !=, NULL);
     g_check_cmp_int(desugared->type, ==, HCF_CHOICE);

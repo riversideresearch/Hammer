@@ -206,5 +206,5 @@ HParser *h_floating_point__m(HAllocator *mm__, int bit_len) {
 }
 
 HParser *h_float16(void) { return h_floating_point__m(&system_allocator, 16); }
-HParser *h_float(void) { return h_floating_point__m(&system_allocator, 32); }
-HParser *h_double(void) { return h_floating_point__m(&system_allocator, 64); }
+HParser *h_float32(void) { return h_floating_point__m(&system_allocator, 32); }
+HParser *h_float64(void) { return h_floating_point__m(&system_allocator, 64); }
