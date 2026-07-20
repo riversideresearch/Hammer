@@ -89,7 +89,7 @@ static HParseResult *parse_permutation(void *env, HParseState *state) {
         seq->used = n;
         HParsedToken *tok = a_new(HParsedToken, 1);
         tok->token_type = TT_SEQUENCE;
-        tok->seq = seq;
+        tok->token_data.seq = seq;
         tok->index = 0;
         tok->bit_length = 0;
         tok->bit_offset = 0;

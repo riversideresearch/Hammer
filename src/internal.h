@@ -60,7 +60,7 @@
 // Functions with arguments are difficult to forward cleanly. Alas, we will need to forward them
 // manually.
 
-#define h_new(type, count) ((type *)(h_alloc(mm__, sizeof(type) * (count))))
+#define h_new(type, count) ((type *)(h_alloc(mm__, sizeof(type) * (size_t)(count))))
 #define h_free(addr) (mm__->free(mm__, (addr)))
 
 #ifndef __cplusplus
@@ -179,8 +179,8 @@ static inline int charset_isset(HCharset cs, uint8_t pos) {
 
 static inline void charset_set(HCharset cs, uint8_t pos, int val) {
     cs[pos / (sizeof(*cs) * 8)] =
-        val ? cs[pos / (sizeof(*cs) * 8)] | (1 << (pos % (sizeof(*cs) * 8)))
-            : cs[pos / (sizeof(*cs) * 8)] & ~(1 << (pos % (sizeof(*cs) * 8)));
+        val ? cs[pos / (sizeof(*cs) * 8)] | (1u << (pos % (sizeof(*cs) * 8)))
+            : cs[pos / (sizeof(*cs) * 8)] & ~(1u << (pos % (sizeof(*cs) * 8)));
 }
 
 typedef unsigned int HHashValue;
@@ -237,7 +237,7 @@ struct HSuspendedParser_ {
     uint8_t endianness;
 };
 
-typedef struct HParserBackendVTable_ {
+struct HParserBackendVTable_ {
     int (*compile)(HAllocator *mm__, HParser *parser, const void *params);
     HParseResult *(*parse)(HAllocator *mm__, const HParser *parser, HInputStream *stream);
     void (*free)(HParser *parser);
@@ -275,7 +275,7 @@ typedef struct HParserBackendVTable_ {
     /* extract params from the input string */
     int (*extract_params)(HParserBackendWithParams *be_with_params,
                           backend_with_params_t *be_with_params_t);
-} HParserBackendVTable;
+};
 
 /* The (location, parser) tuple used to key the cache.
  */
@@ -328,7 +328,7 @@ typedef struct HParserCacheValue_t {
     union {
         HLeftRec *left;
         HParseResult *right;
-    };
+    } value;
     HInputStream input_stream;
 } HParserCacheValue;
 
@@ -350,6 +350,10 @@ struct HBitWriter_ {
 // Backends {{{
 extern HParserBackendVTable h__missing_backend_vtable;
 extern HParserBackendVTable h__packrat_backend_vtable;
+extern HParserBackendVTable h__regex_backend_vtable;
+extern HParserBackendVTable h__llk_backend_vtable;
+extern HParserBackendVTable h__lalr_backend_vtable;
+extern HParserBackendVTable h__glr_backend_vtable;
 // }}}
 
 // TODO(thequux): Set symbol visibility for these functions so that they aren't exported.
@@ -368,7 +372,7 @@ void h_seek_bits(HInputStream *state, size_t pos);
 static inline size_t h_input_stream_pos(HInputStream *state) {
     assert(state->pos <= SIZE_MAX - state->index);
     assert(state->pos + state->index < SIZE_MAX / 8);
-    return (state->pos + state->index) * 8 + state->bit_offset + state->margin;
+    return (state->pos + state->index) * 8 + (size_t)(state->bit_offset) + (size_t)(state->margin);
 }
 static inline size_t h_input_stream_length(HInputStream *state) {
     assert(state->pos <= SIZE_MAX - state->length);
@@ -413,6 +417,15 @@ static inline HParser *h_new_parser(HAllocator *mm__, const HParserVtable *vt, v
 
 HCFChoice *h_desugar(HAllocator *mm__, HCFStack *stk__, const HParser *parser);
 
+/*
+ * Correct Usage:
+ *   - These data structures allocate all internal storage from the given HArena.
+ *   - They do NOT free individual nodes, buffers, or entries; memory is reclaimed
+ *     only when the arena itself is destroyed via h_delete_arena().
+ *   - They are safe and leak-free ONLY when the arena has a well-defined,
+ *     short lifetime (e.g., per-parse). Using them in long-lived arenas will
+ *     cause memory to grow without being reclaimed.
+ */
 HCountedArray *h_carray_new_sized(HArena *arena, size_t size);
 HCountedArray *h_carray_new(HArena *arena);
 void h_carray_append(HCountedArray *array, void *item);
@@ -461,7 +474,6 @@ void *h_symbol_get(HParseState *state, const char *key);
 void *h_symbol_free(HParseState *state, const char *key);
 
 typedef struct HCFSequence_ HCFSequence;
-typedef struct HCFStack_ HCFStack;
 
 struct HCFChoice_ {
     enum HCFChoiceType { HCF_END, HCF_CHOICE, HCF_CHARSET, HCF_CHAR } type;
@@ -469,12 +481,13 @@ struct HCFChoice_ {
         HCharset charset;
         HCFSequence **seq;
         uint8_t chr;
-    };
+    } data;
     HAction reshape; // take CFG parse tree to HParsedToken of expected form.
                      // to execute before action and pred are applied.
     HAction action;
     HPredicate pred;
     void *user_data;
+    size_t dispatch_opcode;
 };
 
 struct HCFSequence_ {
@@ -521,20 +534,20 @@ static inline void h_cfstack_add_to_seq(HAllocator *mm__, HCFStack *stk__, HCFCh
 static inline void h_cfstack_add_to_seq(HAllocator *mm__, HCFStack *stk__, HCFChoice *item) {
     HCFChoice *cur_top = stk__->stack[stk__->count - 1];
     assert(cur_top->type == HCF_CHOICE);
-    assert(cur_top->seq[0] != NULL); // There must be at least one sequence...
+    assert(cur_top->data.seq[0] != NULL); // There must be at least one sequence...
     stk__->last_completed = item;
-    for (int i = 0;; i++) {
-        if (cur_top->seq[i + 1] == NULL) {
-            assert(cur_top->seq[i]->items != NULL);
-            for (int j = 0;; j++) {
-                if (cur_top->seq[i]->items[j] == NULL) {
-                    cur_top->seq[i]->items =
-                        mm__->realloc(mm__, cur_top->seq[i]->items, sizeof(HCFChoice *) * (j + 2));
-                    if (!cur_top->seq[i]->items) {
+    for (size_t i = 0;; i++) {
+        if (cur_top->data.seq[i + 1] == NULL) {
+            assert(cur_top->data.seq[i]->items != NULL);
+            for (size_t j = 0;; j++) {
+                if (cur_top->data.seq[i]->items[j] == NULL) {
+                    cur_top->data.seq[i]->items = mm__->realloc(mm__, cur_top->data.seq[i]->items,
+                                                                sizeof(HCFChoice *) * (j + 2));
+                    if (!cur_top->data.seq[i]->items) {
                         stk__->error = 1;
                     }
-                    cur_top->seq[i]->items[j] = item;
-                    cur_top->seq[i]->items[j + 1] = NULL;
+                    cur_top->data.seq[i]->items[j] = item;
+                    cur_top->data.seq[i]->items[j + 1] = NULL;
                     assert(!stk__->error);
                     return;
                 }
@@ -562,14 +575,14 @@ static inline HCFChoice *h_cfstack_new_choice_raw(HAllocator *mm__, HCFStack *st
 static inline void h_cfstack_add_charset(HAllocator *mm__, HCFStack *stk__, HCharset charset) {
     HCFChoice *ni = h_cfstack_new_choice_raw(mm__, stk__);
     ni->type = HCF_CHARSET;
-    ni->charset = charset;
+    ni->data.charset = charset;
     stk__->last_completed = ni;
 }
 
 static inline void h_cfstack_add_char(HAllocator *mm__, HCFStack *stk__, uint8_t chr) {
     HCFChoice *ni = h_cfstack_new_choice_raw(mm__, stk__);
     ni->type = HCF_CHAR;
-    ni->chr = chr;
+    ni->data.chr = chr;
     stk__->last_completed = ni;
 }
 
@@ -582,13 +595,14 @@ static inline void h_cfstack_add_end(HAllocator *mm__, HCFStack *stk__) {
 static inline void h_cfstack_begin_choice(HAllocator *mm__, HCFStack *stk__) {
     HCFChoice *choice = h_cfstack_new_choice_raw(mm__, stk__);
     choice->type = HCF_CHOICE;
-    choice->seq = h_new(HCFSequence *, 1);
-    choice->seq[0] = NULL;
+    choice->data.seq = h_new(HCFSequence *, 1);
+    choice->data.seq[0] = NULL;
 
     if (stk__->count + 1 > stk__->cap) {
         assert(stk__->cap > 0);
         stk__->cap *= 2;
-        stk__->stack = mm__->realloc(mm__, stk__->stack, stk__->cap * sizeof(HCFChoice *));
+        stk__->stack =
+            mm__->realloc(mm__, stk__->stack, (size_t)(stk__->cap) * sizeof(HCFChoice *));
         if (!stk__->stack) {
             stk__->error = 1;
         }
@@ -599,15 +613,15 @@ static inline void h_cfstack_begin_choice(HAllocator *mm__, HCFStack *stk__) {
 
 static inline void h_cfstack_begin_seq(HAllocator *mm__, HCFStack *stk__) {
     HCFChoice *top = stk__->stack[stk__->count - 1];
-    for (int i = 0;; i++) {
-        if (top->seq[i] == NULL) {
-            top->seq = mm__->realloc(mm__, top->seq, sizeof(HCFSequence *) * (i + 2));
-            if (!top->seq) {
+    for (size_t i = 0;; i++) {
+        if (top->data.seq[i] == NULL) {
+            top->data.seq = mm__->realloc(mm__, top->data.seq, sizeof(HCFSequence *) * (i + 2));
+            if (!top->data.seq) {
                 stk__->error = 1;
                 return;
             }
-            HCFSequence *seq = top->seq[i] = h_new(HCFSequence, 1);
-            top->seq[i + 1] = NULL;
+            HCFSequence *seq = top->data.seq[i] = h_new(HCFSequence, 1);
+            top->data.seq[i + 1] = NULL;
             seq->items = h_new(HCFChoice *, 1);
             seq->items[0] = NULL;
             return;
@@ -639,11 +653,13 @@ static inline void h_cfstack_end_choice(HAllocator *mm__, HCFStack *stk__) {
 #define HCFS_END_CHOICE() h_cfstack_end_choice(mm__, stk__)
 #define HCFS_END_SEQ() h_cfstack_end_seq(mm__, stk__)
 #define HCFS_THIS_CHOICE (stk__->stack[stk__->count - 1])
+#define HCFS_SET_DISPATCH_OPCODE(op) (HCFS_THIS_CHOICE->dispatch_opcode = (op))
 
 struct HParserVtable_ {
     HParseResult *(*parse)(void *env, HParseState *state);
     bool (*isValidRegular)(void *env);
     bool (*isValidCF)(void *env);
+    bool (*compile_to_rvm)(HRVMProg *prog, void *env);
     void (*desugar)(HAllocator *mm__, HCFStack *stk__, void *env);
     bool higher; // false if primitive
 };

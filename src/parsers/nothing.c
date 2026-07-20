@@ -13,10 +13,17 @@ static void desugar_nothing(HAllocator *mm__, HCFStack *stk__, void *env) {
     HCFS_END_CHOICE();
 }
 
+static bool nothing_ctrvm(HRVMProg *prog, void *env) {
+    h_rvm_insert_insn(prog, RVM_MATCH, 0x0000);
+    h_rvm_insert_insn(prog, RVM_MATCH, 0xFFFF);
+    return true;
+}
+
 static const HParserVtable nothing_vt = {
     .parse = parse_nothing,
     .isValidRegular = h_true,
     .isValidCF = h_true,
+    .compile_to_rvm = nothing_ctrvm,
     .desugar = desugar_nothing,
     .higher = false,
 };

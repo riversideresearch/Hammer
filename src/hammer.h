@@ -50,7 +50,11 @@ typedef enum HParserBackend_ {
     PB_INVALID = PB_MIN, /**< Have a backend that always fails to pass around "no such backend"
                             indications */
     PB_PACKRAT,
-    PB_MAX = PB_PACKRAT
+    PB_REGULAR,
+    PB_LL,
+    PB_LALR,
+    PB_GLR,
+    PB_MAX = PB_GLR
 } HParserBackend;
 
 typedef struct HParserBackendVTable_ HParserBackendVTable;
@@ -146,7 +150,7 @@ typedef struct HParsedToken_ {
         float flt;
         HCountedArray *seq; /**< a sequence of HParsedToken's */
         void *user;
-    };
+    } token_data;
 #else
     HTokenData token_data;
 #endif
@@ -163,7 +167,7 @@ typedef struct HParsedToken_ {
  */
 typedef struct HParseResult_ {
     const HParsedToken *ast; /**< Abstract syntax tree */
-    int64_t bit_length;
+    size_t bit_length;
     HArena *arena; /**< Memory arena for the parse result */
 } HParseResult;
 
@@ -271,9 +275,9 @@ typedef struct backend_with_params {
  */
 
 typedef struct HParserTestcase_ {
-    unsigned char *input;
+    const unsigned char *input;
     size_t length;
-    char *output_unambiguous;
+    const char *output_unambiguous;
 } HParserTestcase;
 
 #ifdef SWIG
@@ -290,7 +294,7 @@ typedef struct HCaseResult_ {
         const char
             *actual_results; /**< on failure, filled in with the results of h_write_result_unamb */
         size_t parse_time;   /**< on success, filled in with time for a single parse, in nsec */
-    };
+    } timestamp;
 #else
     HResultTiming timestamp;
 #endif
@@ -599,6 +603,42 @@ HParser *h_uint8__m(HAllocator *mm__);
 
 /** @} */
 
+/**
+ * @defgroup floating point Parsers
+ * @{
+ */
+
+/**
+ * @brief Parse an IEEE-754 binary16 value, equivalent to a half-precision float
+ * @return Result token type: TT_FLOAT
+ */
+HParser *h_float16(void);
+/**
+ * @brief Parse an IEEE-754 binary32 value, equivalent to a single-precision or C float
+ * @return Result token type: TT_FLOAT
+ */
+HParser *h_float32(void);
+
+/**
+ * @brief Parse an IEEE-754 binary64 value, equivalent to a double-precision or C double
+ * @return Result token type: TT_DOUBLE
+ */
+HParser *h_float64(void);
+
+HParser *h_floating_point__m(HAllocator *mm__, int bits);
+/** @} */
+
+/**
+ * @brief Returns a parser that parses the specified number of bytes. The input does not have to be
+ * aligned to a byte boundary.
+ *
+ * @param len Number of bytes
+ * @return Result token type: TT_BYTES
+ * @note Consumes 'len * 8' bits from the input stream
+ */
+HParser *h_bytes(size_t len);
+HParser *h_bytes__m(HAllocator *mm__, size_t len);
+
 /** @defgroup combinators Parser Combinators
  * @{
  */
@@ -740,6 +780,31 @@ HParser *h_choice__v(HParser *p, va_list ap);
 HParser *h_choice__a(void *args[]);
 HParser *h_choice__ma(HAllocator *mm__, void *args[]);
 
+typedef struct {
+    uint32_t opcode;
+    HParser *parser;
+} OpcodeMap;
+
+HParser *h_dispatch__m(HAllocator *mm__, HParser *discriminator, const OpcodeMap *map, size_t count,
+                       HParser *default_parser);
+HParser *h_dispatch__s(HParser *discriminator, const OpcodeMap *map, size_t count,
+                       HParser *default_parser);
+// public macro — zero runtime cost for compile-time arrays
+/**
+ * Create a parser that dispatches based on a discriminator value.
+ * @brief Given a dictionary-like struct of parsers linked with opcodes, apply the parser linked to
+ * the opcode read by the discriminator. Apply default parser if opcode doesn't match to a parser.
+ *
+ * @param discriminator Parser that produces an integer value that represent the opcode (e.g.,
+ * h_uint8())
+ * @param map An OpcodeMap struct that acts as a dictionary, linking each opcode to a parser.
+ * @param default_parser Parser that will be applied when opcode isn't in dictionary, may be NULL.
+ * @return TT_SEQUENCE of the discriminator parser result and the mapped or default parser result.
+ * @note Only works with Packrat.
+ */
+#define h_dispatch(discriminator, map, default_parser)                                             \
+    h_dispatch__s((discriminator), (map), (sizeof(map) / sizeof((map)[0])), default_parser)
+
 /**
  * @brief Given a null-terminated list of parsers, match a permutation phrase of these parsers, i.e.
  * match all parsers exactly once in any order.
@@ -821,6 +886,24 @@ HParser *h_many__m(HAllocator *mm__, const HParser *p);
  */
 HParser *h_many1(const HParser *p);
 HParser *h_many1__m(HAllocator *mm__, const HParser *p);
+
+/**
+ * @brief Given a parser, p, this parser succeeds for zero or more up to N repetitions of p.
+ * @param p Parser to repeat
+ * @param n Maximum number of repetitions
+ * @return Result token type: TT_SEQUENCE
+ */
+HParser *h_many_cap(const HParser *p, const size_t n);
+HParser *h_many_cap__m(HAllocator *mm__, const HParser *p, const size_t n);
+
+/**
+ * @brief Given a parser, p, this parser succeeds for one or more up to N repetitions of p.
+ * @param p Parser to repeat
+ * @param n Maximum number of repetitions
+ * @return Result token type: TT_SEQUENCE
+ */
+HParser *h_many1_cap(const HParser *p, const size_t n);
+HParser *h_many1_cap__m(HAllocator *mm__, const HParser *p, const size_t n);
 
 /**
  * @brief Given a parser, p, this parser succeeds for exactly N repetitions of p.
@@ -1245,7 +1328,7 @@ struct result_buf;
 
 bool h_append_buf(struct result_buf *buf, const char *input, int len);
 bool h_append_buf_c(struct result_buf *buf, char v);
-bool h_append_buf_formatted(struct result_buf *buf, char *format, ...);
+bool h_append_buf_formatted(struct result_buf *buf, const char *format, ...);
 
 /** @} */
 

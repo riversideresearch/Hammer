@@ -57,10 +57,10 @@ static void test_reshape_sequence(gconstpointer backend) {
         HArena *arena = h_new_arena(&system_allocator, 0);
         HParsedToken *seq_token = h_make_seq(arena);
         HParsedToken *elem1 = h_make_uint(arena, 97);
-        h_carray_append(seq_token->seq, elem1);
-        h_carray_append(seq_token->seq, NULL);
+        h_carray_append(seq_token->token_data.seq, elem1);
+        h_carray_append(seq_token->token_data.seq, NULL);
         HParsedToken *elem3 = h_make_uint(arena, 99);
-        h_carray_append(seq_token->seq, elem3);
+        h_carray_append(seq_token->token_data.seq, elem3);
         HParseResult mock_result = {.arena = arena, .ast = seq_token, .bit_length = 24};
         HParsedToken *reshaped = desugared2->reshape(&mock_result, NULL);
         g_check_cmp_ptr(reshaped, !=, NULL);

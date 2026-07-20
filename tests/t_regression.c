@@ -44,16 +44,16 @@ static void test_seq_index_path(void) {
     HParsedToken *tok1 = h_make_uint(arena, 41);
     HParsedToken *tok2 = h_make_uint(arena, 42);
 
-    seq->seq->elements[0] = seq2;
-    seq->seq->used = 1;
-    seq2->seq->elements[0] = tok1;
-    seq2->seq->elements[1] = tok2;
-    seq2->seq->used = 2;
+    seq->token_data.seq->elements[0] = seq2;
+    seq->token_data.seq->used = 1;
+    seq2->token_data.seq->elements[0] = tok1;
+    seq2->token_data.seq->elements[1] = tok2;
+    seq2->token_data.seq->used = 2;
 
     g_check_cmp_int(h_seq_index_path(seq, 0, -1)->token_type, ==, TT_SEQUENCE);
     g_check_cmp_int(h_seq_index_path(seq, 0, 0, -1)->token_type, ==, TT_UINT);
-    g_check_cmp_int64(h_seq_index_path(seq, 0, 0, -1)->uint, ==, 41);
-    g_check_cmp_int64(h_seq_index_path(seq, 0, 1, -1)->uint, ==, 42);
+    g_check_cmp_int64(h_seq_index_path(seq, 0, 0, -1)->token_data.uint, ==, 41);
+    g_check_cmp_int64(h_seq_index_path(seq, 0, 1, -1)->token_data.uint, ==, 42);
 }
 
 #define MK_INPUT_STREAM(buf, len, endianness_)                                                     \
@@ -167,6 +167,8 @@ static void test_charset_bits(void) {
         .alloc = test_charset_bits__alloc,
         .realloc = NULL,
         .free = NULL,
+        .vt = NULL,
+        .env = NULL,
     };
     test_charset_bits__buf[32] = 0xAB;
     new_charset(&alloc);
@@ -222,9 +224,11 @@ static HAllocator deadbeefing_allocator = {
     .alloc = deadbeefing_malloc,
     .realloc = deadbeefing_realloc,
     .free = deadbeefing_free,
+    .vt = NULL,
+    .env = NULL,
 };
 
-static void test_bug_19() {
+static void test_bug_19(void) {
     void *args[] = {
         h_ch_range__m(&deadbeefing_allocator, '0', '9'),
         h_ch_range__m(&deadbeefing_allocator, 'A', 'Z'),
@@ -254,7 +258,7 @@ static void test_bug_19() {
     g_assert_true(1);
 }
 
-static void test_flatten_null() {
+static void test_flatten_null(void) {
     // h_act_flatten() produces a flat sequence from a nested sequence. it also
     // hapens to produce a one-element sequence when given a non-sequence token.
     // but given a null token (as from h_epsilon_p() or h_ignore()), it would
@@ -296,7 +300,7 @@ static void test_flatten_null() {
   HParsedToken *tok = H_INDEX_TOKEN(p->ast, 1);
   assert(tok != NULL);
   assert(tok->token_type == TT_SEQUENCE);
-  assert(tok->seq->used == 0);
+  assert(tok->token_data.seq->used == 0);
   g_check_cmp_size(tok->bit_length, ==, 0);
   g_check_cmp_size(tok->index, ==, 2);
   g_check_cmp_int((int)tok->bit_offset, ==, 0);
@@ -350,7 +354,7 @@ static void test_ast_length_index() {
 }
 #endif // 0
 
-static void test_issue91() {
+static void test_issue91(void) {
     // this ambiguous grammar caused intermittent (?) assertion failures when
     // trying to compile with the LALR backend:
     //
@@ -368,7 +372,7 @@ static void test_issue91() {
     g_check_cmp_int(r, ==, 0); // Packrat should compile successfully
 }
 
-static void test_issue87() {
+static void test_issue87(void) {
     HParser *a = h_ch('a');
     HParser *a2 = h_ch_range('a', 'a');
     HParser *p = h_many(h_many(h_choice(a, a2, NULL)));
@@ -377,7 +381,7 @@ static void test_issue87() {
     g_check_cmp_int(r, ==, 0); // Packrat should compile successfully
 }
 
-static void test_issue92() {
+static void test_issue92(void) {
     HParser *a = h_ch('a');
     HParser *b = h_ch('b');
 
@@ -431,7 +435,7 @@ static void test_issue92() {
     g_check_cmp_int(r, ==, 0);
 }
 
-static void test_issue83() {
+static void test_issue83(void) {
     HParser *p = h_sequence(h_sequence(NULL, NULL), h_nothing_p(), NULL);
     /*
      * A -> B
@@ -459,7 +463,7 @@ static void test_issue83() {
  * This is Meg's cut-down bug 60 test case
  */
 
-static void test_bug60() {
+static void test_bug60(void) {
     /* There is probably an even smaller example that shows the issue */
 
     HParser *zed = NULL;
@@ -504,7 +508,7 @@ static void test_bug60() {
 
 #define BUG60_ABNF_SCAN_UP_TO 64
 
-static void test_bug60_abnf() {
+static void test_bug60_abnf(void) {
     HParser *newline = NULL;
     HParser *alpha = NULL;
     HParser *sp = NULL;

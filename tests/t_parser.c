@@ -162,7 +162,6 @@ __attribute__((unused)) static void test_uint8(gconstpointer backend) {
 }
 //@MARK_END
 
-// XXX implement h_double() and h_float(). these just test the pretty-printer...
 static HParsedToken *act_double(const HParseResult *p, void *u) {
     return H_MAKE_DOUBLE((double)H_FIELD_UINT(0) + (double)H_FIELD_UINT(1) / 10);
 }
@@ -262,25 +261,26 @@ HParsedToken *upcase(const HParseResult *p, void *user_data) {
     switch (p->ast->token_type) {
     case TT_SEQUENCE: {
         HParsedToken *ret = a_new0_(p->arena, HParsedToken, 1);
-        HCountedArray *seq = h_carray_new_sized(p->arena, p->ast->seq->used);
+        HCountedArray *seq = h_carray_new_sized(p->arena, p->ast->token_data.seq->used);
         ret->token_type = TT_SEQUENCE;
-        for (size_t i = 0; i < p->ast->seq->used; ++i) {
-            if (TT_UINT == ((HParsedToken *)p->ast->seq->elements[i])->token_type) {
+        for (size_t i = 0; i < p->ast->token_data.seq->used; ++i) {
+            if (TT_UINT == ((HParsedToken *)p->ast->token_data.seq->elements[i])->token_type) {
                 HParsedToken *tmp = a_new0_(p->arena, HParsedToken, 1);
                 tmp->token_type = TT_UINT;
-                tmp->uint = toupper(((HParsedToken *)p->ast->seq->elements[i])->uint);
+                tmp->token_data.uint =
+                    toupper(((HParsedToken *)p->ast->token_data.seq->elements[i])->token_data.uint);
                 h_carray_append(seq, tmp);
             } else {
-                h_carray_append(seq, p->ast->seq->elements[i]);
+                h_carray_append(seq, p->ast->token_data.seq->elements[i]);
             }
         }
-        ret->seq = seq;
+        ret->token_data.seq = seq;
         return ret;
     }
     case TT_UINT: {
         HParsedToken *ret = a_new0_(p->arena, HParsedToken, 1);
         ret->token_type = TT_UINT;
-        ret->uint = toupper(p->ast->uint);
+        ret->token_data.uint = toupper(p->ast->token_data.uint);
         return ret;
     }
     default:
@@ -407,6 +407,41 @@ static void test_many1(gconstpointer backend) {
     g_check_parse_failed(many1_, (HParserBackend)GPOINTER_TO_INT(backend), "daabbabadef", 11);
 }
 
+static void test_many_cap(gconstpointer backend) {
+    const HParser *many_cap_ = h_many_cap(h_choice(h_ch('a'), h_ch('b'), NULL), 2);
+
+    g_check_parse_match(many_cap_, (HParserBackend)GPOINTER_TO_INT(backend), "", 0, "()");
+    g_check_parse_match(many_cap_, (HParserBackend)GPOINTER_TO_INT(backend), "a", 1, "(u0x61)");
+    g_check_parse_match(many_cap_, (HParserBackend)GPOINTER_TO_INT(backend), "ab", 2,
+                        "(u0x61 u0x62)");
+    g_check_parse_match(many_cap_, (HParserBackend)GPOINTER_TO_INT(backend), "aab", 3,
+                        "(u0x61 u0x61)");
+
+    const HParser *many_cap_2 = h_many_cap(h_choice(h_ch('a'), h_ch('b'), NULL), 0);
+    g_check_parse_match(many_cap_2, (HParserBackend)GPOINTER_TO_INT(backend), "", 0, "()");
+    g_check_parse_match(many_cap_2, (HParserBackend)GPOINTER_TO_INT(backend), "a", 1, "()");
+}
+
+static void test_many1_cap(gconstpointer backend) {
+    const HParser *many1_cap_ = h_many1_cap(h_choice(h_ch('a'), h_ch('b'), NULL), 2);
+
+    g_check_parse_failed(many1_cap_, (HParserBackend)GPOINTER_TO_INT(backend), "", 0);
+    g_check_parse_match(many1_cap_, (HParserBackend)GPOINTER_TO_INT(backend), "a", 1, "(u0x61)");
+    g_check_parse_match(many1_cap_, (HParserBackend)GPOINTER_TO_INT(backend), "ab", 2,
+                        "(u0x61 u0x62)");
+    g_check_parse_match(many1_cap_, (HParserBackend)GPOINTER_TO_INT(backend), "aab", 3,
+                        "(u0x61 u0x61)");
+
+    const HParser *many1_cap_2 = h_many1_cap(h_choice(h_ch('a'), h_ch('b'), NULL), 0);
+    g_check_parse_failed(many1_cap_2, (HParserBackend)GPOINTER_TO_INT(backend), "", 0);
+    g_check_parse_failed(many1_cap_2, (HParserBackend)GPOINTER_TO_INT(backend), "a", 1);
+
+    const HParser *many1_cap_3 = h_many1_cap(h_choice(h_ch('a'), h_ch('b'), NULL), 1);
+    g_check_parse_failed(many1_cap_3, (HParserBackend)GPOINTER_TO_INT(backend), "", 0);
+    g_check_parse_match(many1_cap_3, (HParserBackend)GPOINTER_TO_INT(backend), "a", 1, "(u0x61)");
+    g_check_parse_match(many1_cap_3, (HParserBackend)GPOINTER_TO_INT(backend), "ab", 2, "(u0x61)");
+}
+
 static void test_repeat_n(gconstpointer backend) {
     const HParser *repeat_n_ = h_repeat_n(h_choice(h_ch('a'), h_ch('b'), NULL), 2);
 
@@ -479,11 +514,12 @@ static void test_epsilon_p(gconstpointer backend) {
 bool validate_test_ab(HParseResult *p, void *user_data) {
     if (TT_SEQUENCE != p->ast->token_type)
         return false;
-    if (TT_UINT != p->ast->seq->elements[0]->token_type)
+    if (TT_UINT != p->ast->token_data.seq->elements[0]->token_type)
         return false;
-    if (TT_UINT != p->ast->seq->elements[1]->token_type)
+    if (TT_UINT != p->ast->token_data.seq->elements[1]->token_type)
         return false;
-    return (p->ast->seq->elements[0]->uint == p->ast->seq->elements[1]->uint);
+    return (p->ast->token_data.seq->elements[0]->token_data.uint ==
+            p->ast->token_data.seq->elements[1]->token_data.uint);
 }
 
 static void test_attr_bool(gconstpointer backend) {
@@ -794,7 +830,7 @@ static void test_endianness(gconstpointer backend) {
 HParsedToken *act_get(const HParseResult *p, void *user_data) {
     HParsedToken *ret = a_new0_(p->arena, HParsedToken, 1);
     ret->token_type = TT_UINT;
-    ret->uint = 3 * (1 << p->ast->uint);
+    ret->token_data.uint = 3 * (1 << p->ast->token_data.uint);
     return ret;
 }
 
@@ -874,9 +910,9 @@ static HParser *k_test_bind(HAllocator *mm__, const HParsedToken *p, void *env) 
     assert(p->token_type == TT_SEQUENCE);
 
     int v = 0;
-    for (size_t i = 0; i < p->seq->used; i++) {
-        assert(p->seq->elements[i]->token_type == TT_UINT);
-        v = v * 10 + p->seq->elements[i]->uint - '0';
+    for (size_t i = 0; i < p->token_data.seq->used; i++) {
+        assert(p->token_data.seq->elements[i]->token_type == TT_UINT);
+        v = v * 10 + p->token_data.seq->elements[i]->token_data.uint - '0';
     }
 
     if (v > 26)
@@ -1004,6 +1040,10 @@ void register_parser_tests(void) {
     g_test_add_data_func("/core/parser/packrat/xor", GINT_TO_POINTER(PB_PACKRAT), test_xor);
     g_test_add_data_func("/core/parser/packrat/many", GINT_TO_POINTER(PB_PACKRAT), test_many);
     g_test_add_data_func("/core/parser/packrat/many1", GINT_TO_POINTER(PB_PACKRAT), test_many1);
+    g_test_add_data_func("/core/parser/packrat/many_cap", GINT_TO_POINTER(PB_PACKRAT),
+                         test_many_cap);
+    g_test_add_data_func("/core/parser/packrat/many1_cap", GINT_TO_POINTER(PB_PACKRAT),
+                         test_many1_cap);
     g_test_add_data_func("/core/parser/packrat/repeat_n", GINT_TO_POINTER(PB_PACKRAT),
                          test_repeat_n);
     g_test_add_data_func("/core/parser/packrat/optional", GINT_TO_POINTER(PB_PACKRAT),

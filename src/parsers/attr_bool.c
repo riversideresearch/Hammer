@@ -49,10 +49,32 @@ static void desugar_ab(HAllocator *mm__, HCFStack *stk__, void *env) {
     HCFS_END_CHOICE();
 }
 
+static bool h_svm_action_attr_bool(HArena *arena, HSVMContext *ctx, void *arg) {
+    HParseResult res;
+    HAttrBool *ab = arg;
+    assert(ctx->stack_count >= 1);
+    if (ctx->stack[ctx->stack_count - 1]->token_type != TT_MARK)
+        res.ast = ctx->stack[ctx->stack_count - 1];
+    else
+        res.ast = NULL;
+    res.arena = arena;
+    return ab->pred(&res, ab->user_data);
+}
+
+static bool ab_ctrvm(HRVMProg *prog, void *env) {
+    HAttrBool *ab = (HAttrBool *)env;
+    h_rvm_insert_insn(prog, RVM_PUSH, 0);
+    if (!h_compile_regex(prog, ab->p))
+        return false;
+    h_rvm_insert_insn(prog, RVM_ACTION, h_rvm_create_action(prog, h_svm_action_attr_bool, ab));
+    return true;
+}
+
 static const HParserVtable attr_bool_vt = {
     .parse = parse_attr_bool,
     .isValidRegular = ab_isValidRegular,
     .isValidCF = ab_isValidCF,
+    .compile_to_rvm = ab_ctrvm,
     .desugar = desugar_ab,
     .higher = true,
 };

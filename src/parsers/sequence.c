@@ -24,7 +24,7 @@ static HParseResult *parse_sequence(void *env, HParseState *state) {
     }
     HParsedToken *tok = a_new(HParsedToken, 1);
     tok->token_type = TT_SEQUENCE;
-    tok->seq = seq;
+    tok->token_data.seq = seq;
     tok->index = 0;
     tok->bit_offset = 0;
     tok->bit_length = 0;
@@ -56,14 +56,14 @@ static HParsedToken *reshape_sequence(const HParseResult *p, void *user_data) {
     HCountedArray *seq = h_carray_new(p->arena);
 
     // drop all elements that are NULL
-    for (size_t i = 0; i < p->ast->seq->used; i++) {
-        if (p->ast->seq->elements[i] != NULL)
-            h_carray_append(seq, p->ast->seq->elements[i]);
+    for (size_t i = 0; i < p->ast->token_data.seq->used; i++) {
+        if (p->ast->token_data.seq->elements[i] != NULL)
+            h_carray_append(seq, p->ast->token_data.seq->elements[i]);
     }
 
     HParsedToken *res = a_new_(p->arena, HParsedToken, 1);
     res->token_type = TT_SEQUENCE;
-    res->seq = seq;
+    res->token_data.seq = seq;
     res->index = p->ast->index;
     res->bit_offset = p->ast->bit_offset;
     res->bit_length = p->bit_length;
@@ -85,10 +85,23 @@ static void desugar_sequence(HAllocator *mm__, HCFStack *stk__, void *env) {
     HCFS_END_CHOICE();
 }
 
+static bool sequence_ctrvm(HRVMProg *prog, void *env) {
+    HSequence *s = (HSequence *)env;
+    h_rvm_insert_insn(prog, RVM_PUSH, 0);
+    for (size_t i = 0; i < s->len; ++i) {
+        if (!s->p_array[i]->vtable->compile_to_rvm(prog, s->p_array[i]->env))
+            return false;
+    }
+    h_rvm_insert_insn(prog, RVM_ACTION,
+                      h_rvm_create_action(prog, h_svm_action_make_sequence, NULL));
+    return true;
+}
+
 static const HParserVtable sequence_vt = {
     .parse = parse_sequence,
     .isValidRegular = sequence_isValidRegular,
     .isValidCF = sequence_isValidCF,
+    .compile_to_rvm = sequence_ctrvm,
     .desugar = desugar_sequence,
     .higher = true,
 };
@@ -197,9 +210,7 @@ HParser *h_drop_from___v(HParser *p, va_list ap) {
 }
 
 HParser *h_drop_from___mv(HAllocator *mm__, HParser *p, va_list ap) {
-    /* Ok, here's where things get funny.
-     *
-     * Saying `h_drop_from(h_sequence(a, b, c, d, e, NULL), 0, 4, -1)` is functionally
+    /* Saying `h_drop_from(h_sequence(a, b, c, d, e, NULL), 0, 4, -1)` is functionally
      * equivalent to `h_sequence(h_ignore(a), b, c, d, h_ignore(e), NULL)`. Thus, this
      * term rewrites itself, becoming an h_sequence where some parsers are ignored.
      */

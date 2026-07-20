@@ -2,13 +2,13 @@
 
 Hammer is a parsing library. Like many modern parsing libraries, it provides a parser combinator interface for writing grammars as inline domain-specific languages, but Hammer also provides a variety of parsing backends. It's also bit-oriented rather than character-oriented, making it ideal for parsing binary data such as images, network packets, audio, and executables.
 
-Hammer is written in C and provides a packrat parsing backend.
+Hammer is written in C and provides packrat, regex/RVM, LL(k), LALR(k), and GLR parsing backends.
 
 ## Features
 
 - **Bit-oriented** -- grammars can include single-bit flags or multi-bit constructs that span character boundaries with no hassle
 - **Thread-safe, reentrant** (for most purposes)
-- **Parsing backend** -- currently only Packrat parsing is supported
+- **Parsing backends** -- Packrat for general parser-combinator grammars, regex/RVM for regular grammars, plus LL(k), LALR(k), and GLR for context-free grammars
 - Windows and macOS installation is possible but not officially supported
 
 ## Installing
@@ -52,6 +52,28 @@ PKG_CONFIG_PATH=/usr/local/lib/pkgconfig pkg-config --modversion libhammer
 Just `#include <hammer/hammer.h>` (also `#include <hammer/glue.h>` if you plan to use any of the convenience macros) and link with `-lhammer`.
 
 If you've installed Hammer system-wide, you can use `pkg-config` in the usual way.
+
+### Parsing Backends
+
+Packrat is the default backend:
+
+```c
+HParser *p = h_sequence(h_ch('a'), h_ch('b'), NULL);
+HParseResult *result = h_parse(p, (const uint8_t *)"ab", 2);
+```
+
+To use another backend, compile the parser before parsing:
+
+```c
+h_compile(p, PB_REGULAR, NULL);    /* regex/RVM */
+h_compile(p, PB_LL, (void *)2);    /* LL(2) */
+h_compile(p, PB_LALR, NULL);       /* LALR(1), the default k */
+h_compile(p, PB_GLR, NULL);        /* GLR(1), accepts table conflicts */
+```
+
+Backend names can also be queried with `h_query_backend_by_name("regex")`, `h_query_backend_by_name("llk")`,
+`h_query_backend_by_name("lalr")`, or `h_query_backend_by_name("glr")`.
+See [docs/backends.md](docs/backends.md) for backend differences, limitations, and examples.
 
 To learn about hammer, check:
 

@@ -83,12 +83,12 @@ HCFGrammar *h_cfgrammar_(HAllocator *mm__, HCFChoice *desugared) {
         // desugared is a terminal. wrap it in a singleton HCF_CHOICE.
         HCFChoice *nt = h_new(HCFChoice, 1);
         nt->type = HCF_CHOICE;
-        nt->seq = h_new(HCFSequence *, 2);
-        nt->seq[0] = h_new(HCFSequence, 1);
-        nt->seq[0]->items = h_new(HCFChoice *, 2);
-        nt->seq[0]->items[0] = desugared;
-        nt->seq[0]->items[1] = NULL;
-        nt->seq[1] = NULL;
+        nt->data.seq = h_new(HCFSequence *, 2);
+        nt->data.seq[0] = h_new(HCFSequence, 1);
+        nt->data.seq[0]->items = h_new(HCFChoice *, 2);
+        nt->data.seq[0]->items[0] = desugared;
+        nt->data.seq[0]->items[1] = NULL;
+        nt->data.seq[1] = NULL;
         nt->pred = NULL;
         nt->action = NULL;
         nt->reshape = h_act_first;
@@ -130,9 +130,9 @@ static void collect_nts(HCFGrammar *grammar, HCFChoice *symbol) {
         // NB top-level (start) symbol gets 0.
         h_hashtable_put(grammar->nts, symbol, (void *)(uintptr_t)grammar->nts->used);
 
-        // each element s of symbol->seq (HCFSequence) represents the RHS of
+        // each element s of symbol->data.seq (HCFSequence) represents the RHS of
         // a production. call self on all symbols (HCFChoice) in s.
-        for (s = symbol->seq; *s != NULL; s++) {
+        for (s = symbol->data.seq; *s != NULL; s++) {
             for (x = (*s)->items; *x != NULL; x++) {
                 collect_nts(grammar, *x);
             }
@@ -198,7 +198,7 @@ static void collect_geneps(HCFGrammar *g) {
 
                 // this NT derives epsilon if any one of its productions does.
                 HCFSequence **p;
-                for (p = symbol->seq; *p != NULL; p++) {
+                for (p = symbol->data.seq; *p != NULL; p++) {
                     if (h_derives_epsilon_seq(g, (*p)->items)) {
                         h_hashset_put(g->geneps, symbol);
                         break;
@@ -230,7 +230,7 @@ static void remove_productions_with(HCFGrammar *g, const HCFChoice *x) {
             assert(symbol->type == HCF_CHOICE);
 
             HCFSequence **p, **q;
-            for (p = symbol->seq; *p != NULL;) {
+            for (p = symbol->data.seq; *p != NULL;) {
                 if (mentions_symbol((*p)->items, x)) {
                     // remove production p
                     for (q = p; *(q + 1) != NULL; q++)
@@ -261,7 +261,7 @@ static void eliminate_dead_rules(HCFGrammar *g) {
                 assert(symbol->type == HCF_CHOICE);
 
                 // this NT is dead if it has no productions
-                if (*symbol->seq == NULL)
+                if (*symbol->data.seq == NULL)
                     found = true;
             }
         }
@@ -473,12 +473,12 @@ static const HStringMap *h_first_work(size_t k, HCFGrammar *g, HHashTable **pws,
 
     switch (x->type) {
     case HCF_CHAR:
-        h_stringmap_put_char(ret, x->chr, INSET);
+        h_stringmap_put_char(ret, x->data.chr, INSET);
         break;
     case HCF_CHARSET:
         c = 0;
         do {
-            if (charset_isset(x->charset, c)) {
+            if (charset_isset(x->data.charset, c)) {
                 h_stringmap_put_char(ret, c, INSET);
             }
         } while (c++ < 255);
@@ -495,7 +495,7 @@ static const HStringMap *h_first_work(size_t k, HCFGrammar *g, HHashTable **pws,
         h_hashtable_put(ws, pkx, ret);
 
         // return the union of the first sets of all productions
-        for (p = x->seq; *p; ++p) {
+        for (p = x->data.seq; *p; ++p) {
             const HStringMap *first_rhs = h_first_seq_work(k, g, pws, (*p)->items);
             assert(ws == *pws); // call above did not change the workset pointer
             taint |= first_rhs->taint;
@@ -724,7 +724,7 @@ static const HStringMap *h_follow_work(size_t k, HCFGrammar *g, HHashTable **pws
 
             // iterate over the productions for A
             HCFSequence **p;
-            for (p = a->seq; *p; p++) {
+            for (p = a->data.seq; *p; p++) {
                 HCFChoice **s = (*p)->items; // production's right-hand side
 
                 for (; *s; s++) {
@@ -919,7 +919,7 @@ static HCFChoice **pprint_string(FILE *f, HCFChoice **x) {
         if ((*x)->type != HCF_CHAR) {
             break;
         }
-        h_pprint_char(f, (*x)->chr);
+        h_pprint_char(f, (*x)->data.chr);
     }
     fputc('"', f);
     return x;
@@ -929,14 +929,14 @@ void h_pprint_symbol(FILE *f, const HCFGrammar *g, const HCFChoice *x) {
     switch (x->type) {
     case HCF_CHAR:
         fputc('"', f);
-        h_pprint_char(f, x->chr);
+        h_pprint_char(f, x->data.chr);
         fputc('"', f);
         break;
     case HCF_END:
         fputc('$', f);
         break;
     case HCF_CHARSET:
-        pprint_charset(f, x->charset);
+        pprint_charset(f, x->data.charset);
         break;
     default:
         fputs(nonterminal_name(g, x), f);
@@ -986,7 +986,7 @@ static void pprint_ntrules(FILE *f, const HCFGrammar *g, const HCFChoice *nt, in
         fputc(' ', f);
 
     assert(nt->type == HCF_CHOICE);
-    HCFSequence **p = nt->seq;
+    HCFSequence **p = nt->data.seq;
     if (*p == NULL) {
         fputs(" -x\n", f); // empty choice, e.g. h_nothing_p()
         return;

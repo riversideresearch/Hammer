@@ -49,9 +49,9 @@ static void *fail_realloc(HAllocator *mm__, void *ptr, size_t size) {
 
 // Helper function for out-of-memory test free
 static void fail_free(HAllocator *mm__, void *ptr) {
-    return system_allocator.free(&system_allocator, ptr);
+    system_allocator.free(&system_allocator, ptr);
 }
-static HAllocator fail_allocator = {fail_alloc, fail_realloc, fail_free};
+static HAllocator fail_allocator = {fail_alloc, fail_realloc, fail_free, NULL, NULL};
 
 // Helper function for out-of-memory test action
 static HParsedToken *act_oom(const HParseResult *r, void *user) {
@@ -74,15 +74,15 @@ static void test_oom(void) {
     g_check_parse_chunks_failed__m(mm__, p, PB_PACKRAT, "", 0, "x", 1);
 }
 
+// Use H_ACT_APPLY to create wrapper actions
+H_ACT_APPLY(act_index_0, h_act_index, 0)
+H_ACT_APPLY(act_index_1, h_act_index, 1)
+H_ACT_APPLY(act_index_2, h_act_index, 2)
+H_ACT_APPLY(act_index_neg, h_act_index, -1)
+H_ACT_APPLY(act_index_large, h_act_index, 10)
+
 static void test_glue_act_index(void) {
     HParser *p = h_sequence(h_ch('a'), h_ch('b'), h_ch('c'), NULL);
-
-    // Use H_ACT_APPLY to create wrapper actions
-    H_ACT_APPLY(act_index_0, h_act_index, 0);
-    H_ACT_APPLY(act_index_1, h_act_index, 1);
-    H_ACT_APPLY(act_index_2, h_act_index, 2);
-    H_ACT_APPLY(act_index_neg, h_act_index, -1);
-    H_ACT_APPLY(act_index_large, h_act_index, 10);
 
     HParser *act0 = h_action(p, act_index_0, NULL);
     HParser *act1 = h_action(p, act_index_1, NULL);
@@ -185,14 +185,14 @@ static void test_glue_make_functions(void) {
     HParser *p_double = h_action(h_epsilon_p(), make_double_action, NULL);
     res = h_parse(p_double, (const uint8_t *)"", 0);
     g_check_cmp_int(res->ast->token_type, ==, TT_DOUBLE);
-    g_check_cmpdouble(res->ast->dbl, ==, 3.14159);
+    g_check_cmpdouble(res->ast->token_data.dbl, ==, 3.14159);
     h_parse_result_free(res);
 
     // Test h_make_float
     HParser *p_float = h_action(h_epsilon_p(), make_float_action, NULL);
     res = h_parse(p_float, (const uint8_t *)"", 0);
     g_check_cmp_int(res->ast->token_type, ==, TT_FLOAT);
-    g_check_cmpfloat(res->ast->flt, ==, 2.718f);
+    g_check_cmpfloat(res->ast->token_data.flt, ==, 2.718f);
     h_parse_result_free(res);
 }
 
@@ -230,6 +230,18 @@ HParsedToken *append_action(const HParseResult *p, void *user) {
     return seq1;
 }
 
+HParsedToken *remove_action_1(const HParseResult *p, void *user) {
+    HParsedToken *seq = (HParsedToken *)p->ast;
+    h_seq_remove(seq, 1);
+    return seq;
+}
+
+HParsedToken *remove_action_2(const HParseResult *p, void *user) {
+    HParsedToken *seq = (HParsedToken *)p->ast;
+    h_seq_remove(seq, 2);
+    return seq;
+}
+
 static void test_glue_seq_append_snoc(void) {
     // Test h_seq_snoc
     HParser *p = h_sequence(h_ch('a'), NULL);
@@ -241,6 +253,39 @@ static void test_glue_seq_append_snoc(void) {
     HParser *p2 = h_sequence(h_ch('c'), h_ch('d'), NULL);
     HParser *p_append = h_action(p1, append_action, p2);
     g_check_parse_match(p_append, PB_PACKRAT, "ab", 2, "(u0x61 u0x62 u0x63 u0x64)");
+}
+
+static void test_glue_seq_remove(void) {
+
+    // Test h_seq_remove w/ param n=1
+    HParser *p = h_sequence(h_ch('a'), h_ch('b'), NULL);
+    HParser *p_remove = h_action(p, remove_action_1, NULL);
+    g_check_parse_match(p_remove, PB_PACKRAT, "ab", 2, "(u0x61)");
+}
+
+static void test_glue_seq_remove_multiple(void) {
+
+    // Test h_seq_remove w/ param n=2 fpr 2 tokens
+    HParser *p = h_sequence(h_ch('a'), h_ch('b'), NULL);
+    HParser *p_remove = h_action(p, remove_action_2, NULL);
+    g_check_parse_match(p_remove, PB_PACKRAT, "ab", 2, "()");
+}
+
+static void test_glue_seq_remove_too_many(void) {
+
+    // Test h_seq_remove w/ param n=2 for 1 token.
+    HParser *p = h_sequence(h_ch('a'), NULL);
+    HParser *p_remove = h_action(p, remove_action_2, NULL);
+    g_check_parse_match(p_remove, PB_PACKRAT, "a", 1, "()");
+}
+
+static void test_glue_seq_remove_and_append(void) {
+
+    // Test h_seq_remove and h_seq_snoc work together
+    HParser *p = h_sequence(h_ch('a'), h_ch('b'), NULL);
+    HParser *p_remove = h_action(p, remove_action_1, NULL);
+    HParser *p_snoc = h_action(p_remove, snoc_action, NULL);
+    g_check_parse_match(p_snoc, PB_PACKRAT, "ab", 2, "(u0x61 u0x2a)");
 }
 
 HParsedToken *test_vpath_helper(const HParsedToken *p, ...) {
@@ -266,12 +311,12 @@ static void test_glue_seq_index_vpath(void) {
 
     HParsedToken *tok01 = h_seq_index_path(res->ast, 0, 1, -1);
     g_check_cmp_int(tok01->token_type, ==, TT_UINT);
-    g_check_cmp_int64(tok01->uint, ==, 0x62); // 'b'
+    g_check_cmp_int64(tok01->token_data.uint, ==, 0x62); // 'b'
 
     // Test h_seq_index_vpath directly
     HParsedToken *tok_vpath = test_vpath_helper(res->ast, 0, 1, -1);
     g_check_cmp_int(tok_vpath->token_type, ==, TT_UINT);
-    g_check_cmp_int64(tok_vpath->uint, ==, 0x62);
+    g_check_cmp_int64(tok_vpath->token_data.uint, ==, 0x62);
 
     h_parse_result_free(res);
 }
@@ -387,6 +432,10 @@ void register_misc_tests(void) {
     g_test_add_func("/core/misc/glue_make_functions", test_glue_make_functions);
     g_test_add_func("/core/misc/glue_seq_flatten", test_glue_seq_flatten);
     g_test_add_func("/core/misc/glue_seq_append_snoc", test_glue_seq_append_snoc);
+    g_test_add_func("/core/misc/glue_seq_remove_and_append", test_glue_seq_remove_and_append);
+    g_test_add_func("/core/misc/glue_seq_remove", test_glue_seq_remove);
+    g_test_add_func("/core/misc/glue_seq_remove_multiple", test_glue_seq_remove_multiple);
+    g_test_add_func("/core/misc/glue_seq_remove_too_many", test_glue_seq_remove_too_many);
     g_test_add_func("/core/misc/glue_seq_index_vpath", test_glue_seq_index_vpath);
     g_test_add_func("/core/misc/pprint_basic", test_pprint_basic);
     g_test_add_func("/core/misc/pprint_write_result_unamb", test_pprint_write_result_unamb);

@@ -45,6 +45,11 @@ static void test_tt_get_backend_with_params_by_name(void) {
     g_check_maybe_string_eq(be_w_p->requested_name, "llvm");
     h_free_backend_with_params(be_w_p);
 
+    be_w_p = h_get_backend_with_params_by_name("llk(foo)");
+    g_check_inttype("%d", HParserBackend, be_w_p->backend, ==, PB_INVALID);
+    g_check_maybe_string_eq(be_w_p->requested_name, "llk");
+    h_free_backend_with_params(be_w_p);
+
     be_w_p = h_get_backend_with_params_by_name("packrat(0)");
     g_check_inttype("%d", HParserBackend, be_w_p->backend, ==, PB_PACKRAT);
     g_check_maybe_string_eq(be_w_p->requested_name, packrat_name);
@@ -96,7 +101,7 @@ void register_names_tests(void) {
                     test_tt_get_backend_with_params_by_name);
     g_test_add_func("/core/names/tt_test_tt_h_get_descriptive_text_for_backend_with_params",
                     test_tt_h_get_descriptive_text_for_backend_with_params);
-    g_test_add_func("/core/names/test_tt_h_get_name_for_backend_with_params",
+    g_test_add_func("/core/names/tt_test_tt_h_get_name_for_backend_with_params",
                     test_tt_h_get_name_for_backend_with_params);
     g_test_add_func("/core/names/tt_h_compile_for_backend_with_params",
                     test_tt_h_compile_for_backend_with_params);

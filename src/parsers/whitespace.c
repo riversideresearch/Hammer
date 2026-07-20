@@ -57,10 +57,30 @@ static bool ws_isValidCF(void *env) {
     return p->vtable->isValidCF(p->env);
 }
 
+static bool ws_ctrvm(HRVMProg *prog, void *env) {
+    HParser *p = (HParser *)env;
+    uint16_t start = h_rvm_get_ip(prog);
+
+    uint16_t ranges[] = {
+        0x0D09,
+        0x2020,
+    };
+
+    for (size_t i = 0; i < sizeof(ranges) / sizeof(ranges[0]); i++) {
+        uint16_t next = h_rvm_insert_insn(prog, RVM_FORK, 0);
+        h_rvm_insert_insn(prog, RVM_MATCH, ranges[i]);
+        h_rvm_insert_insn(prog, RVM_STEP, 0);
+        h_rvm_insert_insn(prog, RVM_GOTO, start);
+        h_rvm_patch_arg(prog, next, h_rvm_get_ip(prog));
+    }
+    return h_compile_regex(prog, p);
+}
+
 static const HParserVtable whitespace_vt = {
     .parse = parse_whitespace,
     .isValidRegular = ws_isValidRegular,
     .isValidCF = ws_isValidCF,
+    .compile_to_rvm = ws_ctrvm,
     .desugar = desugar_whitespace,
     .higher = false,
 };
