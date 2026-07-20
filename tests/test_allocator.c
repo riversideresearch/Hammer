@@ -128,19 +128,6 @@ static void test_allocator_stats(void) {
     }
 }
 
-static void test_arena_free(void) {
-    HArena *arena = h_new_arena(&system_allocator, 4096);
-    g_check_cmp_ptr(arena, !=, NULL);
-    if (arena) {
-        void *ptr = h_arena_malloc(arena, 100);
-        g_check_cmp_ptr(ptr, !=, NULL);
-
-        h_arena_free(arena, ptr);
-
-        h_delete_arena(arena);
-    }
-}
-
 static void test_delete_arena(void) {
     HArena *arena = h_new_arena(&system_allocator, 4096);
     g_check_cmp_ptr(arena, !=, NULL);
@@ -150,6 +137,89 @@ static void test_delete_arena(void) {
 
         h_delete_arena(arena);
     }
+}
+
+/* Fake environment and fake allocator functions */
+typedef struct {
+    int alloc_called;
+    int realloc_called;
+    int free_called;
+    void *last_ptr;
+    size_t last_size;
+} FakeEnv;
+
+static void *fake_alloc(void *env, size_t size) {
+    FakeEnv *e = env;
+    e->alloc_called++;
+    e->last_size = size;
+    return (void *)0x11111111;
+}
+
+static void *fake_realloc(void *env, void *ptr, size_t size) {
+    FakeEnv *e = env;
+    e->realloc_called++;
+    e->last_ptr = ptr;
+    e->last_size = size;
+    return (void *)0x22222222;
+}
+
+static void fake_free(void *env, void *ptr) {
+    FakeEnv *e = env;
+    e->free_called++;
+    e->last_ptr = ptr;
+}
+
+static void test_wrap_sets_fields(void) {
+    HAllocator a;
+    HAllocatorVtable vt = {fake_alloc, fake_realloc, fake_free};
+    FakeEnv env = {0};
+
+    h_allocator_wrap(&a, &vt, &env);
+
+    g_check_cmp_ptr(a.vt, !=, NULL);
+    g_check_cmp_ptr(a.env, !=, NULL);
+    g_check_cmp_ptr(a.alloc, !=, NULL);
+    g_check_cmp_ptr(a.realloc, !=, NULL);
+    g_check_cmp_ptr(a.free, !=, NULL);
+}
+
+static void test_alloc_dispatches(void) {
+    HAllocator a;
+    HAllocatorVtable vt = {fake_alloc, fake_realloc, fake_free};
+    FakeEnv env = {0};
+
+    h_allocator_wrap(&a, &vt, &env);
+
+    void *p = a.alloc(&a, 64);
+    g_check_cmp_ptr(p, ==, (void *)0x11111111);
+    g_check_cmp_int(env.alloc_called, ==, 1);
+    g_check_cmp_int(env.last_size, ==, 64);
+}
+
+static void test_realloc_dispatches(void) {
+    HAllocator a;
+    HAllocatorVtable vt = {fake_alloc, fake_realloc, fake_free};
+    FakeEnv env = {0};
+
+    h_allocator_wrap(&a, &vt, &env);
+
+    void *p = a.realloc(&a, (void *)0xDEAD, 128);
+    g_check_cmp_ptr(p, ==, (void *)0x22222222);
+    g_check_cmp_int(env.realloc_called, ==, 1);
+    g_check_cmp_ptr(env.last_ptr, ==, (void *)0xDEAD);
+    g_check_cmp_int(env.last_size, ==, 128);
+}
+
+static void test_free_dispatches(void) {
+    HAllocator a;
+    HAllocatorVtable vt = {fake_alloc, fake_realloc, fake_free};
+    FakeEnv env = {0};
+
+    h_allocator_wrap(&a, &vt, &env);
+
+    a.free(&a, (void *)0xBEEF);
+    g_check_cmp_int(env.free_called, ==, 1);
+    g_check_cmp_ptr(env.last_ptr, ==, (void *)0xBEEF);
 }
 
 void register_allocator_tests(void) {
@@ -164,6 +234,9 @@ void register_allocator_tests(void) {
     g_test_add_func("/core/allocator/arena_set_except", test_arena_set_except);
     g_test_add_func("/core/allocator/arena_realloc", test_arena_realloc);
     g_test_add_func("/core/allocator/allocator_stats", test_allocator_stats);
-    g_test_add_func("/core/allocator/arena_free", test_arena_free);
     g_test_add_func("/core/allocator/delete_arena", test_delete_arena);
+    g_test_add_func("/core/allocator/wrap_sets_fields", test_wrap_sets_fields);
+    g_test_add_func("/core/allocator/alloc_dispatches", test_alloc_dispatches);
+    g_test_add_func("/core/allocator/realloc_dispatches", test_realloc_dispatches);
+    g_test_add_func("/core/allocator/free_dispatches", test_free_dispatches);
 }

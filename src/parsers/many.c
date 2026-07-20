@@ -38,7 +38,7 @@ static HParseResult *parse_many(void *env, HParseState *state) {
 succ:; // necessary for the label to be here...
     HParsedToken *res = a_new(HParsedToken, 1);
     res->token_type = TT_SEQUENCE;
-    res->seq = seq;
+    res->token_data.seq = seq;
     res->index = 0;
     res->bit_length = 0;
     res->bit_offset = 0;
@@ -72,11 +72,11 @@ static HParsedToken *reshape_many(const HParseResult *p, void *user) {
     const HParsedToken *tok = p->ast;
     while (tok) {
         assert(tok->token_type == TT_SEQUENCE);
-        if (tok->seq->used > 0) {
-            size_t n = tok->seq->used;
+        if (tok->token_data.seq->used > 0) {
+            size_t n = tok->token_data.seq->used;
             assert(n <= 3);
-            h_carray_append(seq, tok->seq->elements[n - 2]);
-            tok = tok->seq->elements[n - 1];
+            h_carray_append(seq, tok->token_data.seq->elements[n - 2]);
+            tok = tok->token_data.seq->elements[n - 1];
         } else {
             tok = NULL;
         }
@@ -84,7 +84,7 @@ static HParsedToken *reshape_many(const HParseResult *p, void *user) {
 
     HParsedToken *res = a_new_(p->arena, HParsedToken, 1);
     res->token_type = TT_SEQUENCE;
-    res->seq = seq;
+    res->token_data.seq = seq;
     res->index = p->ast->index;
     res->bit_offset = p->ast->bit_offset;
     res->bit_length = p->bit_length;
@@ -146,10 +146,57 @@ static void desugar_many(HAllocator *mm__, HCFStack *stk__, void *env) {
     HCFS_END_CHOICE();
 }
 
+static bool many_ctrvm(HRVMProg *prog, void *env) {
+    HRepeat *repeat = (HRepeat *)env;
+    uint16_t clear_to_mark = h_rvm_create_action(prog, h_svm_action_clear_to_mark, NULL);
+
+    if (repeat->min_p) {
+        h_rvm_insert_insn(prog, RVM_PUSH, 0);
+        assert(repeat->count < 2);
+        uint16_t end_fork = 0xFFFF;
+        if (repeat->count == 0)
+            end_fork = h_rvm_insert_insn(prog, RVM_FORK, 0xFFFF);
+        uint16_t goto_mid = h_rvm_insert_insn(prog, RVM_GOTO, 0xFFFF);
+        uint16_t nxt = h_rvm_get_ip(prog);
+        if (repeat->sep != NULL) {
+            h_rvm_insert_insn(prog, RVM_PUSH, 0);
+            if (!h_compile_regex(prog, repeat->sep))
+                return false;
+            h_rvm_insert_insn(prog, RVM_ACTION, clear_to_mark);
+        }
+        h_rvm_patch_arg(prog, goto_mid, h_rvm_get_ip(prog));
+        if (!h_compile_regex(prog, repeat->p))
+            return false;
+        h_rvm_insert_insn(prog, RVM_FORK, nxt);
+        if (repeat->count == 0)
+            h_rvm_patch_arg(prog, end_fork, h_rvm_get_ip(prog));
+
+        h_rvm_insert_insn(prog, RVM_ACTION,
+                          h_rvm_create_action(prog, h_svm_action_make_sequence, NULL));
+        return true;
+    }
+
+    h_rvm_insert_insn(prog, RVM_PUSH, 0);
+    for (size_t i = 0; i < repeat->count; i++) {
+        if (repeat->sep != NULL && i != 0) {
+            h_rvm_insert_insn(prog, RVM_PUSH, 0);
+            if (!h_compile_regex(prog, repeat->sep))
+                return false;
+            h_rvm_insert_insn(prog, RVM_ACTION, clear_to_mark);
+        }
+        if (!h_compile_regex(prog, repeat->p))
+            return false;
+    }
+    h_rvm_insert_insn(prog, RVM_ACTION,
+                      h_rvm_create_action(prog, h_svm_action_make_sequence, NULL));
+    return true;
+}
+
 static const HParserVtable many_vt = {
     .parse = parse_many,
     .isValidRegular = many_isValidRegular,
     .isValidCF = many_isValidCF,
+    .compile_to_rvm = many_ctrvm,
     .desugar = desugar_many,
     .higher = true,
 };
@@ -223,7 +270,8 @@ static HParseResult *parse_length_value(void *env, HParseState *state) {
     if (len->ast->token_type != TT_UINT)
         h_platform_errx(1, "Length parser must return an unsigned integer");
     // TODO: allocate this using public functions
-    HRepeat repeat = {.p = lv->value, .sep = NULL, .count = len->ast->uint, .min_p = false};
+    HRepeat repeat = {
+        .p = lv->value, .sep = NULL, .count = len->ast->token_data.uint, .min_p = false};
     return parse_many(&repeat, state);
 }
 
@@ -241,4 +289,171 @@ HParser *h_length_value__m(HAllocator *mm__, const HParser *length, const HParse
     env->length = length;
     env->value = value;
     return h_new_parser(mm__, &length_value_vt, env);
+}
+
+static HParseResult *parse_cap(void *env, HParseState *state) {
+    HRepeat *env_ = (HRepeat *)env;
+    size_t size = env_->count;
+    if (size <= 0)
+        size = 4;
+    if (size > 1024)
+        size = 1024; // let's try parsing some elements first...
+    HCountedArray *seq = h_carray_new_sized(state->arena, size);
+    size_t count = 0;
+    HInputStream bak;
+    // handle edge case of many1_cap with count=0
+    if (env_->min_p && env_->count == 0) {
+        return NULL;
+    }
+    while (env_->count > count) {
+        bak = state->input_stream;
+        HParseResult *elem = h_do_parse(env_->p, state);
+        if (!elem)
+            goto stop;
+        if (elem->ast)
+            h_carray_append(seq, (void *)elem->ast);
+        count++;
+    }
+succ:; // necessary for the label to be here...
+    HParsedToken *res = a_new(HParsedToken, 1);
+    res->token_type = TT_SEQUENCE;
+    res->token_data.seq = seq;
+    res->index = 0;
+    res->bit_length = 0;
+    res->bit_offset = 0;
+    return make_result(state->arena, res);
+stop:
+    if (want_suspend(state))
+        return NULL;                      // bail out early, leaving overrun flag
+    else if (!env_->min_p || count > 0) { // if min_p is true, at least one parse must succeed.
+        state->input_stream = bak;
+        goto succ;
+    } else
+        return NULL;
+}
+
+/*
+ * Build a bounded repetition grammar fragment for up to `remaining`
+ * occurrences of parser `p`.
+ *
+ * This is used by desugar_cap() to enforce the maximum count without
+ * generating an unbounded recursive repetition. The helper creates a
+ * choice between parsing one instance of `p` followed by up to
+ * `remaining - 1` more, or matching the empty sequence.
+ */
+static void desugar_cap_tail(HAllocator *mm__, HCFStack *stk__, const HParser *p,
+                             size_t remaining) {
+    if (remaining == 0) {
+        HCFS_BEGIN_SEQ() {}
+        HCFS_END_SEQ();
+        return;
+    }
+
+    HCFS_BEGIN_CHOICE() {
+        HCFS_BEGIN_SEQ() {
+            HCFS_DESUGAR(p);
+            if (remaining > 1) {
+                desugar_cap_tail(mm__, stk__, p, remaining - 1);
+            }
+        }
+        HCFS_END_SEQ();
+
+        HCFS_BEGIN_SEQ() {}
+        HCFS_END_SEQ();
+    }
+    HCFS_END_CHOICE();
+}
+
+/*
+ * Desugar an up-to-N repetition parser.
+ *
+ * - If count == 0:
+ *     * min_p false => allow empty match
+ *     * min_p true  => no match at all, because many1_cap(0) is invalid
+ * - If count == 1 and min_p true:
+ *     translate to a single occurrence of `p`.
+ * - Otherwise:
+ *     parse one `p`, then optionally up to count-1 more with desugar_cap_tail().
+ *
+ * reshape_many is attached so the resulting tree collapses trailing optional
+ * structure to the expected sequence form.
+ */
+static void desugar_cap(HAllocator *mm__, HCFStack *stk__, void *env) {
+    // mostly unchanged from desugar_many, but bounded by cap->count.
+    HRepeat *cap = (HRepeat *)env;
+
+    if (cap->count == 0) {
+        if (cap->min_p) {
+            HCFS_BEGIN_CHOICE() {}
+            HCFS_END_CHOICE();
+        } else {
+            HCFS_BEGIN_CHOICE() {
+                HCFS_BEGIN_SEQ() {}
+                HCFS_END_SEQ();
+            }
+            HCFS_END_CHOICE();
+        }
+        return;
+    }
+
+    if (cap->min_p && cap->count == 1) {
+        HCFS_BEGIN_CHOICE() {
+            HCFS_BEGIN_SEQ() { HCFS_DESUGAR(cap->p); }
+            HCFS_END_SEQ();
+        }
+        HCFS_END_CHOICE();
+        return;
+    }
+
+    HCFS_BEGIN_CHOICE() {
+        HCFS_BEGIN_SEQ() {
+            HCFS_DESUGAR(cap->p);
+            if (cap->count > 1) {
+                desugar_cap_tail(mm__, stk__, cap->p, cap->count - 1);
+            }
+        }
+        HCFS_END_SEQ();
+
+        if (!cap->min_p) {
+            HCFS_BEGIN_SEQ() {}
+            HCFS_END_SEQ();
+        }
+
+        HCFS_THIS_CHOICE->reshape = reshape_many;
+    }
+    HCFS_END_CHOICE();
+}
+
+static const HParserVtable cap_vt = {
+    .parse = parse_cap,
+    .isValidRegular = many_isValidRegular,
+    .isValidCF = many_isValidCF,
+    .desugar = desugar_cap,
+    .higher = true,
+};
+
+HParser *h_many_cap(const HParser *p, const size_t n) {
+    return h_many_cap__m(&system_allocator, p, n);
+}
+HParser *h_many_cap__m(HAllocator *mm__, const HParser *p, const size_t n) {
+    HRepeat *env = h_new(HRepeat, 1);
+    env->p = p;
+    env->sep = NULL; // sep has no functionaliy yet TODO: add sep functionality if we want it.
+    env->count = n;
+    env->min_p = false; // min_p has different meaning for h_many_cap, but the structs were mostly
+                        // the same so we can reuse HRepeat
+    return h_new_parser(mm__, &cap_vt, env);
+}
+
+HParser *h_many1_cap(const HParser *p, const size_t n) {
+    return h_many1_cap__m(&system_allocator, p, n);
+}
+HParser *h_many1_cap__m(HAllocator *mm__, const HParser *p, const size_t n) {
+    HRepeat *env = h_new(HRepeat, 1);
+    env->p = p;
+    env->sep = NULL;
+    env->count = n;
+    env->min_p = true;
+
+    return h_new_parser(mm__, &cap_vt, env);
 }

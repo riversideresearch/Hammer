@@ -15,7 +15,7 @@
 bool validate_null(HParseResult *p, void *user_data) {
     if (TT_SEQUENCE != p->ast->token_type)
         return false;
-    return (65536 > p->ast->seq->used);
+    return (65536 > p->ast->token_data.seq->used);
 }
 
 HParsedToken *act_null(const HParseResult *p, void *user_data) {

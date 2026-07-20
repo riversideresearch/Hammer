@@ -2,6 +2,7 @@
 #include "parser_internal.h"
 
 #include <assert.h>
+#include <stdint.h>
 
 struct bits_env {
     size_t length;
@@ -14,9 +15,9 @@ static HParseResult *parse_bits(void *env, HParseState *state) {
     result->token_type = (env_->signedp ? TT_SINT : TT_UINT);
     // h_read_bits takes int; cast is required by its signature
     if (env_->signedp)
-        result->sint = h_read_bits(&state->input_stream, (int)env_->length, true);
+        result->token_data.sint = h_read_bits(&state->input_stream, (int)env_->length, true);
     else
-        result->uint = h_read_bits(&state->input_stream, (int)env_->length, false);
+        result->token_data.uint = h_read_bits(&state->input_stream, (int)env_->length, false);
     result->index = 0;
     result->bit_length = 0;
     result->bit_offset = 0;
@@ -31,24 +32,24 @@ static HParsedToken *reshape_bits(const HParseResult *p, void *signedp_p) {
     assert(p->ast);
     assert(p->ast->token_type == TT_SEQUENCE);
 
-    HCountedArray *seq = p->ast->seq;
+    HCountedArray *seq = p->ast->token_data.seq;
     HParsedToken *ret = h_arena_malloc(p->arena, sizeof(HParsedToken));
     ret->token_type = TT_UINT;
 
-    if (signedp && seq->used > 0 && (seq->elements[0]->uint & 128))
-        ret->uint = -1; // all ones
+    if (signedp && seq->used > 0 && (seq->elements[0]->token_data.uint & 128))
+        ret->token_data.uint = -1; // all ones
 
     for (size_t i = 0; i < seq->used; i++) {
         HParsedToken *t = seq->elements[i];
         assert(t->token_type == TT_UINT);
 
-        ret->uint <<= 8;
-        ret->uint |= t->uint & 0xFF;
+        ret->token_data.uint <<= 8;
+        ret->token_data.uint |= t->token_data.uint & 0xFF;
     }
 
     if (signedp) {
         ret->token_type = TT_SINT;
-        ret->sint = ret->uint;
+        ret->token_data.sint = ret->token_data.uint;
     }
 
     return ret;
@@ -78,10 +79,44 @@ static void desugar_bits(HAllocator *mm__, HCFStack *stk__, void *env) {
     HCFS_END_CHOICE();
 }
 
+static bool h_svm_action_bits(HArena *arena, HSVMContext *ctx, void *env) {
+    struct bits_env *env_ = env;
+    HParsedToken *top = ctx->stack[ctx->stack_count - 1];
+    assert(top->token_type == TT_BYTES);
+    uint64_t res = 0;
+    for (size_t i = 0; i < top->token_data.bytes.len; i++)
+        res = (res << 8) | top->token_data.bytes.token[i];
+    if (env_->signedp) {
+        if (env_->length > 0 && env_->length < 64 && (res & (UINT64_C(1) << (env_->length - 1))))
+            res |= UINT64_MAX << env_->length;
+        top->token_data.sint = (int64_t)res;
+        top->token_type = TT_SINT;
+    } else {
+        top->token_data.uint = res;
+        top->token_type = TT_UINT;
+    }
+    return true;
+}
+
+static bool bits_ctrvm(HRVMProg *prog, void *env) {
+    struct bits_env *env_ = (struct bits_env *)env;
+    if (env_->length % 8 != 0)
+        return false;
+    h_rvm_insert_insn(prog, RVM_PUSH, 0);
+    for (size_t i = 0; i < (env_->length / 8); ++i) {
+        h_rvm_insert_insn(prog, RVM_MATCH, 0xFF00);
+        h_rvm_insert_insn(prog, RVM_STEP, 0);
+    }
+    h_rvm_insert_insn(prog, RVM_CAPTURE, 0);
+    h_rvm_insert_insn(prog, RVM_ACTION, h_rvm_create_action(prog, h_svm_action_bits, env));
+    return true;
+}
+
 static const HParserVtable bits_vt = {
     .parse = parse_bits,
     .isValidRegular = h_true,
     .isValidCF = h_true,
+    .compile_to_rvm = bits_ctrvm,
     .desugar = desugar_bits,
     .higher = false,
 };

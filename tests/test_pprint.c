@@ -27,8 +27,8 @@ static void test_pprint_bytes(void) {
     HArena *arena = h_new_arena(&system_allocator, 4096);
     HParsedToken *tok = h_arena_malloc(arena, sizeof(HParsedToken));
     tok->token_type = TT_BYTES;
-    tok->bytes.token = (uint8_t *)"test";
-    tok->bytes.len = 4;
+    tok->token_data.bytes.token = (uint8_t *)"test";
+    tok->token_data.bytes.len = 4;
     FILE *f = tmpfile();
     if (f) {
         h_pprint(f, tok, 0, 2);
@@ -41,8 +41,8 @@ static void test_pprint_bytes_special(void) {
     HParsedToken *tok = h_arena_malloc(arena, sizeof(HParsedToken));
     tok->token_type = TT_BYTES;
     const uint8_t special[] = {'"', '\\', 0x01, 0x7F};
-    tok->bytes.token = (uint8_t *)special;
-    tok->bytes.len = 4;
+    tok->token_data.bytes.token = (uint8_t *)special;
+    tok->token_data.bytes.len = 4;
     FILE *f = tmpfile();
     if (f) {
         h_pprint(f, tok, 0, 2);
@@ -54,7 +54,7 @@ static void test_pprint_sint(void) {
     HArena *arena = h_new_arena(&system_allocator, 4096);
     HParsedToken *tok = h_arena_malloc(arena, sizeof(HParsedToken));
     tok->token_type = TT_SINT;
-    tok->sint = -12345;
+    tok->token_data.sint = -12345;
     FILE *f = tmpfile();
     if (f) {
         h_pprint(f, tok, 0, 2);
@@ -66,7 +66,7 @@ static void test_pprint_uint(void) {
     HArena *arena = h_new_arena(&system_allocator, 4096);
     HParsedToken *tok = h_arena_malloc(arena, sizeof(HParsedToken));
     tok->token_type = TT_UINT;
-    tok->uint = 12345;
+    tok->token_data.uint = 12345;
     FILE *f = tmpfile();
     if (f) {
         h_pprint(f, tok, 0, 2);
@@ -78,7 +78,7 @@ static void test_pprint_double(void) {
     HArena *arena = h_new_arena(&system_allocator, 4096);
     HParsedToken *tok = h_arena_malloc(arena, sizeof(HParsedToken));
     tok->token_type = TT_DOUBLE;
-    tok->dbl = 3.14159;
+    tok->token_data.dbl = 3.14159;
     FILE *f = tmpfile();
     if (f) {
         h_pprint(f, tok, 0, 2);
@@ -90,7 +90,7 @@ static void test_pprint_float(void) {
     HArena *arena = h_new_arena(&system_allocator, 4096);
     HParsedToken *tok = h_arena_malloc(arena, sizeof(HParsedToken));
     tok->token_type = TT_FLOAT;
-    tok->flt = 3.14f;
+    tok->token_data.flt = 3.14f;
     FILE *f = tmpfile();
     if (f) {
         h_pprint(f, tok, 0, 2);
@@ -102,7 +102,7 @@ static void test_pprint_sequence_empty(void) {
     HArena *arena = h_new_arena(&system_allocator, 4096);
     HParsedToken *tok = h_arena_malloc(arena, sizeof(HParsedToken));
     tok->token_type = TT_SEQUENCE;
-    tok->seq = h_carray_new(arena);
+    tok->token_data.seq = h_carray_new(arena);
     FILE *f = tmpfile();
     if (f) {
         h_pprint(f, tok, 0, 2);
@@ -114,11 +114,11 @@ static void test_pprint_sequence_small(void) {
     HArena *arena = h_new_arena(&system_allocator, 4096);
     HParsedToken *tok = h_arena_malloc(arena, sizeof(HParsedToken));
     tok->token_type = TT_SEQUENCE;
-    tok->seq = h_carray_new(arena);
+    tok->token_data.seq = h_carray_new(arena);
     HParsedToken *elem = h_arena_malloc(arena, sizeof(HParsedToken));
     elem->token_type = TT_UINT;
-    elem->uint = 42;
-    h_carray_append(tok->seq, elem);
+    elem->token_data.uint = 42;
+    h_carray_append(tok->token_data.seq, elem);
     FILE *f = tmpfile();
     if (f) {
         h_pprint(f, tok, 0, 2);
@@ -130,12 +130,12 @@ static void test_pprint_sequence_large(void) {
     HArena *arena = h_new_arena(&system_allocator, 4096);
     HParsedToken *tok = h_arena_malloc(arena, sizeof(HParsedToken));
     tok->token_type = TT_SEQUENCE;
-    tok->seq = h_carray_new(arena);
+    tok->token_data.seq = h_carray_new(arena);
     for (int i = 0; i < 5; i++) {
         HParsedToken *elem = h_arena_malloc(arena, sizeof(HParsedToken));
         elem->token_type = TT_UINT;
-        elem->uint = i;
-        h_carray_append(tok->seq, elem);
+        elem->token_data.uint = i;
+        h_carray_append(tok->token_data.seq, elem);
     }
     FILE *f = tmpfile();
     if (f) {
@@ -160,7 +160,7 @@ static void test_pprintln(void) {
     HArena *arena = h_new_arena(&system_allocator, 4096);
     HParsedToken *tok = h_arena_malloc(arena, sizeof(HParsedToken));
     tok->token_type = TT_UINT;
-    tok->uint = 42;
+    tok->token_data.uint = 42;
     FILE *f = tmpfile();
     if (f) {
         h_pprintln(f, tok);
@@ -184,8 +184,8 @@ static void test_write_result_unamb_bytes_empty(void) {
     HArena *arena = h_new_arena(&system_allocator, 4096);
     HParsedToken *tok = h_arena_malloc(arena, sizeof(HParsedToken));
     tok->token_type = TT_BYTES;
-    tok->bytes.token = NULL;
-    tok->bytes.len = 0;
+    tok->token_data.bytes.token = NULL;
+    tok->token_data.bytes.len = 0;
     char *result = h_write_result_unamb(tok);
     g_check_cmp_ptr(result, !=, NULL);
     if (result) {
@@ -197,8 +197,8 @@ static void test_write_result_unamb_bytes_nonempty(void) {
     HArena *arena = h_new_arena(&system_allocator, 4096);
     HParsedToken *tok = h_arena_malloc(arena, sizeof(HParsedToken));
     tok->token_type = TT_BYTES;
-    tok->bytes.token = (uint8_t *)"AB";
-    tok->bytes.len = 2;
+    tok->token_data.bytes.token = (uint8_t *)"AB";
+    tok->token_data.bytes.len = 2;
     char *result = h_write_result_unamb(tok);
     g_check_cmp_ptr(result, !=, NULL);
     if (result) {
@@ -210,7 +210,7 @@ static void test_write_result_unamb_sint_negative(void) {
     HArena *arena = h_new_arena(&system_allocator, 4096);
     HParsedToken *tok = h_arena_malloc(arena, sizeof(HParsedToken));
     tok->token_type = TT_SINT;
-    tok->sint = -12345;
+    tok->token_data.sint = -12345;
     char *result = h_write_result_unamb(tok);
     g_check_cmp_ptr(result, !=, NULL);
     if (result) {
@@ -222,7 +222,7 @@ static void test_write_result_unamb_sint_positive(void) {
     HArena *arena = h_new_arena(&system_allocator, 4096);
     HParsedToken *tok = h_arena_malloc(arena, sizeof(HParsedToken));
     tok->token_type = TT_SINT;
-    tok->sint = 12345;
+    tok->token_data.sint = 12345;
     char *result = h_write_result_unamb(tok);
     g_check_cmp_ptr(result, !=, NULL);
     if (result) {
@@ -234,7 +234,7 @@ static void test_write_result_unamb_uint(void) {
     HArena *arena = h_new_arena(&system_allocator, 4096);
     HParsedToken *tok = h_arena_malloc(arena, sizeof(HParsedToken));
     tok->token_type = TT_UINT;
-    tok->uint = 12345;
+    tok->token_data.uint = 12345;
     char *result = h_write_result_unamb(tok);
     g_check_cmp_ptr(result, !=, NULL);
     if (result) {
@@ -246,7 +246,7 @@ static void test_write_result_unamb_double(void) {
     HArena *arena = h_new_arena(&system_allocator, 4096);
     HParsedToken *tok = h_arena_malloc(arena, sizeof(HParsedToken));
     tok->token_type = TT_DOUBLE;
-    tok->dbl = 3.14159;
+    tok->token_data.dbl = 3.14159;
     char *result = h_write_result_unamb(tok);
     g_check_cmp_ptr(result, !=, NULL);
     if (result) {
@@ -258,7 +258,7 @@ static void test_write_result_unamb_float(void) {
     HArena *arena = h_new_arena(&system_allocator, 4096);
     HParsedToken *tok = h_arena_malloc(arena, sizeof(HParsedToken));
     tok->token_type = TT_FLOAT;
-    tok->flt = 3.14f;
+    tok->token_data.flt = 3.14f;
     char *result = h_write_result_unamb(tok);
     g_check_cmp_ptr(result, !=, NULL);
     if (result) {
@@ -282,11 +282,11 @@ static void test_write_result_unamb_sequence(void) {
     HArena *arena = h_new_arena(&system_allocator, 4096);
     HParsedToken *tok = h_arena_malloc(arena, sizeof(HParsedToken));
     tok->token_type = TT_SEQUENCE;
-    tok->seq = h_carray_new(arena);
+    tok->token_data.seq = h_carray_new(arena);
     HParsedToken *elem = h_arena_malloc(arena, sizeof(HParsedToken));
     elem->token_type = TT_UINT;
-    elem->uint = 42;
-    h_carray_append(tok->seq, elem);
+    elem->token_data.uint = 42;
+    h_carray_append(tok->token_data.seq, elem);
     char *result = h_write_result_unamb(tok);
     g_check_cmp_ptr(result, !=, NULL);
     if (result) {
@@ -311,13 +311,13 @@ static void test_buffer_functions(void) {
     HArena *arena = h_new_arena(&system_allocator, 4096);
     HParsedToken *tok = h_arena_malloc(arena, sizeof(HParsedToken));
     tok->token_type = TT_SEQUENCE;
-    tok->seq = h_carray_new(arena);
+    tok->token_data.seq = h_carray_new(arena);
 
     for (int i = 0; i < 50; i++) {
         HParsedToken *elem = h_arena_malloc(arena, sizeof(HParsedToken));
         elem->token_type = TT_UINT;
-        elem->uint = i;
-        h_carray_append(tok->seq, elem);
+        elem->token_data.uint = i;
+        h_carray_append(tok->token_data.seq, elem);
     }
     char *result = h_write_result_unamb(tok);
     g_check_cmp_ptr(result, !=, NULL);

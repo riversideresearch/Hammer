@@ -6,6 +6,7 @@
 
 #ifndef HAMMER_PARSER_INTERNAL__H
 #define HAMMER_PARSER_INTERNAL__H
+#include "../backends/regex.h"
 #include "../hammer.h"
 #include "../internal.h"
 

@@ -140,26 +140,26 @@ namespace {
     case TT_SEQUENCE:
       {
         HParsedToken *ret = a_new_(p->arena, HParsedToken, 1);
-        HCountedArray *seq = h_carray_new_sized(p->arena, p->ast->seq->used);
+        HCountedArray *seq = h_carray_new_sized(p->arena, p->ast->token_data.seq->used);
         ret->token_type = TT_SEQUENCE;
-        for (size_t i=0; i<p->ast->seq->used; ++i) {
-          if (TT_UINT == ((HParsedToken*)p->ast->seq->elements[i])->token_type) {
+        for (size_t i=0; i<p->ast->token_data.seq->used; ++i) {
+          if (TT_UINT == ((HParsedToken*)p->ast->token_data.seq->elements[i])->token_type) {
             HParsedToken *tmp = a_new_(p->arena, HParsedToken, 1);
             tmp->token_type = TT_UINT;
-            tmp->uint = toupper(((HParsedToken*)p->ast->seq->elements[i])->uint);
+            tmp->token_data.uint = toupper(((HParsedToken*)p->ast->token_data.seq->elements[i])->token_data.uint);
             h_carray_append(seq, tmp);
           } else {
-            h_carray_append(seq, p->ast->seq->elements[i]);
+            h_carray_append(seq, p->ast->token_data.seq->elements[i]);
           }
         }
-        ret->seq = seq;
+        ret->token_data.seq = seq;
         return ret;
       }
     case TT_UINT:
       {
         HParsedToken *ret = a_new_(p->arena, HParsedToken, 1);
         ret->token_type = TT_UINT;
-        ret->uint = toupper(p->ast->uint);
+        ret->token_data.uint = toupper(p->ast->token_data.uint);
         return ret;
       }
     default:
@@ -311,11 +311,11 @@ namespace {
   bool validate_test_ab(HParseResult *p, void* user_data) {
     if (TT_SEQUENCE != p->ast->token_type)
       return false;
-    if (TT_UINT != p->ast->seq->elements[0]->token_type)
+    if (TT_UINT != p->ast->token_data.seq->elements[0]->token_type)
       return false;
-    if (TT_UINT != p->ast->seq->elements[1]->token_type)
+    if (TT_UINT != p->ast->token_data.seq->elements[1]->token_type)
       return false;
-    return (p->ast->seq->elements[0]->uint == p->ast->seq->elements[1]->uint);
+    return (p->ast->token_data.seq->elements[0]->token_data.uint == p->ast->token_data.seq->elements[1]->token_data.uint);
   }
 
   TEST(ParserTypes, AttrBool) {

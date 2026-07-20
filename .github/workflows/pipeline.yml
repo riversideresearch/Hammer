@@ -7,6 +7,9 @@ on:
 permissions:
   contents: write
 
+env:
+  CFLAGS: "-std=c99 -pedantic -Wall -Wstrict-prototypes -Wwrite-strings -Wpointer-arith -Wcast-align -Werror"
+
 jobs:
   clang-format:
     runs-on: ubuntu-latest

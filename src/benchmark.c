@@ -8,7 +8,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-static const char *HParserBackendNames[] = {"Invalid", "Packrat"};
+static const char *benchmark_backend_name(HParserBackend backend) {
+    const char *name = h_get_name_for_backend(backend);
+    return name ? name : h_get_descriptive_text_for_backend(backend);
+}
 
 /*
   Usage:
@@ -44,14 +47,14 @@ HBenchmarkResults *h_benchmark__m(HAllocator *mm__, HParser *parser, HParserTest
         // Step 1: Compile grammar for given parser...
         if (h_compile(parser, backend, NULL)) {
             // backend inappropriate for grammar...
-            fprintf(stderr, "Compiling for %s failed\n", HParserBackendNames[backend]);
+            fprintf(stderr, "Compiling for %s failed\n", benchmark_backend_name(backend));
             ret->results[backend].compile_success = false;
             ret->results[backend].n_testcases = 0;
             ret->results[backend].failed_testcases = 0;
             ret->results[backend].cases = NULL;
             continue;
         }
-        fprintf(stderr, "Compiled for %s\n", HParserBackendNames[backend]);
+        fprintf(stderr, "Compiled for %s\n", benchmark_backend_name(backend));
         ret->results[backend].compile_success = true;
         int tc_failed = 0;
         // Step 1: verify all test cases.
@@ -68,7 +71,7 @@ HBenchmarkResults *h_benchmark__m(HAllocator *mm__, HParser *parser, HParserTest
             if ((res_unamb == NULL && tc->output_unambiguous != NULL) ||
                 (res_unamb != NULL && strcmp(res_unamb, tc->output_unambiguous) != 0)) {
                 // test case failed...
-                fprintf(stderr, "Parsing with %s failed\n", HParserBackendNames[backend]);
+                fprintf(stderr, "Parsing with %s failed\n", benchmark_backend_name(backend));
                 // We want to run all testcases, for purposes of generating a
                 // report. (eg, if users are trying to fix a grammar for a
                 // faster backend)
@@ -82,7 +85,7 @@ HBenchmarkResults *h_benchmark__m(HAllocator *mm__, HParser *parser, HParserTest
         if (tc_failed > 0) {
             // Can't use this parser; skip to the next
             fprintf(stderr, "%s failed testcases; skipping benchmark\n",
-                    HParserBackendNames[backend]);
+                    benchmark_backend_name(backend));
             continue;
         }
 
@@ -103,7 +106,7 @@ HBenchmarkResults *h_benchmark__m(HAllocator *mm__, HParser *parser, HParserTest
                 }
                 time_diff = h_platform_stopwatch_ns(&stopwatch);
             } while (time_diff < 100000000);
-            ret->results[backend].cases[cur_case].parse_time = (time_diff / count);
+            ret->results[backend].cases[cur_case].timestamp.parse_time = (time_diff / count);
             ret->results[backend].cases[cur_case].length = tc->length;
             cur_case++;
         }
@@ -115,17 +118,19 @@ void h_benchmark_report(FILE *stream, HBenchmarkResults *result) {
     for (size_t i = 0; i < result->len; ++i) {
         if (result->results[i].cases == NULL) {
             fprintf(stream, "Skipping %s because grammar did not compile for it\n",
-                    HParserBackendNames[i]);
+                    benchmark_backend_name(result->results[i].backend));
         } else {
-            fprintf(stream, "Backend %zd (%s) ... \n", i, HParserBackendNames[i]);
+            fprintf(stream, "Backend %zd (%s) ... \n", i,
+                    benchmark_backend_name(result->results[i].backend));
         }
         for (size_t j = 0; j < result->results[i].n_testcases; ++j) {
             if (result->results[i].cases == NULL) {
                 continue;
             }
             fprintf(stream, "Case %zd: %zd ns/parse, %zd ns/byte\n", j,
-                    result->results[i].cases[j].parse_time,
-                    result->results[i].cases[j].parse_time / result->results[i].cases[j].length);
+                    result->results[i].cases[j].timestamp.parse_time,
+                    result->results[i].cases[j].timestamp.parse_time /
+                        result->results[i].cases[j].length);
         }
     }
 }

@@ -13,7 +13,7 @@ static HParseResult *parse_ignore(void *env, HParseState *state) {
     res->bit_length = 0;
     return res;
 }
-
+// ...
 static bool ignore_isValidRegular(void *env) {
     HParser *p = (HParser *)env;
     return (p->vtable->isValidRegular(p->env));
@@ -33,10 +33,25 @@ static void desugar_ignore(HAllocator *mm__, HCFStack *stk__, void *env) {
     HCFS_END_CHOICE();
 }
 
+static bool h_svm_action_pop(HArena *arena, HSVMContext *ctx, void *arg) {
+    assert(ctx->stack_count > 0);
+    ctx->stack_count--;
+    return true;
+}
+
+static bool ignore_ctrvm(HRVMProg *prog, void *env) {
+    HParser *p = (HParser *)env;
+    if (!h_compile_regex(prog, p))
+        return false;
+    h_rvm_insert_insn(prog, RVM_ACTION, h_rvm_create_action(prog, h_svm_action_pop, NULL));
+    return true;
+}
+
 static const HParserVtable ignore_vt = {
     .parse = parse_ignore,
     .isValidRegular = ignore_isValidRegular,
     .isValidCF = ignore_isValidCF,
+    .compile_to_rvm = ignore_ctrvm,
     .desugar = desugar_ignore,
     .higher = true,
 };

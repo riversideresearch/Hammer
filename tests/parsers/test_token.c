@@ -15,7 +15,7 @@ static void test_reshape_token(gconstpointer backend) {
     if (res) {
         g_check_cmp_ptr(res->ast, !=, NULL);
         if (res->ast && res->ast->token_type == TT_BYTES) {
-            g_check_cmp_int(res->ast->bytes.len, ==, 3);
+            g_check_cmp_int(res->ast->token_data.bytes.len, ==, 3);
         }
         h_parse_result_free(res);
     }
@@ -26,11 +26,11 @@ static void test_reshape_token(gconstpointer backend) {
         HArena *arena = h_new_arena(&system_allocator, 0);
         HParsedToken *seq_token = h_make_seq(arena);
         HParsedToken *elem1 = h_make_uint(arena, 120);
-        h_carray_append(seq_token->seq, elem1);
+        h_carray_append(seq_token->token_data.seq, elem1);
         HParsedToken *elem2 = h_make_uint(arena, 121);
-        h_carray_append(seq_token->seq, elem2);
+        h_carray_append(seq_token->token_data.seq, elem2);
         HParsedToken *elem3 = h_make_uint(arena, 122);
-        h_carray_append(seq_token->seq, elem3);
+        h_carray_append(seq_token->token_data.seq, elem3);
         HParseResult mock_result = {.arena = arena, .ast = seq_token, .bit_length = 24};
         HParsedToken *reshaped = desugared->reshape(&mock_result, NULL);
         g_check_cmp_ptr(reshaped, !=, NULL);
@@ -55,7 +55,7 @@ static void test_token_len_assert(gconstpointer backend) {
     if (res) {
         g_check_cmp_ptr(res->ast, !=, NULL);
         if (res->ast && res->ast->token_type == TT_BYTES)
-            g_check_cmp_int(res->ast->bytes.len, ==, TOKEN_TEST_LEN);
+            g_check_cmp_int(res->ast->token_data.bytes.len, ==, TOKEN_TEST_LEN);
         h_parse_result_free(res);
     }
 }

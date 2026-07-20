@@ -78,8 +78,8 @@ static void test_glue_make_bytes(void) {
         g_check_cmp_ptr(bytes, !=, NULL);
         if (bytes) {
             g_check_cmp_int(bytes->token_type, ==, TT_BYTES);
-            g_check_cmp_int(bytes->bytes.len, ==, 3);
-            g_check_cmp_ptr(bytes->bytes.token, ==, data);
+            g_check_cmp_int(bytes->token_data.bytes.len, ==, 3);
+            g_check_cmp_ptr(bytes->token_data.bytes.token, ==, data);
         }
         h_parse_result_free(res);
     }
@@ -95,7 +95,7 @@ static void test_glue_make_sint(void) {
         g_check_cmp_ptr(sint, !=, NULL);
         if (sint) {
             g_check_cmp_int(sint->token_type, ==, TT_SINT);
-            g_check_cmp_int64(sint->sint, ==, -42);
+            g_check_cmp_int64(sint->token_data.sint, ==, -42);
         }
         h_parse_result_free(res);
     }
@@ -110,7 +110,7 @@ static void test_glue_make_sint_large(void) {
         HParsedToken *sint = h_make_sint(res->arena, INT64_MIN);
         g_check_cmp_ptr(sint, !=, NULL);
         if (sint) {
-            g_check_cmp_int64(sint->sint, ==, INT64_MIN);
+            g_check_cmp_int64(sint->token_data.sint, ==, INT64_MIN);
         }
         h_parse_result_free(res);
     }
