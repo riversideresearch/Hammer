@@ -785,15 +785,16 @@ typedef struct {
     HParser *parser;
 } OpcodeMap;
 
-HParser *h_dispatch__m(HAllocator *mm__, HParser *discriminator, const OpcodeMap *map,
-                       size_t count, HParser *default_parser);
-HParser *h_dispatch__s(HParser *discriminator, const OpcodeMap *map, size_t count, HParser *default_parser);
+HParser *h_dispatch__m(HAllocator *mm__, HParser *discriminator, const OpcodeMap *map, size_t count,
+                       HParser *default_parser);
+HParser *h_dispatch__s(HParser *discriminator, const OpcodeMap *map, size_t count,
+                       HParser *default_parser);
 // public macro — zero runtime cost for compile-time arrays
 /**
  * Create a parser that dispatches based on a discriminator value.
- * @brief Given a dictionary-like struct of parsers linked with opcodes, apply the parser linked to 
+ * @brief Given a dictionary-like struct of parsers linked with opcodes, apply the parser linked to
  * the opcode read by the discriminator. Apply default parser if opcode doesn't match to a parser.
- * 
+ *
  * @param discriminator Parser that produces an integer value that represent the opcode (e.g.,
  * h_uint8())
  * @param map An OpcodeMap struct that acts as a dictionary, linking each opcode to a parser.
@@ -801,7 +802,7 @@ HParser *h_dispatch__s(HParser *discriminator, const OpcodeMap *map, size_t coun
  * @return TT_SEQUENCE of the discriminator parser result and the mapped or default parser result.
  * @note Only works with Packrat.
  */
-#define h_dispatch(discriminator, map, default_parser)                                                             \
+#define h_dispatch(discriminator, map, default_parser)                                             \
     h_dispatch__s((discriminator), (map), (sizeof(map) / sizeof((map)[0])), default_parser)
 
 /**
