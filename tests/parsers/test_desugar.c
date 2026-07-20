@@ -76,7 +76,7 @@ static void test_desugar_bits_signed(void) {
 }
 
 static void test_desugar_float(void) {
-    const HParser *p = h_float();
+    const HParser *p = h_float32();
     HCFChoice *desugared = h_desugar(&system_allocator, NULL, p);
     g_check_cmp_ptr(desugared, !=, NULL);
     g_check_cmp_int(desugared->type, ==, HCF_CHOICE);
@@ -291,5 +291,4 @@ void register_desugar_tests(void) {
     g_test_add_func("/core/desugar/to_cfg_choice", test_desugar_to_cfg_choice);
     g_test_add_func("/core/desugar/to_cfg_many", test_desugar_to_cfg_many);
     g_test_add_func("/core/desugar/to_cfg_dispatch", test_desugar_to_cfg_dispatch);
-    
 }
