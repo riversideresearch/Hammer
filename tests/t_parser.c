@@ -162,7 +162,6 @@ __attribute__((unused)) static void test_uint8(gconstpointer backend) {
 }
 //@MARK_END
 
-// XXX implement h_double() and h_float(). these just test the pretty-printer...
 static HParsedToken *act_double(const HParseResult *p, void *u) {
     return H_MAKE_DOUBLE((double)H_FIELD_UINT(0) + (double)H_FIELD_UINT(1) / 10);
 }

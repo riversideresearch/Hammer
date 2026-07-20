@@ -609,21 +609,21 @@ HParser *h_uint8__m(HAllocator *mm__);
  */
 
 /**
- * @brief Parse an IEEE-754 16-bit binary float
+ * @brief Parse an IEEE-754 binary16 value, equivalent to a half-precision float
  * @return Result token type: TT_FLOAT
  */
 HParser *h_float16(void);
 /**
- * @brief Parse an IEEE-754 32-bit binary float
+ * @brief Parse an IEEE-754 binary32 value, equivalent to a single-precision or C float
  * @return Result token type: TT_FLOAT
  */
-HParser *h_float(void);
+HParser *h_float32(void);
 
 /**
- * @brief Parse an IEEE-754 64-bit binary double
+ * @brief Parse an IEEE-754 binary64 value, equivalent to a double-precision or C double
  * @return Result token type: TT_DOUBLE
  */
-HParser *h_double(void);
+HParser *h_float64(void);
 
 HParser *h_floating_point__m(HAllocator *mm__, int bits);
 /** @} */
