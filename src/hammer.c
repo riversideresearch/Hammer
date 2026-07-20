@@ -526,13 +526,14 @@ HParserBackendWithParams *h_get_backend_with_params_by_name(const char *name_wit
                 bool invalid_params = false;
                 if (params->len > 0) {
                     if (result->backend_vtable->extract_params) {
-                        int extract_status = result->backend_vtable->extract_params(result, be_w_params);
+                        int extract_status =
+                            result->backend_vtable->extract_params(result, be_w_params);
                         if (extract_status < 1) {
                             invalid_params = true;
                         }
                     }
                 }
-                
+
                 if (invalid_params) {
                     result->backend = PB_INVALID;
                     result->backend_vtable = backends[PB_INVALID];

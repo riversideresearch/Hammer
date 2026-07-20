@@ -1,7 +1,8 @@
 /* Copyright (c) 2026 Riverside Research */
 #include "params.h"
-#include <inttypes.h>
+
 #include <errno.h>
+#include <inttypes.h>
 
 size_t h_get_param_k(void *param) {
     uintptr_t params_int;
@@ -83,7 +84,7 @@ int h_extract_param_k(HParserBackendWithParams *be_with_params,
     if (params_t.params == NULL || params_t.len == 0) {
         return -2; // NULL params in be_with_params_t->params
     }
-    
+
     backend_param_with_name_t param_t = params_t.params[0];
     if (param_t.param.param == NULL)
         return -3; // NULL param
@@ -100,7 +101,7 @@ int h_extract_param_k(HParserBackendWithParams *be_with_params,
 
     errno = 0;
     char *endptr = NULL;
-    
+
     intmax_t val = strtoumax(tmp, &endptr, 10);
 
     if (endptr == tmp) {
@@ -110,7 +111,7 @@ int h_extract_param_k(HParserBackendWithParams *be_with_params,
         return -4;
     }
     if ((uintmax_t)val > UINTPTR_MAX)
-    return -4; // does not fit in uintptr_t
+        return -4; // does not fit in uintptr_t
 
     uintptr_t param = (uintptr_t)val;
     be_with_params->params = (void *)param;

@@ -50,9 +50,9 @@ static HParsedToken *reshape_float(const HParseResult *p, void *user_data) {
             flt = (float)(pow(-1, sign)) * (float)(significand * pow(2.0, exponent - 15));
         } else {
             if (fraction == 0) {
-                if (sign == 1){
+                if (sign == 1) {
                     flt = -0.0f;
-                } else{
+                } else {
                     flt = 0.0f;
                 }
             } else { // No implicit 1
@@ -86,9 +86,9 @@ static HParsedToken *reshape_float(const HParseResult *p, void *user_data) {
             flt = (float)(pow(-1, sign)) * (float)(significand * pow(2.0, exponent - 127));
         } else {
             if (fraction == 0) {
-                if (sign == 1){
+                if (sign == 1) {
                     flt = -0.0f;
-                } else{
+                } else {
                     flt = 0.0f;
                 }
             } else {
@@ -124,9 +124,9 @@ static HParsedToken *reshape_float(const HParseResult *p, void *user_data) {
             dbl = (float)(pow(-1, sign)) * significand * pow(2.0, exponent - 1023);
         } else {
             if (fraction == 0) {
-                if (sign == 1){
+                if (sign == 1) {
                     dbl = -0.0;
-                } else{
+                } else {
                     dbl = 0.0;
                 }
             } else { // No implicit 1
@@ -169,9 +169,9 @@ static HParseResult *parse_float(void *env_, HParseState *state) {
             flt = ((int16_t)pow(-1, sign)) * significand * pow(2, (exponent - 15));
         } else {
             if (fraction == 0) {
-                if (sign == 1){
+                if (sign == 1) {
                     flt = -0.0f;
-                } else{
+                } else {
                     flt = 0.0f;
                 }
             } else { // No implicit 1
@@ -204,9 +204,9 @@ static HParseResult *parse_float(void *env_, HParseState *state) {
             flt = ((int32_t)pow(-1, sign)) * significand * pow(2, (exponent - 127));
         } else {
             if (fraction == 0) {
-                if (sign == 1){
+                if (sign == 1) {
                     flt = -0.0f;
-                } else{
+                } else {
                     flt = 0.0f;
                 }
             } else {
@@ -242,14 +242,14 @@ static HParseResult *parse_float(void *env_, HParseState *state) {
             dbl = ((int64_t)pow(-1, sign)) * significand * pow(2, (exponent - 1023));
         } else {
             if (fraction == 0) {
-                if (sign == 1){
+                if (sign == 1) {
                     dbl = -0.0;
-                } else{
+                } else {
                     dbl = 0.0;
                 }
             } else { // No implicit 1
                 significand = fraction / (double)(1ULL << 52);
-                dbl = ((int64_t)pow(-1, sign)) * significand * pow(2, - 1022);
+                dbl = ((int64_t)pow(-1, sign)) * significand * pow(2, -1022);
             }
         }
 
