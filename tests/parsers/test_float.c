@@ -20,7 +20,7 @@ static void test_float16(gconstpointer backend) {
 
 static void test_float32(gconstpointer backend) {
     HParserBackend be = (HParserBackend)GPOINTER_TO_INT(backend);
-    const HParser *p = h_float();
+    const HParser *p = h_float32();
     const uint8_t input[4] = {0x40, 0x49, 0x0F, 0xDB}; // pi
     HParseResult *result = h_parse(p, input, 4);
     float pi = result->ast->token_data.flt;
@@ -29,7 +29,7 @@ static void test_float32(gconstpointer backend) {
 
 static void test_double64(gconstpointer backend) {
     HParserBackend be = (HParserBackend)GPOINTER_TO_INT(backend);
-    const HParser *p = h_double();
+    const HParser *p = h_float64();
     const uint8_t input[8] = {0x40, 0x09, 0x21, 0xFB, 0x54, 0x44, 0x2D, 0x18}; // pi
     HParseResult *result = h_parse(p, input, 8);
     double pi = result->ast->token_data.dbl;
@@ -91,7 +91,7 @@ static void test_float16_edgecases(gconstpointer backend) {
 
 static void test_float32_edgecases(gconstpointer backend) {
     HParserBackend be = (HParserBackend)GPOINTER_TO_INT(backend);
-    const HParser *p = h_float();
+    const HParser *p = h_float32();
     HParseResult *result;
     float v;
 
@@ -145,7 +145,7 @@ static void test_float32_edgecases(gconstpointer backend) {
 
 static void test_double64_edgecases(gconstpointer backend) {
     HParserBackend be = (HParserBackend)GPOINTER_TO_INT(backend);
-    const HParser *p = h_double();
+    const HParser *p = h_float64();
     HParseResult *result;
     double v;
 
@@ -203,11 +203,11 @@ static void test_float_truncated(gconstpointer backend) {
     const uint8_t short16[1] = {0x3c};
     g_check_parse_failed(p16, be, short16, sizeof short16);
 
-    const HParser *p32 = h_float();
+    const HParser *p32 = h_float32();
     const uint8_t short32[3] = {0x3f, 0x80, 0x00};
     g_check_parse_failed(p32, be, short32, sizeof short32);
 
-    const HParser *p64 = h_double();
+    const HParser *p64 = h_float64();
     const uint8_t short64[7] = {0x3f, 0xf0, 0, 0, 0, 0, 0};
     g_check_parse_failed(p64, be, short64, sizeof short64);
 }
