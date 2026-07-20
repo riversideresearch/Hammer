@@ -27,7 +27,6 @@ extern void register_parser_tests();
 extern void register_floating_point_parser_tests();
 extern void register_basic_parser_tests();
 extern void register_integer_parser_tests();
-extern void register_float_parser_tests();
 extern void register_additional_parser_tests();
 extern void register_parser_internal_tests();
 extern void register_permutation_tests();
@@ -73,7 +72,6 @@ int main(int argc, char **argv) {
     register_floating_point_parser_tests();
     register_basic_parser_tests();
     register_integer_parser_tests();
-    register_float_parser_tests();
     register_additional_parser_tests();
     register_parser_internal_tests();
     register_permutation_tests();

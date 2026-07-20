@@ -196,6 +196,48 @@ static void test_double64_edgecases(gconstpointer backend) {
     g_check_cmpdouble(v, <=, DBL_MAX);
 }
 
+static void test_float_truncated(gconstpointer backend) {
+    HParserBackend be = (HParserBackend)GPOINTER_TO_INT(backend);
+
+    const HParser *p16 = h_float16();
+    const uint8_t short16[1] = {0x3c};
+    g_check_parse_failed(p16, be, short16, sizeof short16);
+
+    const HParser *p32 = h_float();
+    const uint8_t short32[3] = {0x3f, 0x80, 0x00};
+    g_check_parse_failed(p32, be, short32, sizeof short32);
+
+    const HParser *p64 = h_double();
+    const uint8_t short64[7] = {0x3f, 0xf0, 0, 0, 0, 0, 0};
+    g_check_parse_failed(p64, be, short64, sizeof short64);
+}
+
+// Merged test_floats.c 
+// Helper function for double parser test
+static HParsedToken *act_double(const HParseResult *p, void *u) {
+    return H_MAKE_DOUBLE((double)H_FIELD_UINT(0) + (double)H_FIELD_UINT(1) / 10);
+}
+
+static void test_double(gconstpointer backend) {
+    HParser *b = h_uint8();
+    HParser *dbl = h_action(h_sequence(b, b, NULL), act_double, NULL);
+    uint8_t input[] = {4, 2};
+    g_check_parse_match(dbl, (HParserBackend)GPOINTER_TO_INT(backend), input, 2,
+                        "d0x1.0cccccccccccdp+2");
+}
+
+// Helper function for float parser test
+static HParsedToken *act_float(const HParseResult *p, void *u) {
+    return H_MAKE_FLOAT((float)H_FIELD_UINT(0) + (float)H_FIELD_UINT(1) / 10);
+}
+
+static void test_float(gconstpointer backend) {
+    HParser *b = h_uint8();
+    HParser *flt = h_action(h_sequence(b, b, NULL), act_float, NULL);
+    uint8_t input[] = {4, 2};
+    g_check_parse_match(flt, (HParserBackend)GPOINTER_TO_INT(backend), input, 2, "f0x1.0cccccp+2");
+}
+
 void register_floating_point_parser_tests(void) {
     g_test_add_data_func("/core/parser/float/float16", GINT_TO_POINTER(PB_PACKRAT), test_float16);
     g_test_add_data_func("/core/parser/float/float32", GINT_TO_POINTER(PB_PACKRAT), test_float32);
@@ -206,4 +248,8 @@ void register_floating_point_parser_tests(void) {
                          test_float32_edgecases);
     g_test_add_data_func("/core/parser/float/double64-edgecases", GINT_TO_POINTER(PB_PACKRAT),
                          test_double64_edgecases);
+    g_test_add_data_func("/core/parser/float/truncated", GINT_TO_POINTER(PB_PACKRAT),
+                         test_float_truncated);
+    g_test_add_data_func("/core/parser/packrat/double", GINT_TO_POINTER(PB_PACKRAT), test_double);
+    g_test_add_data_func("/core/parser/packrat/float", GINT_TO_POINTER(PB_PACKRAT), test_float);
 }
