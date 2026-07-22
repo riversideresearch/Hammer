@@ -1,3 +1,13 @@
+libhammer (3.0.1-1) unstable; urgency=medium
+
+  * Add a standalone migration tool for updating Hammer 2.x C and C++ sources
+    to the Hammer 3 public data structures
+  * Support preview, check, and in-place migration modes
+  * Preserve source formatting and avoid rewriting comments, literals, and
+    unrelated member accesses
+
+ -- Mahmoud Elbasiouny <melbasiouny@riversideresearch.org>  Wed, 22 Jul 2026 12:00:00 -0400
+
 libhammer (3.0.0-1) unstable; urgency=medium
 
   * Restore context-free and regular-expression parsing backends
