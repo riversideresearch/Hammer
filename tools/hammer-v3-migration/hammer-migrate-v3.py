@@ -16,7 +16,8 @@ MEMBER_GROUPS = {
     "timestamp": {"actual_results", "parse_time"},
 }
 MEMBER_ACCESS = re.compile(
-    r"(?=(?P<receiver>[A-Za-z_]\w*)\s*(?P<operator>->|\.)\s*"
+    r"(?=(?P<receiver>[A-Za-z_]\w*(?:\s*\[[^\]]+\])*)\s*"
+    r"(?P<operator>->|\.)\s*"
     r"(?P<member>[A-Za-z_]\w*))"
 )
 
@@ -69,10 +70,20 @@ def code_only(source):
 
 
 def declared_names(source, type_name):
-    declaration = re.compile(
-        rf"\b{type_name}\s+(?:\*\s*)?(?P<name>[A-Za-z_]\w*)"
-    )
-    return {match.group("name") for match in declaration.finditer(source)}
+    """Return names from simple declarations of a public Hammer type."""
+    declaration = re.compile(rf"\b{type_name}\b(?P<declarators>[^;{{}}]+);", re.DOTALL)
+    names = set()
+    for match in declaration.finditer(source):
+        for declarator in match.group("declarators").split(","):
+            name = re.search(r"(?:\*\s*)?([A-Za-z_]\w*)\s*(?:\[[^\]]*\]\s*)?$", declarator)
+            if name:
+                names.add(name.group(1))
+    return names
+
+
+def receiver_name(receiver):
+    """Return the base identifier from a direct or indexed receiver."""
+    return re.match(r"[A-Za-z_]\w*", receiver).group(0)
 
 
 def migrate_source(source):
@@ -80,12 +91,28 @@ def migrate_source(source):
     counts = {group: 0 for group in MEMBER_GROUPS}
     code = code_only(source)
     receivers = {
-        "token_data": declared_names(code, "HParsedToken") | {"ast"},
+        "token_data": declared_names(code, "HParsedToken"),
         "timestamp": declared_names(code, "HCaseResult"),
     }
+    parse_results = declared_names(code, "HParseResult")
+
+    ast_access = re.compile(
+        r"(?=(?P<result>[A-Za-z_]\w*)\s*(?:->|\.)\s*ast\s*->\s*"
+        r"(?P<member>[A-Za-z_]\w*))"
+    )
+    for match in ast_access.finditer(code):
+        if match.group("result") not in parse_results:
+            continue
+        member = match.group("member")
+        if member not in MEMBER_GROUPS["token_data"]:
+            continue
+        member_start = match.start("member")
+        edits.append((member_start, member_start, "token_data."))
+        counts["token_data"] += 1
+
     for match in MEMBER_ACCESS.finditer(code):
         member = match.group("member")
-        receiver = match.group("receiver")
+        receiver = receiver_name(match.group("receiver"))
         group = next(
             (
                 name
@@ -158,7 +185,8 @@ def main(argv=None):
 
     for path in files:
         try:
-            old = path.read_text(encoding="utf-8")
+            with path.open("r", encoding="utf-8", newline="") as source_file:
+                old = source_file.read()
         except (OSError, UnicodeError) as error:
             print(f"hammer-migrate-v3: cannot read {path}: {error}", file=sys.stderr)
             return 2
@@ -168,7 +196,12 @@ def main(argv=None):
         changed += 1
         replacements += sum(counts.values())
         if args.write:
-            path.write_text(new, encoding="utf-8", newline="")
+            try:
+                with path.open("w", encoding="utf-8", newline="") as source_file:
+                    source_file.write(new)
+            except OSError as error:
+                print(f"hammer-migrate-v3: cannot write {path}: {error}", file=sys.stderr)
+                return 2
             print(f"updated {path} ({sum(counts.values())} replacements)")
         elif not args.check:
             sys.stdout.write(unified_diff(path, old, new))

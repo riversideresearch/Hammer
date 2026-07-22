@@ -1,10 +1,11 @@
 import importlib.machinery
 import importlib.util
 from pathlib import Path
+import tempfile
 import unittest
 
 
-SCRIPT = Path(__file__).parent / "hammer-migrate-v3"
+SCRIPT = Path(__file__).parent / "hammer-migrate-v3.py"
 LOADER = importlib.machinery.SourceFileLoader("hammer_migrate_v3", str(SCRIPT))
 SPEC = importlib.util.spec_from_loader(LOADER.name, LOADER)
 MIGRATE = importlib.util.module_from_spec(SPEC)
@@ -52,6 +53,34 @@ class HammerMigrateV3Test(unittest.TestCase):
         source = "HParseResult *result; x = result->ast->sint;\n"
         migrated, _ = MIGRATE.migrate_source(source)
         self.assertEqual(migrated, "HParseResult *result; x = result->ast->token_data.sint;\n")
+
+    def test_does_not_assume_every_ast_is_a_hammer_token(self):
+        source = "struct Other *ast; x = ast->uint;\n"
+        migrated, _ = MIGRATE.migrate_source(source)
+        self.assertEqual(migrated, source)
+
+    def test_handles_multiple_and_array_declarators(self):
+        source = (
+            "HParsedToken *first, *second, tokens[2];\n"
+            "x = second->uint; y = tokens[0].sint;\n"
+        )
+        migrated, counts = MIGRATE.migrate_source(source)
+        self.assertEqual(
+            migrated,
+            "HParsedToken *first, *second, tokens[2];\n"
+            "x = second->token_data.uint; y = tokens[0].token_data.sint;\n",
+        )
+        self.assertEqual(counts["token_data"], 2)
+
+    def test_preserves_crlf(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "input.c"
+            path.write_bytes(b"HParsedToken *token;\r\nx = token->uint;\r\n")
+            self.assertEqual(MIGRATE.main(["--write", str(path)]), 0)
+            self.assertEqual(
+                path.read_bytes(),
+                b"HParsedToken *token;\r\nx = token->token_data.uint;\r\n",
+            )
 
 
 if __name__ == "__main__":

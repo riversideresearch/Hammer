@@ -6,24 +6,14 @@ It is not installed or included in Hammer packages.
 ## Requirements
 
 - Python 3.8 or newer
-- GNU Make, only if you want to use the build target
 
-The tool is a standalone Python script, so compilation is not required. You can run it directly
-from this directory.
+The tool is a standalone Python script, so compilation and installation are not required.
 
-## Build a local runnable copy
+## Run the tests
 
 ```sh
 cd tools/hammer-v3-migration
-make build
-```
-
-This creates `build/hammer-migrate-v3` inside this directory. It does not install anything.
-
-Run its tests with:
-
-```sh
-make test
+python3 -m unittest discover -v
 ```
 
 ## Test it on a project
@@ -31,19 +21,19 @@ make test
 Always start in preview mode. The first command prints a unified diff without changing the project:
 
 ```sh
-./build/hammer-migrate-v3 /path/to/existing/project
+./hammer-migrate-v3.py /path/to/existing/project
 ```
 
 After reviewing the diff, apply it explicitly:
 
 ```sh
-./build/hammer-migrate-v3 --write /path/to/existing/project
+./hammer-migrate-v3.py --write /path/to/existing/project
 ```
 
 Check whether a project still needs changes without printing a diff:
 
 ```sh
-./build/hammer-migrate-v3 --check /path/to/existing/project
+./hammer-migrate-v3.py --check /path/to/existing/project
 ```
 
 `--check` exits with status 1 when migrations are needed and 0 when no changes are found.
@@ -52,9 +42,3 @@ The tool scans `.c`, `.cc`, `.cpp`, `.cxx`, `.h`, `.hh`, `.hpp`, and `.hxx` file
 generated or third-party directories, comments, and string literals. It only rewrites recognized
 Hammer public-structure accesses, but you should still review the result and run the target
 project's tests before committing it.
-
-Remove the local build copy with:
-
-```sh
-make clean
-```
