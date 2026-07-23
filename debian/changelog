@@ -1,3 +1,10 @@
+libhammer (3.0.2-1) unstable; urgency=medium
+
+  * Fix a memory leak in the bind parser by allocating continuation parsers
+    from the parse arena
+
+ -- Mahmoud Elbasiouny <melbasiouny@riversideresearch.org>  Thu, 23 Jul 2026 12:00:00 -0400
+
 libhammer (3.0.1-1) unstable; urgency=medium
 
   * Add a standalone migration tool for updating Hammer 2.x C and C++ sources
@@ -20,7 +27,6 @@ libhammer (3.0.0-1) unstable; urgency=medium
   * Name public token and timestamp unions and widen token bit lengths to size_t
   * Remove h_arena_free in favor of arena-owned allocation lifetimes
   * Enforce strict C99 compliance
-  * Bump project, package, shared-library, and language-binding versions to 3.0.0
 
  -- Mahmoud Elbasiouny <melbasiouny@riversideresearch.org>  Mon, 20 Jul 2026 12:00:00 -0400
 
@@ -32,7 +38,6 @@ libhammer (2.1.0-1) unstable; urgency=medium
   * Add Go language bindings, tests, and documentation
   * Clean generated Java binding outputs before regeneration to prevent stale SWIG wrappers
     from breaking binding builds
-  * Bump project and Python binding package versions to 2.1.0
 
  -- Mahmoud Elbasiouny <melbasiouny@riversideresearch.org>  Wed, 20 May 2026 12:00:00 -0400
 
