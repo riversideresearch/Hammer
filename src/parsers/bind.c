@@ -25,7 +25,7 @@ static void *aa_realloc(HAllocator *allocator, void *ptr, size_t size) {
 
 static void aa_free(HAllocator *allocator, void *ptr) {
     HArena *arena = ((ArenaAllocator *)allocator)->arena;
-    //h_arena_free(arena, ptr);
+    // h_arena_free(arena, ptr);
 }
 
 static HParseResult *parse_bind(void *be_, HParseState *state) {
