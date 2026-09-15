@@ -1,8 +1,7 @@
-from __future__ import absolute_import, division, print_function
 
 import os
-import sys
 import shutil
+import sys
 
 Import("env libhammer_shared testruns targets binding_results binding_test_stamps")
 
@@ -79,17 +78,12 @@ gobindings = goenv.Command(
     ],
     [swig, gomod],
     (
-        "cd %s && "
+        f"cd {abs_build_dir} && "
         "swig -go -cgo -module hammer "
-        "-I%s/src "
+        f"-I{project_root}/src "
         "-o hammer_wrap.c "
         "hammer.i && "
-        "cp %s/hammer_test.go %s/hammer_test.go"
-    ) % (
-        abs_build_dir,
-        project_root,
-        go_src_dir,
-        abs_build_dir,
+        f"cp {go_src_dir}/hammer_test.go {abs_build_dir}/hammer_test.go"
     ),
 )
 
@@ -109,14 +103,14 @@ gotestexec = goenv.Command(
     gobindings + [libhammer_shared],
     [
         (
-            "cd %s && "
-            "LD_LIBRARY_PATH=%s "
-            "CGO_CFLAGS='-I%s/src' "
-            "CGO_LDFLAGS='-L%s -lhammer' "
-            "GOCACHE=%s "
-            "%s %s --binding Go --results-file %s -- "
+            "cd {} && "
+            "LD_LIBRARY_PATH={} "
+            "CGO_CFLAGS='-I{}/src' "
+            "CGO_LDFLAGS='-L{} -lhammer' "
+            "GOCACHE={} "
+            "{} {} --binding Go --results-file {} -- "
             "go test -v"
-        ) % (
+        ).format(
             abs_build_dir,
             hammer_lib_dir,
             project_root,
