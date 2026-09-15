@@ -19,7 +19,9 @@ static HParseResult *parse_butnot(void *env, HParseState *state) {
     HInputStream after_p1_state = state->input_stream;
     HActionPlan *after_p1_plan = state->action_plan;
     state->input_stream = start_state;
+    HSymbolLogEntry *p2_symbol_checkpoint = h_symbol_checkpoint(state);
     HParseResult *r2 = h_do_parse(parsers->p2, state);
+    h_symbol_rollback(state, p2_symbol_checkpoint);
     // don't touch the input state (overrun flag) if we must suspend
     if (want_suspend(state)) {
         return NULL;

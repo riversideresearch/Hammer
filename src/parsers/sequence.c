@@ -227,15 +227,25 @@ HParser *h_drop_from___mv(HAllocator *mm__, HParser *p, va_list ap) {
     if (!p)
         return NULL;
     HSequence *s = (HSequence *)(p->env);
-    size_t indices[s->len];
     size_t count = 0;
-    int arg = 0;
+    int arg;
 
-    for (arg = va_arg(ap, int); arg >= 0; arg = va_arg(ap, int)) {
-        indices[count] = (size_t)arg;
+    va_list count_ap;
+    va_copy(count_ap, ap);
+    for (arg = va_arg(count_ap, int); arg >= 0; arg = va_arg(count_ap, int)) {
+        HAMMER_ASSERT((size_t)arg < s->len);
+        HAMMER_ASSERT(count < s->len);
         count++;
     }
-    va_end(ap);
+    va_end(count_ap);
+
+    size_t *indices = count ? h_new(size_t, count) : NULL;
+    size_t index = 0;
+    va_list index_ap;
+    va_copy(index_ap, ap);
+    for (arg = va_arg(index_ap, int); arg >= 0; arg = va_arg(index_ap, int))
+        indices[index++] = (size_t)arg;
+    va_end(index_ap);
 
     HRewriteSequence *rewrite = h_new(HRewriteSequence, 1);
     rewrite->sequence.p_array = h_new(HParser *, s->len);
@@ -253,6 +263,8 @@ HParser *h_drop_from___mv(HAllocator *mm__, HParser *p, va_list ap) {
         }
     }
 
+    if (indices)
+        h_free(indices);
     return h_new_parser_with_free(mm__, &sequence_vt, rewrite, h_free_rewrite_sequence_env);
 }
 
@@ -263,8 +275,11 @@ HParser *h_drop_from___ma(HAllocator *mm__, void *args[]) {
     assert_message(p->vtable == &sequence_vt, "drop_from requires a sequence parser");
     HSequence *s = (HSequence *)(p->env);
     size_t count = 0;
-    for (int *arg = args[1]; *arg >= 0; ++arg)
+    for (int *arg = args[1]; *arg >= 0; ++arg) {
+        HAMMER_ASSERT((size_t)*arg < s->len);
+        HAMMER_ASSERT(count < s->len);
         ++count;
+    }
 
     HRewriteSequence *rewrite = h_new(HRewriteSequence, 1);
     rewrite->sequence.p_array = h_new(HParser *, s->len);

@@ -45,6 +45,7 @@ static inline HParseResult *perform_lowlevel_parse(HParseState *state, const HPa
                                                    HActionPlan **action_plan) {
     HParseResult *res;
     HActionPlan *caller_plan, *local_plan;
+    HSymbolLogEntry *symbol_checkpoint;
     HInputStream bak;
     size_t len;
 
@@ -52,6 +53,7 @@ static inline HParseResult *perform_lowlevel_parse(HParseState *state, const HPa
     if (!parser)
         return NULL;
 
+    symbol_checkpoint = state->symbol_log;
     /*
      * Each parser invocation builds an independent, immutable action-plan
      * delta. The caller commits that delta only if this result is selected.
@@ -63,13 +65,16 @@ static inline HParseResult *perform_lowlevel_parse(HParseState *state, const HPa
     local_plan = state->action_plan;
     state->action_plan = caller_plan;
 
-    if (!res)
+    if (!res) {
+        h_symbol_rollback(state, symbol_checkpoint);
         return NULL; // NB: input position is considered invalid on failure
+    }
 
     // combinators' parse functions by design do not have to check for overrun.
     // turn such bogus successes into parse failure.
     if (state->input_stream.overrun) {
         res->bit_length = 0;
+        h_symbol_rollback(state, symbol_checkpoint);
         return NULL;
     }
 
@@ -245,6 +250,7 @@ HParseResult *h_do_parse(const HParser *parser, HParseState *state) {
 
     key->input_pos = state->input_stream;
     key->parser = parser;
+    key->symbol_table_generation = state->symbol_table_generation;
     keyhash = cache_key_hash(key);
 
     if (parser->vtable->higher) {
@@ -381,6 +387,8 @@ HParseResult *h_packrat_parse(HAllocator *mm__, const HParser *parser, HInputStr
     parse_state->recursion_heads = h_hashtable_new(arena, pos_equal, pos_hash);
     parse_state->arena = arena;
     parse_state->symbol_table = NULL;
+    parse_state->symbol_log = NULL;
+    parse_state->symbol_table_generation = 0;
     parse_state->action_plan = NULL;
     HParseResult *res = h_do_parse(parser, parse_state);
     if (res && !h_action_plan_execute(arena, parse_state->action_plan))

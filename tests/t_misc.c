@@ -211,6 +211,20 @@ static void test_glue_act_first_second_last(void) {
     g_check_parse_match(act_last2, PB_PACKRAT, "xy", 2, "u0x79");
 }
 
+static void test_glue_act_second_rejects_short_sequence(void) {
+    if (g_test_subprocess()) {
+        HParser *p = h_action(h_sequence(h_ch('x'), NULL), h_act_second, NULL);
+        HParseResult *res = h_parse(p, (const uint8_t *)"x", 1);
+        if (res)
+            h_parse_result_free(res);
+        g_error("h_act_second accepted a sequence with fewer than two elements");
+    }
+
+    g_test_trap_subprocess(NULL, 0, G_TEST_SUBPROCESS_DEFAULT);
+    g_test_trap_assert_failed();
+    g_test_trap_assert_stderr("*Hammer assertion failed*");
+}
+
 static void test_glue_act_ignore(void) {
     HParser *p = h_action(h_sequence(h_ch('a'), h_ch('b'), NULL), h_act_ignore, NULL);
     // h_act_ignore returns NULL, so parse succeeds but with NULL ast
@@ -316,12 +330,9 @@ static void test_glue_seq_append_snoc(void) {
     // Test h_seq_append
     HParser *p1 = h_sequence(h_ch('a'), h_ch('b'), NULL);
     HParser *p2 = h_sequence(h_ch('c'), h_ch('d'), NULL);
-    HParser *p_append =
-        h_action(h_sequence(p1, p2, NULL), append_action, NULL);
+    HParser *p_append = h_action(h_sequence(p1, p2, NULL), append_action, NULL);
 
-    g_check_parse_match(
-        p_append, PB_PACKRAT, "abcd", 4,
-        "(u0x61 u0x62 u0x63 u0x64)");
+    g_check_parse_match(p_append, PB_PACKRAT, "abcd", 4, "(u0x61 u0x62 u0x63 u0x64)");
 }
 
 static void test_glue_seq_remove(void) {
@@ -497,6 +508,8 @@ void register_misc_tests(void) {
     g_test_add_func("/core/misc/oom", test_oom);
     g_test_add_func("/core/misc/glue_act_index", test_glue_act_index);
     g_test_add_func("/core/misc/glue_act_first_second_last", test_glue_act_first_second_last);
+    g_test_add_func("/core/misc/glue_act_second_rejects_short_sequence",
+                    test_glue_act_second_rejects_short_sequence);
     g_test_add_func("/core/misc/glue_act_ignore", test_glue_act_ignore);
     g_test_add_func("/core/misc/glue_make_functions", test_glue_make_functions);
     g_test_add_func("/core/misc/glue_seq_flatten", test_glue_seq_flatten);

@@ -123,6 +123,18 @@ static void test_drop_from_m(gconstpointer backend) {
     g_check_cmp_ptr(dropped_null, ==, NULL);
 }
 
+static void test_drop_from_rejects_excess_indices(void) {
+    if (g_test_subprocess()) {
+        HParser *seq = h_sequence(h_ch('a'), NULL);
+        h_drop_from(seq, 0, 1);
+        g_error("h_drop_from accepted more indices than the sequence contains");
+    }
+
+    g_test_trap_subprocess(NULL, 0, G_TEST_SUBPROCESS_DEFAULT);
+    g_test_trap_assert_failed();
+    g_test_trap_assert_stderr("*Hammer assertion failed*");
+}
+
 // Helper function to test h_drop_from___v
 static HParser *test_drop_from_v_helper(HParser *p, ...) {
     va_list ap;
@@ -202,6 +214,8 @@ void register_sequence_tests(void) {
                          test_sequence_a);
     g_test_add_data_func("/core/parser/packrat/drop_from_m", GINT_TO_POINTER(PB_PACKRAT),
                          test_drop_from_m);
+    g_test_add_func("/core/parser/packrat/drop_from_rejects_excess_indices",
+                    test_drop_from_rejects_excess_indices);
     g_test_add_data_func("/core/parser/packrat/drop_from_v", GINT_TO_POINTER(PB_PACKRAT),
                          test_drop_from_v);
     g_test_add_data_func("/core/parser/packrat/drop_from_mv_null", GINT_TO_POINTER(PB_PACKRAT),

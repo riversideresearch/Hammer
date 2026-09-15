@@ -1268,6 +1268,15 @@ HParser *h_with_endianness(char endianness, const HParser *p);
 HParser *h_with_endianness__m(HAllocator *mm__, char endianness, const HParser *p);
 
 /**
+ * Value combinators use a parse-local symbol table. Value changes are
+ * committed only when their parse path is committed. Failed branches,
+ * abandoned permutation orderings, incomplete repetition iterations, and
+ * discarded lookahead or filter probes do not retain value changes.
+ * Rewinding the input position also restores the value state for the
+ * speculative parse being rewound. Packrat memoization accounts for the
+ * current symbol-table state, so cached results do not become stale after a
+ * value is stored or removed.
+ *
  * @brief The 'h_put_value' combinator stashes the result of the parser it wraps in a symbol table
  * in the parse state, so that non- local actions and predicates can access this value.
  *
@@ -1277,6 +1286,8 @@ HParser *h_with_endianness__m(HAllocator *mm__, char endianness, const HParser *
  * @param p Parser whose result to stash
  * @param name NUL-terminated name to stash the result under (must be unique).
  * Names are compared by string contents and copied by this function.
+ * The name can be reused after a successful h_free_value() (or after the
+ * parser invocation that removed it succeeds).
  * @return Result token type: p's token type if name was not already in the symbol table.
  */
 HParser *h_put_value(const HParser *p, const char *name);
@@ -1285,6 +1296,8 @@ HParser *h_put_value__m(HAllocator *mm__, const HParser *p, const char *name);
 /**
  * @brief The 'h_get_value' combinator retrieves a named HParseResult that was previously stashed in
  * the parse state.
+ * The lookup observes the current symbol-table state. It fails if the value
+ * has not been stored or has already been successfully freed.
  *
  * @param name NUL-terminated name to retrieve. Names are compared by string
  * contents and copied by this function.
@@ -1306,6 +1319,8 @@ void h_pprint_ast_indexed(FILE *stream, const HParsedToken *token, size_t indent
 /**
  * @brief The 'h_free_value' combinator retrieves a named HParseResult that was previously stashed
  * in the parse state and deletes it from the symbol table
+ * The removal is committed only if the enclosing parser invocation succeeds;
+ * a failed parser or failed choice alternative restores the value.
  *
  * @param name NUL-terminated name to retrieve and delete. Names are compared
  * by string contents and copied by this function.

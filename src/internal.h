@@ -206,6 +206,8 @@ typedef struct HHashTable_ {
     HArena *arena;
 } HHashTable;
 
+typedef struct HSymbolLogEntry_ HSymbolLogEntry;
+
 /* The state of the parser.
  *
  * Members:
@@ -215,7 +217,9 @@ typedef struct HHashTable_ {
  * stack of HLeftRec's, used in Warth's recursion recursion_heads - table of recursion heads. Keys
  * are HParserCacheKey's with only an HInputStream (parser can be NULL), values are
  * HRecursionHead's. symbol_table - stack of tables of values that have been stashed in the context
- * of this parse.
+ * of this parse. symbol_table_generation changes whenever the symbol table changes and is part of
+ * packrat cache keys. symbol_log records inverse symbol operations so failed parser invocations
+ * can restore the symbol table.
  *
  */
 
@@ -226,6 +230,8 @@ struct HParseState_ {
     HSlist *lr_stack;
     HHashTable *recursion_heads;
     HSlist *symbol_table; // its contents are HHashTables
+    HSymbolLogEntry *symbol_log;
+    uint64_t symbol_table_generation;
     struct HActionPlan_ *action_plan;
 };
 
@@ -287,6 +293,7 @@ struct HParserBackendVTable_ {
 typedef struct HParserCacheKey_ {
     HInputStream input_pos;
     const HParser *parser;
+    uint64_t symbol_table_generation;
 } HParserCacheKey;
 
 typedef struct HActionPlan_ HActionPlan;
@@ -501,6 +508,8 @@ HHashValue h_hash_bytes(const uint8_t *buf, size_t len);
 void h_symbol_put(HParseState *state, const char *key, void *value);
 void *h_symbol_get(HParseState *state, const char *key);
 void *h_symbol_free(HParseState *state, const char *key);
+void h_symbol_rollback(HParseState *state, HSymbolLogEntry *checkpoint);
+static inline HSymbolLogEntry *h_symbol_checkpoint(HParseState *state) { return state->symbol_log; }
 
 typedef struct HCFSequence_ HCFSequence;
 

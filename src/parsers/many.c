@@ -22,9 +22,11 @@ static HParseResult *parse_many(void *env, HParseState *state) {
     size_t count = 0;
     HInputStream bak;
     HActionPlan *iteration_plan = NULL;
+    HSymbolLogEntry *iteration_checkpoint = NULL;
     while (env_->min_p || env_->count > count) {
         bak = state->input_stream;
         iteration_plan = state->action_plan;
+        iteration_checkpoint = h_symbol_checkpoint(state);
         size_t iteration_start = h_input_stream_pos(&state->input_stream);
         if (count > 0 && env_->sep != NULL) {
             HParseResult *sep = h_do_parse(env_->sep, state);
@@ -35,6 +37,7 @@ static HParseResult *parse_many(void *env, HParseState *state) {
         if (!elem)
             goto stop;
         if (env_->min_p && h_input_stream_pos(&state->input_stream) == iteration_start) {
+            h_symbol_rollback(state, iteration_checkpoint);
             state->input_stream = bak;
             state->action_plan = iteration_plan;
             size_t at = bak.pos + bak.index;
@@ -56,6 +59,7 @@ succ:; // necessary for the label to be here...
     res->bit_offset = 0;
     return make_result(state->arena, res);
 stop:
+    h_symbol_rollback(state, iteration_checkpoint);
     if (want_suspend(state))
         return NULL; // bail out early, leaving overrun flag
     if (count >= env_->count) {
