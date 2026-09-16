@@ -123,6 +123,14 @@ static void test_drop_from_m(gconstpointer backend) {
     g_check_cmp_ptr(dropped_null, ==, NULL);
 }
 
+static void test_drop_from_no_indices(gconstpointer backend) {
+    HParserBackend be = (HParserBackend)GPOINTER_TO_INT(backend);
+    HParser *seq = h_sequence(h_ch('a'), h_ch('b'), NULL);
+    HParser *dropped = h_drop_from_(seq, -1);
+
+    g_check_parse_match(dropped, be, "ab", 2, "(u0x61 u0x62)");
+}
+
 static void test_drop_from_rejects_excess_indices(void) {
     if (g_test_subprocess()) {
         HParser *seq = h_sequence(h_ch('a'), NULL);
@@ -214,6 +222,8 @@ void register_sequence_tests(void) {
                          test_sequence_a);
     g_test_add_data_func("/core/parser/packrat/drop_from_m", GINT_TO_POINTER(PB_PACKRAT),
                          test_drop_from_m);
+    g_test_add_data_func("/core/parser/packrat/drop_from_no_indices", GINT_TO_POINTER(PB_PACKRAT),
+                         test_drop_from_no_indices);
     g_test_add_func("/core/parser/packrat/drop_from_rejects_excess_indices",
                     test_drop_from_rejects_excess_indices);
     g_test_add_data_func("/core/parser/packrat/drop_from_v", GINT_TO_POINTER(PB_PACKRAT),

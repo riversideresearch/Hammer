@@ -241,11 +241,13 @@ HParser *h_drop_from___mv(HAllocator *mm__, HParser *p, va_list ap) {
 
     size_t *indices = count ? h_new(size_t, count) : NULL;
     size_t index = 0;
-    va_list index_ap;
-    va_copy(index_ap, ap);
-    for (arg = va_arg(index_ap, int); arg >= 0; arg = va_arg(index_ap, int))
-        indices[index++] = (size_t)arg;
-    va_end(index_ap);
+    if (count > 0) {
+        va_list index_ap;
+        va_copy(index_ap, ap);
+        for (arg = va_arg(index_ap, int); arg >= 0; arg = va_arg(index_ap, int))
+            indices[index++] = (size_t)arg;
+        va_end(index_ap);
+    }
 
     HRewriteSequence *rewrite = h_new(HRewriteSequence, 1);
     rewrite->sequence.p_array = h_new(HParser *, s->len);
