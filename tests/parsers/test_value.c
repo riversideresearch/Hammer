@@ -203,6 +203,37 @@ static void test_value_speculative_combinators(gconstpointer backend) {
     g_check_parse_failed(butnot_probe, be, "ab", 2);
 }
 
+static void test_value_left_recursion_generation(gconstpointer backend) {
+    HParserBackend be = (HParserBackend)GPOINTER_TO_INT(backend);
+    HParser *expr = h_indirect();
+    HParser *tail = h_sequence(h_put_value(h_ch('a'), "value"), h_free_value("value"), NULL);
+
+    h_bind_indirect(expr, h_choice(h_sequence(expr, tail, NULL), h_ch('a'), NULL));
+    HParser *complete = h_sequence(expr, h_end_p(), NULL);
+
+    /*
+     * Each tail changes the symbol-table generation twice. The active
+     * left-recursion seed must still be available to the next growth pass.
+     */
+    g_check_parse_ok(complete, be, "aa", 2);
+    g_check_parse_ok(complete, be, "aaa", 3);
+}
+
+static void test_value_left_recursion_discards_non_growth(gconstpointer backend) {
+    HParserBackend be = (HParserBackend)GPOINTER_TO_INT(backend);
+    HParser *expr = h_indirect();
+    HParser *non_growing = h_put_value(h_epsilon_p(), "value");
+
+    h_bind_indirect(expr, h_choice(h_sequence(expr, non_growing, NULL), h_ch('a'), NULL));
+    HParser *complete = h_sequence(expr, h_not(h_get_value("value")), h_end_p(), NULL);
+
+    /*
+     * The recursive alternative succeeds but consumes no more input. Its
+     * insertion is abandoned with the candidate and must not leak.
+     */
+    g_check_parse_ok(complete, be, "a", 1);
+}
+
 void register_value_tests(void) {
     g_test_add_data_func("/core/parser/packrat/value_put_edge_cases", GINT_TO_POINTER(PB_PACKRAT),
                          test_value_put_edge_cases);
@@ -218,4 +249,9 @@ void register_value_tests(void) {
                          test_value_combinators_do_not_cache_or_leak_state);
     g_test_add_data_func("/core/parser/packrat/value_speculative_combinators",
                          GINT_TO_POINTER(PB_PACKRAT), test_value_speculative_combinators);
+    g_test_add_data_func("/core/parser/packrat/value_left_recursion_generation",
+                         GINT_TO_POINTER(PB_PACKRAT), test_value_left_recursion_generation);
+    g_test_add_data_func("/core/parser/packrat/value_left_recursion_discards_non_growth",
+                         GINT_TO_POINTER(PB_PACKRAT),
+                         test_value_left_recursion_discards_non_growth);
 }

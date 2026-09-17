@@ -107,6 +107,16 @@ HParserCacheValue *recall(HParserCacheKey *k, HParseState *state, HHashValue key
         return cached;
     } else {
         /* Some heads found */
+        /*
+         * Symbol-table mutations give this lookup a new generation-specific
+         * key, but the active head still owns the best seed and the symbol
+         * state produced by that seed. Reuse it only while growing; do not
+         * insert it under the new generation because its effects are not
+         * replayed by a normal cache hit.
+         */
+        if (!cached && head->head_parser == k->parser && head->current_seed)
+            return head->current_seed;
+
         if (!cached && head->head_parser != k->parser &&
             !h_slist_find(head->involved_set, k->parser)) {
             /* Nothing in the cache, and the key parser is not involved */
@@ -148,6 +158,7 @@ void setupLR(const HParser *p, HParseState *state, HLeftRec *rec_detect) {
         some->head_parser = p;
         some->involved_set = h_slist_new(state->arena);
         some->eval_set = NULL;
+        some->current_seed = NULL;
         rec_detect->head = some;
     }
 
@@ -180,8 +191,10 @@ HParseResult *grow(HParserCacheKey *k, HParseState *state, HRecursionHead *head,
     HParserCacheValue *old_cached = h_hashtable_get(state->cache, k);
     if (!old_cached || PC_LEFT == old_cached->value_type)
         h_platform_errx(1, "impossible match");
+    head->current_seed = old_cached;
     HParseResult *old_res = old_cached->value.right;
     HActionPlan *old_plan = old_res ? old_cached->action_plan : NULL;
+    HSymbolLogEntry *symbol_checkpoint = h_symbol_checkpoint(state);
 
     // rewind the input
     state->input_stream = k->input_pos;
@@ -193,9 +206,16 @@ HParseResult *grow(HParserCacheKey *k, HParseState *state, HRecursionHead *head,
 
     if (tmp_res) {
         if (pos_lt(old_cached->input_stream, state->input_stream)) {
-            h_hashtable_put(state->cache, k, cached_result(state, tmp_res, tmp_plan));
+            HParserCacheValue *new_cached = cached_result(state, tmp_res, tmp_plan);
+            h_hashtable_put(state->cache, k, new_cached);
+            head->current_seed = new_cached;
             return grow(k, state, head, action_plan);
         } else {
+            /*
+             * This successful parse is discarded because it did not grow the
+             * seed, so its value-state changes must be discarded as well.
+             */
+            h_symbol_rollback(state, symbol_checkpoint);
             // we're done with growing, we can remove data from the recursion head
             h_hashtable_del(state->recursion_heads, &k->input_pos);
             HParserCacheValue *cached = h_hashtable_get(state->cache, k);
@@ -208,6 +228,7 @@ HParseResult *grow(HParserCacheKey *k, HParseState *state, HRecursionHead *head,
             }
         }
     } else {
+        h_symbol_rollback(state, symbol_checkpoint);
         h_hashtable_del(state->recursion_heads, &k->input_pos);
         state->input_stream = old_cached->input_stream;
         *action_plan = old_plan;
@@ -224,8 +245,9 @@ HParseResult *lr_answer(HParserCacheKey *k, HParseState *state, HLeftRec *growab
             return growable->seed;
         } else {
             // update cache
-            h_hashtable_put(state->cache, k,
-                            cached_result(state, growable->seed, growable->seed_plan));
+            HParserCacheValue *seed = cached_result(state, growable->seed, growable->seed_plan);
+            h_hashtable_put(state->cache, k, seed);
+            growable->head->current_seed = seed;
             if (!growable->seed) {
                 *action_plan = NULL;
                 return NULL;
