@@ -219,6 +219,22 @@ static void test_value_left_recursion_generation(gconstpointer backend) {
     g_check_parse_ok(complete, be, "aaa", 3);
 }
 
+static void test_value_store_free_before_recursive_call(gconstpointer backend) {
+    HParserBackend be = (HParserBackend)GPOINTER_TO_INT(backend);
+    HParser *expr = h_indirect();
+    HParser *tail = h_sequence(h_put_value(h_ch('a'), "value"), h_free_value("value"), NULL);
+
+    h_bind_indirect(expr, h_choice(h_sequence(tail, expr, NULL), h_ch('a'), NULL));
+    HParser *complete = h_sequence(expr, h_end_p(), NULL);
+
+    /*
+     * The value is stored and freed before the recursive call. This ordering
+     * must not invalidate the recursive parse state or its cached result.
+     */
+    g_check_parse_ok(complete, be, "aa", 2);
+    g_check_parse_ok(complete, be, "aaa", 3);
+}
+
 static void test_value_left_recursion_discards_non_growth(gconstpointer backend) {
     HParserBackend be = (HParserBackend)GPOINTER_TO_INT(backend);
     HParser *expr = h_indirect();
@@ -251,6 +267,8 @@ void register_value_tests(void) {
                          GINT_TO_POINTER(PB_PACKRAT), test_value_speculative_combinators);
     g_test_add_data_func("/core/parser/packrat/value_left_recursion_generation",
                          GINT_TO_POINTER(PB_PACKRAT), test_value_left_recursion_generation);
+    g_test_add_data_func("/core/parser/packrat/value_store_free_before_recursive_call",
+                         GINT_TO_POINTER(PB_PACKRAT), test_value_store_free_before_recursive_call);
     g_test_add_data_func("/core/parser/packrat/value_left_recursion_discards_non_growth",
                          GINT_TO_POINTER(PB_PACKRAT),
                          test_value_left_recursion_discards_non_growth);
