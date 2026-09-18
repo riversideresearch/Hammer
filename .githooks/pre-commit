@@ -7,19 +7,16 @@ set -e
 echo "Running Hammer pre-commit checks..."
 
 ############################################
-# 1. clang-format on staged C/C++ files
+# 1. clang-format on staged C/C++ changes
 ############################################
 
-FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(c|h|cpp|hpp)$' || true)
+FILES=$(git diff --cached --name-only --diff-filter=ACM \
+    | grep -E '\.(c|h|cpp|hpp)$' || true)
 
 if [ -n "$FILES" ]; then
-    echo "Formatting staged C/C++ files with clang-format..."
-    for f in $FILES; do
-        if [ -f "$f" ]; then
-            clang-format -i "$f"
-            git add "$f"
-        fi
-    done
+    echo "Formatting staged C/C++ changes with clang-format..."
+
+    git clang-format --staged --extensions c,h,cpp,hpp
 fi
 
 ############################################
@@ -29,33 +26,31 @@ fi
 echo "Checking whitespace errors (git diff --check)..."
 git diff --cached --check
 if [ $? -ne 0 ]; then
-    echo "ERROR: Whitespace issues detected. Fix them before committing."
+    echo "ERROR: Whitespace issues and/or Merge conflict markers detected. Fix them before committing."
     exit 1
 fi
 
 ############################################
-# 3. Merge conflict marker detection
+# 3. Ruff linting (Python + SCons)
 ############################################
 
-echo "Checking for merge conflict markers..."
-if git diff --cached | grep -E '<<<<<<<|=======|>>>>>>>'; then
-    echo "ERROR: Merge conflict markers detected. Resolve conflicts before committing."
-    exit 1
-fi
+echo "Running Ruff linting on staged files..."
+
+RUFF_FAILED=0
+
+git diff --cached --name-only --diff-filter=ACM -z |
+while IFS= read -r -d '' f; do
+    case "$f" in
+        *.py|*/SConstruct|*/SConscript|SConstruct|SConscript)
+            echo "  Ruff: $f"
+
+            git show ":$f" | ruff check --stdin-filename "$f" - || RUFF_FAILED=1
+            ;;
+    esac
+done
 
 ############################################
-# 4. Ruff linting (Python + SCons)
-############################################
-
-echo "Running ruff linting..."
-PYFILES=$(find . -path ./build -prune -o \( -name "*.py" -o -name "SConstruct" -o -name "SConscript" \) -print)
-
-if [ -n "$PYFILES" ]; then
-    ruff check $PYFILES
-fi
-
-############################################
-# 5. Success
+# 4. Success
 ############################################
 
 echo "All pre-commit checks passed."
