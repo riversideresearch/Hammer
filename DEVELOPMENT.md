@@ -152,6 +152,12 @@ git log --oneline public/main..public/release/vX.Y.Z
 git diff --stat public/main..public/release/vX.Y.Z
 ```
 
+Use the githooks to check clang-format, git diff, and Ruff linting before commiting. Inside .git/config under [core] add:
+
+```
+  hooksPath = .githooks
+```
+
 ### Test coverage
 
 Install coverage tools:

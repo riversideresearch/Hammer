@@ -37,9 +37,12 @@ fi
 echo "Running Ruff linting on staged files..."
 
 RUFF_FAILED=0
+RUFF_FILES=$(mktemp "${TMPDIR:-/tmp}/hammer-ruff-files.XXXXXX")
+trap 'rm -f "$RUFF_FILES"' 0 HUP INT TERM
 
-git diff --cached --name-only --diff-filter=ACM -z |
-while IFS= read -r -d '' f; do
+git diff --cached --name-only --diff-filter=ACM > "$RUFF_FILES"
+
+while IFS= read -r f || [ -n "$f" ]; do
     case "$f" in
         *.py|*/SConstruct|*/SConscript|SConstruct|SConscript)
             echo "  Ruff: $f"
@@ -47,7 +50,12 @@ while IFS= read -r -d '' f; do
             git show ":$f" | ruff check --stdin-filename "$f" - || RUFF_FAILED=1
             ;;
     esac
-done
+done < "$RUFF_FILES"
+
+if [ "$RUFF_FAILED" -ne 0 ]; then
+    echo "ERROR: Ruff found linting errors in staged files."
+    exit 1
+fi
 
 ############################################
 # 4. Success
