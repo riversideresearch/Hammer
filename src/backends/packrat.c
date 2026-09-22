@@ -40,11 +40,40 @@ static HParserCacheValue *cached_lr(HParseState *state, HLeftRec *lr) {
     return ret;
 }
 
+static bool input_stream_equal(const HInputStream *a, const HInputStream *b) {
+    return a->input == b->input && a->pos == b->pos && a->index == b->index &&
+           a->length == b->length && a->bit_offset == b->bit_offset && a->margin == b->margin &&
+           a->endianness == b->endianness && a->overrun == b->overrun &&
+           a->last_chunk == b->last_chunk && a->trace == b->trace;
+}
+
+static HHashValue hash_combine(HHashValue hash, HHashValue value) {
+    return hash * UINT32_C(33) + value;
+}
+
+static HHashValue hash_size(size_t value) {
+    uint64_t value64 = value;
+    return (HHashValue)(value64 ^ (value64 >> 32));
+}
+
+static HHashValue input_stream_hash(const HInputStream *input) {
+    HHashValue hash = h_hash_ptr(input->input);
+    hash = hash_combine(hash, hash_size(input->pos));
+    hash = hash_combine(hash, hash_size(input->index));
+    hash = hash_combine(hash, hash_size(input->length));
+    hash = hash_combine(hash, input->bit_offset);
+    hash = hash_combine(hash, input->margin);
+    hash = hash_combine(hash, (unsigned char)input->endianness);
+    hash = hash_combine(hash, input->overrun);
+    hash = hash_combine(hash, input->last_chunk);
+    return hash_combine(hash, h_hash_ptr(input->trace));
+}
+
 static HLeftRec *active_left_recursion(const HParserCacheKey *key, HParseState *state) {
     for (HSlistNode *node = state->lr_stack->head; node; node = node->next) {
         HLeftRec *left_recursion = node->elem;
         if (left_recursion->rule == key->parser &&
-            memcmp(&left_recursion->input_pos, &key->input_pos, sizeof(key->input_pos)) == 0)
+            input_stream_equal(&left_recursion->input_pos, &key->input_pos))
             return left_recursion;
     }
     return NULL;
@@ -381,19 +410,27 @@ void h_packrat_free(HParser *parser) {
 }
 
 static uint32_t cache_key_hash(const void *key) {
+    const HParserCacheKey *cache_key = key;
 #ifdef DETAILED_PACKRAT_STATISTICS
     ++(packrat_hash_count);
     packrat_hash_bytes += sizeof(HParserCacheKey);
 #endif
-    return h_hash_bytes(key, sizeof(HParserCacheKey));
+    HHashValue hash = input_stream_hash(&cache_key->input_pos);
+    hash = hash_combine(hash, h_hash_ptr(cache_key->parser));
+    return hash_combine(hash, (HHashValue)(cache_key->symbol_table_generation ^
+                                           (cache_key->symbol_table_generation >> 32)));
 }
 
 static bool cache_key_equal(const void *key1, const void *key2) {
+    const HParserCacheKey *cache_key1 = key1;
+    const HParserCacheKey *cache_key2 = key2;
 #ifdef DETAILED_PACKRAT_STATISTICS
     ++(packrat_cmp_count);
     packrat_cmp_bytes += sizeof(HParserCacheKey);
 #endif
-    return memcmp(key1, key2, sizeof(HParserCacheKey)) == 0;
+    return cache_key1->parser == cache_key2->parser &&
+           cache_key1->symbol_table_generation == cache_key2->symbol_table_generation &&
+           input_stream_equal(&cache_key1->input_pos, &cache_key2->input_pos);
 }
 
 static uint32_t pos_hash(const void *key) {
@@ -401,7 +438,7 @@ static uint32_t pos_hash(const void *key) {
     ++(packrat_hash_count);
     packrat_hash_bytes += sizeof(HInputStream);
 #endif
-    return h_hash_bytes(key, sizeof(HInputStream));
+    return input_stream_hash(key);
 }
 
 static bool pos_equal(const void *key1, const void *key2) {
@@ -409,7 +446,7 @@ static bool pos_equal(const void *key1, const void *key2) {
     ++(packrat_cmp_count);
     packrat_cmp_bytes += sizeof(HInputStream);
 #endif
-    return memcmp(key1, key2, sizeof(HInputStream)) == 0;
+    return input_stream_equal(key1, key2);
 }
 
 HParseResult *h_packrat_parse(HAllocator *mm__, const HParser *parser, HInputStream *input_stream) {
