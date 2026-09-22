@@ -334,6 +334,7 @@ typedef struct HLeftRec_ {
     HParseResult *seed;
     HActionPlan *seed_plan;
     const HParser *rule;
+    HInputStream input_pos;
     HRecursionHead *head;
 } HLeftRec;
 

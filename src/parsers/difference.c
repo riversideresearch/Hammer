@@ -10,27 +10,33 @@ static HParseResult *parse_difference(void *env, HParseState *state) {
     HTwoParsers *parsers = (HTwoParsers *)env;
     // cache the initial state of the input stream
     HInputStream start_state = state->input_stream;
+    HActionPlan *start_plan = state->action_plan;
+    HSymbolLogEntry *symbol_checkpoint = h_symbol_checkpoint(state);
     HParseResult *r1 = h_do_parse(parsers->p1, state);
     // if p1 failed, bail out early
     if (NULL == r1) {
+        h_symbol_rollback(state, symbol_checkpoint);
+        state->action_plan = start_plan;
         return NULL;
     }
     // cache the state after parse #1, since we might have to back up to it
     HInputStream after_p1_state = state->input_stream;
-    HActionPlan *after_p1_plan = state->action_plan;
     state->input_stream = start_state;
-    HSymbolLogEntry *p2_symbol_checkpoint = h_symbol_checkpoint(state);
+    state->action_plan = start_plan;
+    h_symbol_rollback(state, symbol_checkpoint);
     HParseResult *r2 = h_do_parse(parsers->p2, state);
-    h_symbol_rollback(state, p2_symbol_checkpoint);
+    h_symbol_rollback(state, symbol_checkpoint);
     // don't touch the input state (overrun flag) if we must suspend
     if (want_suspend(state)) {
+        state->action_plan = start_plan;
         return NULL;
     }
     // in all other cases, the input stream should be in the post-p1 state
     state->input_stream = after_p1_state;
-    state->action_plan = after_p1_plan;
+    state->action_plan = start_plan;
     if (NULL == r2) {
-        return r1;
+        state->input_stream = start_state;
+        return h_do_parse(parsers->p1, state);
     }
     size_t r1len = token_length(r1);
     size_t r2len = token_length(r2);
@@ -38,7 +44,8 @@ static HParseResult *parse_difference(void *env, HParseState *state) {
     if (r1len < r2len) {
         return NULL;
     } else {
-        return r1;
+        state->input_stream = start_state;
+        return h_do_parse(parsers->p1, state);
     }
 }
 

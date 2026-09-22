@@ -40,6 +40,16 @@ static HParserCacheValue *cached_lr(HParseState *state, HLeftRec *lr) {
     return ret;
 }
 
+static HLeftRec *active_left_recursion(const HParserCacheKey *key, HParseState *state) {
+    for (HSlistNode *node = state->lr_stack->head; node; node = node->next) {
+        HLeftRec *left_recursion = node->elem;
+        if (left_recursion->rule == key->parser &&
+            memcmp(&left_recursion->input_pos, &key->input_pos, sizeof(key->input_pos)) == 0)
+            return left_recursion;
+    }
+    return NULL;
+}
+
 // internal helper to perform an uncached parse and common error-handling
 static inline HParseResult *perform_lowlevel_parse(HParseState *state, const HParser *parser,
                                                    HActionPlan **action_plan) {
@@ -101,6 +111,18 @@ static inline HParseResult *select_result(HParseState *state, HParseResult *resu
 HParserCacheValue *recall(HParserCacheKey *k, HParseState *state, HHashValue keyhash) {
     HParserCacheValue *cached = h_hashtable_get_precomp(state->cache, k, keyhash);
     HRecursionHead *head = h_hashtable_get(state->recursion_heads, &k->input_pos);
+
+    /*
+     * A value parser can change the generation before a direct recursive call
+     * reaches the provisional cache entry. While the matching frame is
+     * active, it remains the recursion seed even though its normal cache key
+     * has a different generation.
+     */
+    if (!cached) {
+        HLeftRec *left_recursion = active_left_recursion(k, state);
+        if (left_recursion)
+            return cached_lr(state, left_recursion);
+    }
 
     if (!head) {
         /* No heads found */
@@ -290,6 +312,7 @@ HParseResult *h_do_parse(const HParser *parser, HParseState *state) {
             base->seed = NULL;
             base->seed_plan = NULL;
             base->rule = parser;
+            base->input_pos = key->input_pos;
             base->head = NULL;
             h_slist_push(state->lr_stack, base);
             /* cache it */

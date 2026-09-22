@@ -50,6 +50,22 @@ static void test_value_free_edge_cases(gconstpointer backend) {
     g_check_cmp_ptr(res, ==, NULL);
 }
 
+static void test_value_with_zero_width_prefix(gconstpointer backend) {
+    HParserBackend be = (HParserBackend)GPOINTER_TO_INT(backend);
+    HParser *expr = h_indirect();
+    HParser *prefix =
+        h_sequence(h_put_value(h_epsilon_p(), "value"), h_free_value("value"), expr, NULL);
+    h_bind_indirect(expr, h_choice(prefix, h_ch('a'), NULL));
+    HParser *parser = h_sequence(expr, h_end_p(), NULL);
+
+    /*
+     * The zero-width prefix changes the symbol generation before recursive
+     * expr is evaluated at the same position. Packrat must use the active
+     * seed despite the changed generation instead of recursing indefinitely.
+     */
+    g_check_parse_ok(parser, be, "a", 1);
+}
+
 static void test_value_string_keys_are_content_based_and_owned(gconstpointer backend) {
     HParserBackend be = (HParserBackend)GPOINTER_TO_INT(backend);
 
@@ -201,6 +217,27 @@ static void test_value_speculative_combinators(gconstpointer backend) {
         h_butnot(h_token((const uint8_t *)"ab", 2), h_put_value(h_ch('a'), "butnot_probe")),
         h_get_value("butnot_probe"), NULL);
     g_check_parse_failed(butnot_probe, be, "ab", 2);
+
+    /*
+     * Relational probes and xor must evaluate p2 before p1's tentative
+     * value changes become visible. The selected p1 result then commits.
+     */
+    HParser *butnot_transaction = h_sequence(
+        h_butnot(h_put_value(h_ch('a'), "butnot_value"),
+                 h_sequence(h_free_value("butnot_value"), h_ch('a'), NULL)),
+        h_get_value("butnot_value"), NULL);
+    g_check_parse_ok(butnot_transaction, be, "a", 1);
+
+    HParser *difference_transaction = h_sequence(
+        h_difference(h_put_value(h_ch('a'), "difference_value"),
+                     h_sequence(h_free_value("difference_value"), h_ch('a'), NULL)),
+        h_get_value("difference_value"), NULL);
+    g_check_parse_ok(difference_transaction, be, "a", 1);
+
+    HParser *xor_transaction =
+        h_sequence(h_xor(h_put_value(h_ch('a'), "xor_value"), h_free_value("xor_value")),
+                   h_get_value("xor_value"), NULL);
+    g_check_parse_ok(xor_transaction, be, "a", 1);
 }
 
 static void test_value_left_recursion_generation(gconstpointer backend) {
@@ -257,6 +294,8 @@ void register_value_tests(void) {
                          test_value_get_edge_cases);
     g_test_add_data_func("/core/parser/packrat/value_free_edge_cases", GINT_TO_POINTER(PB_PACKRAT),
                          test_value_free_edge_cases);
+    g_test_add_data_func("/core/parser/packrat/value_with_zero_width_prefix", GINT_TO_POINTER(PB_PACKRAT),
+                         test_value_with_zero_width_prefix);
     g_test_add_data_func("/core/parser/packrat/value_string_keys_are_content_based_and_owned",
                          GINT_TO_POINTER(PB_PACKRAT),
                          test_value_string_keys_are_content_based_and_owned);
