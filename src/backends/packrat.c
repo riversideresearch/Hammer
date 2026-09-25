@@ -152,7 +152,7 @@ HParserCacheValue *recall(HParserCacheKey *k, HParseState *state, HHashValue key
         HLeftRec *left_recursion = active_left_recursion(k, state);
         if (left_recursion) {
             cached = cached_lr(state, left_recursion);
-            cached->input_stream = left_recursion->seed_input_pos;
+            cached->input_stream = left_recursion->seed_input_stream;
             return cached;
         }
     }
@@ -225,8 +225,11 @@ static inline bool pos_lt(HInputStream pos1, HInputStream pos2) {
             (pos1.index == pos2.index && pos1.bit_offset < pos2.bit_offset));
 }
 
-/* If recall() returns NULL, we need to store a dummy failure in the cache and compute the
- * future parse.
+/*
+ * Re-evaluate a left-recursive root until its result no longer grows. The
+ * previous seed remains on the LR stack only while its production runs, so a
+ * direct recursive call can find it even after a value mutation changes the
+ * cache generation.
  */
 
 HParseResult *grow(HParserCacheKey *k, HParseState *state, HRecursionHead *head,
@@ -243,7 +246,7 @@ HParseResult *grow(HParserCacheKey *k, HParseState *state, HRecursionHead *head,
                             .seed_plan = old_plan,
                             .rule = k->parser,
                             .input_pos = k->input_pos,
-                            .seed_input_pos = old_cached->input_stream,
+                            .seed_input_stream = old_cached->input_stream,
                             .head = head};
 
     // rewind the input
@@ -297,7 +300,7 @@ HParseResult *lr_answer(HParserCacheKey *k, HParseState *state, HLeftRec *growab
             // update cache
             HParserCacheValue *seed = cached_result(state, growable->seed, growable->seed_plan);
             h_hashtable_put(state->cache, k, seed);
-            growable->seed_input_pos = seed->input_stream;
+            growable->seed_input_stream = seed->input_stream;
             if (!growable->seed) {
                 *action_plan = NULL;
                 return NULL;
@@ -341,7 +344,7 @@ HParseResult *h_do_parse(const HParser *parser, HParseState *state) {
             base->seed_plan = NULL;
             base->rule = parser;
             base->input_pos = key->input_pos;
-            base->seed_input_pos = key->input_pos;
+            base->seed_input_stream = key->input_pos;
             base->head = NULL;
             h_slist_push(state->lr_stack, base);
             /* cache it */

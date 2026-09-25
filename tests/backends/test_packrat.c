@@ -84,9 +84,8 @@ static void test_packrat_grow_after_value_mutation(gconstpointer backend) {
     HParserBackend be = (HParserBackend)GPOINTER_TO_INT(backend);
 
     HParser *expr = h_indirect();
-    HParser *recursive =
-        h_sequence(h_put_value(h_epsilon_p(), "value"), h_free_value("value"), expr, h_ch('a'),
-                   NULL);
+    HParser *recursive = h_sequence(h_put_value(h_epsilon_p(), "value"), h_free_value("value"),
+                                    expr, h_ch('a'), NULL);
     h_bind_indirect(expr, h_choice(recursive, h_ch('a'), NULL));
 
     HParser *parser = h_sequence(expr, h_end_p(), NULL);

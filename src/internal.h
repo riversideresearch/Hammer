@@ -324,6 +324,8 @@ typedef struct HRecursionHead_ {
  * Members:
  *   seed - the HResult yielded by rule
  *   rule - the HParser that produces seed
+ *   input_pos - the input position where the recursion begins
+ *   seed_input_stream - the position immediately after the current seed
  *   head - the
  */
 typedef struct HLeftRec_ {
@@ -331,7 +333,7 @@ typedef struct HLeftRec_ {
     HActionPlan *seed_plan;
     const HParser *rule;
     HInputStream input_pos;
-    HInputStream seed_input_pos;
+    HInputStream seed_input_stream;
     HRecursionHead *head;
 } HLeftRec;
 
