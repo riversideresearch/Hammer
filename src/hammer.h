@@ -959,7 +959,9 @@ HParser *h_sequence__ma(HAllocator *mm__, void *args[]);
 /**
  * @brief Given an `h_sequence` and a list of indices, returns a parser that parses the sequence but
  * returns it without the results at the dropped indices. If a negative integer appears in the
- * middle of the list, this combinator will silently ignore the rest of the list.
+ * middle of the list, this combinator will silently ignore the rest of the list. Indices may be
+ * listed in any order, but each must identify a distinct element of the sequence; duplicate or
+ * out-of-range indices are programmer errors.
  *
  * @param p Sequence parser
  * @param ... Indices of elements to drop

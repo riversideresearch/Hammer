@@ -145,14 +145,22 @@ static void test_drop_from_rejects_out_of_range_index(void) {
 
 static void test_drop_from_rejects_duplicate_indices(void) {
     if (g_test_subprocess()) {
-        HParser *seq = h_sequence(h_ch('a'), NULL);
+        HParser *seq = h_sequence(h_ch('a'), h_ch('b'), h_ch('c'), NULL);
         h_drop_from(seq, 0, 0);
-        g_error("h_drop_from accepted more indices than the sequence contains");
+        g_error("h_drop_from accepted duplicate indices");
     }
 
     g_test_trap_subprocess(NULL, 0, G_TEST_SUBPROCESS_DEFAULT);
     g_test_trap_assert_failed();
     g_test_trap_assert_stderr("*Hammer assertion failed*");
+}
+
+static void test_drop_from_accepts_unsorted_distinct_indices(gconstpointer backend) {
+    HParserBackend be = (HParserBackend)GPOINTER_TO_INT(backend);
+    HParser *seq = h_sequence(h_ch('a'), h_ch('b'), h_ch('c'), NULL);
+    HParser *dropped = h_drop_from(seq, 2, 0);
+
+    g_check_parse_match(dropped, be, "abc", 3, "(u0x62)");
 }
 
 // Helper function to test h_drop_from___v
@@ -240,6 +248,9 @@ void register_sequence_tests(void) {
                     test_drop_from_rejects_out_of_range_index);
     g_test_add_func("/core/parser/packrat/drop_from_rejects_duplicate_indices",
                     test_drop_from_rejects_duplicate_indices);
+    g_test_add_data_func("/core/parser/packrat/drop_from_accepts_unsorted_distinct_indices",
+                         GINT_TO_POINTER(PB_PACKRAT),
+                         test_drop_from_accepts_unsorted_distinct_indices);
     g_test_add_data_func("/core/parser/packrat/drop_from_v", GINT_TO_POINTER(PB_PACKRAT),
                          test_drop_from_v);
     g_test_add_data_func("/core/parser/packrat/drop_from_mv_null", GINT_TO_POINTER(PB_PACKRAT),

@@ -306,21 +306,17 @@ typedef struct HActionPlan_ HActionPlan;
 
 typedef enum HParserCacheValueType_ { PC_LEFT, PC_RIGHT } HParserCacheValueType;
 
-typedef struct HParserCacheValue_t HParserCacheValue;
-
 /* A recursion head.
  *
  * Members:
  *   head_parser - the parse rule that started this recursion
  *   involved_set - A list of rules (HParser's) involved in the recursion
  *   eval_set - rules to evaluate during the current growth iteration
- *   current_seed - best result from the current growth iteration
  */
 typedef struct HRecursionHead_ {
     const HParser *head_parser;
     HSlist *involved_set;
     HSlist *eval_set;
-    HParserCacheValue *current_seed;
 } HRecursionHead;
 
 /* A left recursion.
@@ -335,6 +331,7 @@ typedef struct HLeftRec_ {
     HActionPlan *seed_plan;
     const HParser *rule;
     HInputStream input_pos;
+    HInputStream seed_input_pos;
     HRecursionHead *head;
 } HLeftRec;
 
@@ -342,7 +339,7 @@ typedef struct HLeftRec_ {
  * HParseResult's (Right).
  * Includes the position (input_stream) to advance to after using this value.
  */
-struct HParserCacheValue_t {
+typedef struct HParserCacheValue_t {
     HParserCacheValueType value_type;
     union {
         HLeftRec *left;
@@ -350,7 +347,7 @@ struct HParserCacheValue_t {
     } value;
     HInputStream input_stream;
     HActionPlan *action_plan;
-};
+} HParserCacheValue;
 
 // This file provides the logical inverse of bitreader.c
 struct HBitWriter_ {

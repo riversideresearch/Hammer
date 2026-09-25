@@ -145,12 +145,16 @@ HParserCacheValue *recall(HParserCacheKey *k, HParseState *state, HHashValue key
      * A value parser can change the generation before a direct recursive call
      * reaches the provisional cache entry. While the matching frame is
      * active, it remains the recursion seed even though its normal cache key
-     * has a different generation.
+     * has a different generation. A root production being reevaluated by
+     * grow() has no matching active frame, so it is still parsed normally.
      */
     if (!cached) {
         HLeftRec *left_recursion = active_left_recursion(k, state);
-        if (left_recursion)
-            return cached_lr(state, left_recursion);
+        if (left_recursion) {
+            cached = cached_lr(state, left_recursion);
+            cached->input_stream = left_recursion->seed_input_pos;
+            return cached;
+        }
     }
 
     if (!head) {
@@ -158,18 +162,9 @@ HParserCacheValue *recall(HParserCacheKey *k, HParseState *state, HHashValue key
         return cached;
     } else {
         /* Some heads found */
-        /*
-         * Symbol-table mutations give this lookup a new generation-specific
-         * key, but the active head still owns the best seed and the symbol
-         * state produced by that seed. Reuse it only while growing; do not
-         * insert it under the new generation because its effects are not
-         * replayed by a normal cache hit.
-         */
-        if (!cached && head->head_parser == k->parser && head->current_seed)
-            return head->current_seed;
-
         if (!cached && head->head_parser != k->parser &&
-            !h_slist_find(head->involved_set, k->parser)) {
+            !h_slist_find(head->involved_set, k->parser) && !h_is_put_value_parser(k->parser) &&
+            !h_is_get_value_parser(k->parser)) {
             /* Nothing in the cache, and the key parser is not involved */
             cached = cached_result(state, NULL, NULL);
             cached->input_stream = k->input_pos;
@@ -209,7 +204,6 @@ void setupLR(const HParser *p, HParseState *state, HLeftRec *rec_detect) {
         some->head_parser = p;
         some->involved_set = h_slist_new(state->arena);
         some->eval_set = NULL;
-        some->current_seed = NULL;
         rec_detect->head = some;
     }
 
@@ -242,10 +236,15 @@ HParseResult *grow(HParserCacheKey *k, HParseState *state, HRecursionHead *head,
     HParserCacheValue *old_cached = h_hashtable_get(state->cache, k);
     if (!old_cached || PC_LEFT == old_cached->value_type)
         h_platform_errx(1, "impossible match");
-    head->current_seed = old_cached;
     HParseResult *old_res = old_cached->value.right;
     HActionPlan *old_plan = old_res ? old_cached->action_plan : NULL;
     HSymbolLogEntry *symbol_checkpoint = h_symbol_checkpoint(state);
+    HLeftRec active_seed = {.seed = old_res,
+                            .seed_plan = old_plan,
+                            .rule = k->parser,
+                            .input_pos = k->input_pos,
+                            .seed_input_pos = old_cached->input_stream,
+                            .head = head};
 
     // rewind the input
     state->input_stream = k->input_pos;
@@ -253,13 +252,13 @@ HParseResult *grow(HParserCacheKey *k, HParseState *state, HRecursionHead *head,
     // reset the eval_set of the head of the recursion at each beginning of growth
     head->eval_set = h_slist_copy(head->involved_set);
     HActionPlan *tmp_plan = NULL;
+    h_slist_push(state->lr_stack, &active_seed);
     HParseResult *tmp_res = perform_lowlevel_parse(state, k->parser, &tmp_plan);
+    h_slist_pop(state->lr_stack);
 
     if (tmp_res) {
         if (pos_lt(old_cached->input_stream, state->input_stream)) {
-            HParserCacheValue *new_cached = cached_result(state, tmp_res, tmp_plan);
-            h_hashtable_put(state->cache, k, new_cached);
-            head->current_seed = new_cached;
+            h_hashtable_put(state->cache, k, cached_result(state, tmp_res, tmp_plan));
             return grow(k, state, head, action_plan);
         } else {
             /*
@@ -298,7 +297,7 @@ HParseResult *lr_answer(HParserCacheKey *k, HParseState *state, HLeftRec *growab
             // update cache
             HParserCacheValue *seed = cached_result(state, growable->seed, growable->seed_plan);
             h_hashtable_put(state->cache, k, seed);
-            growable->head->current_seed = seed;
+            growable->seed_input_pos = seed->input_stream;
             if (!growable->seed) {
                 *action_plan = NULL;
                 return NULL;
@@ -342,6 +341,7 @@ HParseResult *h_do_parse(const HParser *parser, HParseState *state) {
             base->seed_plan = NULL;
             base->rule = parser;
             base->input_pos = key->input_pos;
+            base->seed_input_pos = key->input_pos;
             base->head = NULL;
             h_slist_push(state->lr_stack, base);
             /* cache it */
