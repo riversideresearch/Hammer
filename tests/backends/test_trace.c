@@ -234,7 +234,7 @@ static void test_trace_flag_prints_condensed_report(void) {
         return;
     }
 
-    g_test_trap_subprocess(NULL, 0, G_TEST_SUBPROCESS_DEFAULT);
+    g_test_trap_subprocess(NULL, 0, (GTestSubprocessFlags)0);
     g_test_trap_assert_passed();
     g_test_trap_assert_stderr("*error: unexpected byte 'X'*input trail:*input context (3 bytes)*");
 }

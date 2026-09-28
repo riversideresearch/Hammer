@@ -70,7 +70,7 @@ static void test_cfstack_begin_seq_realloc_failure(void) {
         g_error("h_cfstack_begin_seq returned after realloc failure");
     }
 
-    g_test_trap_subprocess(NULL, 0, G_TEST_SUBPROCESS_DEFAULT);
+    g_test_trap_subprocess(NULL, 0, (GTestSubprocessFlags)0);
     g_test_trap_assert_failed();
     g_test_trap_assert_stderr("*memory reallocation failed*");
 }
@@ -93,7 +93,7 @@ static void test_cfstack_begin_choice_realloc_failure(void) {
         g_error("h_cfstack_begin_choice returned after realloc failure");
     }
 
-    g_test_trap_subprocess(NULL, 0, G_TEST_SUBPROCESS_DEFAULT);
+    g_test_trap_subprocess(NULL, 0, (GTestSubprocessFlags)0);
     g_test_trap_assert_failed();
     g_test_trap_assert_stderr("*memory reallocation failed*");
 }
