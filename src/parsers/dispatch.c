@@ -206,40 +206,13 @@ static HParseResult *parse_dispatch(void *env, HParseState *state) {
     return dispatch_result;
 }
 
-static bool dispatch_isValidRegular(void *env) {
-    HDispatch *d = (HDispatch *)env;
-
-    if (!d->discriminator->vtable->isValidRegular(d->discriminator->env))
-        return false;
-    for (size_t i = 0; i < d->size; ++i) {
-        HParser *p = d->map[i].parser;
-        if (!p->vtable->isValidRegular(p->env))
-            return false;
-    }
-    return true;
-}
-
-static void desugar_dispatch(HAllocator *mm__, HCFStack *stk__, void *env) {
-    HDispatch *d = (HDispatch *)env;
-    HCFS_BEGIN_CHOICE() {
-        for (size_t i = 0; i < d->size; ++i) {
-            HParser *p = d->map[i].parser; // preserve the exact parser pointer from the map
-            HCFS_BEGIN_SEQ() {
-                HCFS_DESUGAR(d->discriminator);
-                HCFS_DESUGAR(p);
-            }
-            HCFS_END_SEQ();
-            HCFS_SET_DISPATCH_OPCODE(d->map[i].opcode);
-        }
-        HCFS_THIS_CHOICE->reshape = h_act_second;
-    }
-    HCFS_END_CHOICE();
-}
-
 static const HParserVtable dispatch_vt = {
     .name = "h_dispatch",
     .parse = parse_dispatch,
-    .isValidRegular = dispatch_isValidRegular,
+    // The RVM backend cannot represent value-dependent dispatch. Its semantic
+    // actions run after branch selection, so an opcode check cannot safely
+    // select a body or backtrack to another branch.
+    .isValidRegular = h_false,
     .isValidCF = h_false,
     // Dispatch involves runtime value-dependent branching (based on discriminator opcode).
     // CF grammars cannot soundly represent this constraint: which opcode maps to which
@@ -247,7 +220,7 @@ static const HParserVtable dispatch_vt = {
     // Desugaring would create choice(seq(discriminator, parser0), seq(discriminator, parser1), ...)
     // but CF backends would see all combinations as valid, leading to unsound analysis.
     // Therefore, dispatch is not valid for CF analysis.
-    .desugar = desugar_dispatch,
+    // .desugar = desugar_dispatch,
     .higher = true,
 };
 
