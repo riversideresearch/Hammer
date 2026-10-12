@@ -37,22 +37,27 @@ int64_t h_read_bits(HInputStream *state, size_t count, char signed_p) {
                        ? (UINT64_C(1) << (original_count - 1))
                        : 0;
 
-    // overflow check...
-    size_t bits_left = (state->length - state->index); // well, bytes for now
-    if (bits_left <= 64) { // Large enough to handle any valid count, but small enough that overflow
-                           // isn't a problem.
-        // not in danger of overflowing, so add in bits
-        // add in number of bits...
-        bits_left = (bits_left << 3) - state->bit_offset - state->margin;
-        if (bits_left < count) {
-            if (state->endianness & BYTE_BIG_ENDIAN)
-                final_shift = count - bits_left;
-            else
-                final_shift = 0;
-            count = bits_left;
-            state->overrun = true;
-        } else
+    // Limit reads by both the physical storage and the logical bit boundary.
+    size_t current = h_input_stream_pos(state);
+    size_t physical_end = h_input_stream_physical_length(state);
+    size_t logical_end = h_input_stream_length(state);
+    size_t bits_left = 0;
+    if (current < physical_end)
+        bits_left = physical_end - current;
+    if (current >= logical_end)
+        bits_left = 0;
+    else if (logical_end - current < bits_left)
+        bits_left = logical_end - current;
+
+    if (bits_left < count) {
+        if (state->endianness & BYTE_BIG_ENDIAN)
+            final_shift = count - bits_left;
+        else
             final_shift = 0;
+        count = bits_left;
+        state->overrun = true;
+    } else {
+        final_shift = 0;
     }
 
     if ((state->bit_offset & 0x7) == 0 && (count & 0x7) == 0 && (state->margin == 0)) {
@@ -132,7 +137,28 @@ void h_skip_bits(HInputStream *stream, size_t count) {
     if (stream->overrun)
         return;
 
-    if (stream->index == stream->length) {
+    size_t current = h_input_stream_pos(stream);
+    size_t physical_end = h_input_stream_physical_length(stream);
+    size_t logical_end = h_input_stream_length(stream);
+    size_t physical_left = current < physical_end ? physical_end - current : 0;
+    size_t logical_left = current < logical_end ? logical_end - current : 0;
+    size_t available = physical_left < logical_left ? physical_left : logical_left;
+
+    /*
+     * A partial logical final byte cannot be represented by the old
+     * byte-oriented skip loop once it reaches the boundary. Canonicalize the
+     * position there and report an overrun only when the caller crossed it.
+     */
+    if (available < physical_left) {
+        if (count >= available) {
+            h_seek_bits(stream, logical_end);
+            if (count > available)
+                stream->overrun = true;
+            return;
+        }
+    }
+
+    if (available == 0) {
         stream->overrun = true;
         return;
     }
@@ -177,25 +203,23 @@ void h_skip_bits(HInputStream *stream, size_t count) {
 void h_seek_bits(HInputStream *stream, size_t pos) {
     size_t pos_index = pos / 8;
     size_t pos_offset = pos % 8;
+    size_t stream_start = stream->pos;
+    size_t stream_start_bits = stream_start > SIZE_MAX / 8 ? SIZE_MAX : stream_start * 8;
+    size_t logical_end = h_input_stream_length(stream);
+    size_t physical_end = h_input_stream_physical_length(stream);
 
-    /* seek within the current byte? */
-    if (pos_index == stream->index) {
-        HAMMER_ASSERT(pos_offset < 8U);
-        stream->bit_offset = (uint8_t)pos_offset;
-        return;
-    }
-
-    stream->margin = 0;
-
-    /* seek past the end? */
-    if ((pos_index > stream->length) || (pos_index == stream->length && pos_offset > 0)) {
-        stream->index = stream->length;
-        stream->bit_offset = 0;
+    /* Seek past either end to the logical boundary and mark the operation bad. */
+    if (pos > logical_end || pos > physical_end || pos < stream_start_bits) {
+        size_t boundary = logical_end < physical_end ? logical_end : physical_end;
+        size_t boundary_index = boundary / 8;
+        stream->index = boundary_index >= stream->pos ? boundary_index - stream->pos : 0;
+        stream->bit_offset = (uint8_t)(boundary % 8);
+        stream->margin = 0;
         stream->overrun = true;
         return;
     }
 
-    stream->index = pos_index;
+    stream->index = pos_index - stream->pos;
     assert(pos_offset < 8U);
     stream->bit_offset = (uint8_t)pos_offset;
     stream->margin = 0;

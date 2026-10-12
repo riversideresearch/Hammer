@@ -131,7 +131,7 @@ HRVMTrace *invert_trace(HRVMTrace *trace) {
 }
 
 static void *h_rvm_run__m(HAllocator *mm__, HRVMProg *prog, const uint8_t *input, size_t len,
-                          HTraceState *trace_state) {
+                          size_t bit_length, HTraceState *trace_state) {
     HArena *arena = h_new_arena(mm__, 0);
     HSArray *heads_a = h_sarray_new(mm__, prog->length), // Both of these contain HRVMTrace*'s
         *heads_b = h_sarray_new(mm__, prog->length);

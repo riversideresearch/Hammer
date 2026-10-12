@@ -513,6 +513,17 @@ HParseResult *h_parse__m(HAllocator *mm__, const HParser *parser, const uint8_t 
                          size_t length);
 
 /**
+ * @brief Parse an input whose valid length is specified exactly in bits.
+ *
+ * The input buffer must contain at least ceil(bit_length / 8) bytes. Any
+ * unused bits in the final byte are ignored. This one-shot API is supported
+ * by the Packrat and Regular backends.
+ */
+HParseResult *h_parse_bits(const HParser *parser, const uint8_t *input, size_t bit_length);
+HParseResult *h_parse_bits__m(HAllocator *mm__, const HParser *parser, const uint8_t *input,
+                              size_t bit_length);
+
+/**
  * @brief Like h_parse(), but collects a parse-scoped furthest-position
  * diagnostic. Parsing behavior and return value are identical to h_parse().
  *
@@ -539,6 +550,11 @@ HParseResult *h_parse_debug(const HParser *parser, const uint8_t *input, size_t 
                             HParseDiagnostic **diagnostic, bool showDiagnostic);
 HParseResult *h_parse_debug__m(HAllocator *allocator, const HParser *parser, const uint8_t *input,
                                size_t length, HParseDiagnostic **diagnostic, bool showDiagnostic);
+HParseResult *h_parse_bits_debug(const HParser *parser, const uint8_t *input, size_t bit_length,
+                                 HParseDiagnostic **diagnostic, bool showDiagnostic);
+HParseResult *h_parse_bits_debug__m(HAllocator *allocator, const HParser *parser,
+                                    const uint8_t *input, size_t bit_length,
+                                    HParseDiagnostic **diagnostic, bool showDiagnostic);
 const HParseError *h_parse_diagnostic_error(const HParseDiagnostic *diagnostic);
 size_t h_parse_diagnostic_expected_count(const HParseDiagnostic *diagnostic);
 bool h_parse_diagnostic_expected(const HParseDiagnostic *diagnostic, size_t index,
