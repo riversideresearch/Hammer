@@ -1382,8 +1382,8 @@ HParser *h_skip__m(HAllocator *mm__, size_t n);
  * @param whence SEEK_SET, SEEK_CUR, or SEEK_END
  * @return Result: TT_UINT. The new input position.
  */
-HParser *h_seek(ssize_t offset, int whence);
-HParser *h_seek__m(HAllocator *mm__, ssize_t offset, int whence);
+HParser *h_seek(int64_t offset, int whence);
+HParser *h_seek__m(HAllocator *mm__, int64_t offset, int whence);
 
 /**
  * @brief Report the current position in bits. Consumes no input.
