@@ -1,0 +1,71 @@
+#!/bin/sh
+# Hammer pre-commit hook
+# Enforces formatting, whitespace rules, conflict markers, and Python/SCons linting.
+
+set -e
+
+echo "Running Hammer pre-commit checks..."
+
+############################################
+# 1. clang-format on staged C/C++ changes
+############################################
+
+has_staged_cpp_file() {
+    git diff --cached --name-only -z --diff-filter=ACMR \
+        | xargs -0 -n 1 sh -c '
+            case "$1" in
+                *.c|*.h|*.cpp|*.hpp) printf x ;;
+            esac
+        ' sh \
+        | grep -q x
+}
+
+if has_staged_cpp_file; then
+    echo "Formatting staged C/C++ changes with clang-format..."
+
+    git clang-format --staged --extensions c,h,cpp,hpp
+fi
+
+############################################
+# 2. Whitespace / diff cleanliness
+############################################
+
+echo "Checking whitespace errors (git diff --check)..."
+git diff --cached --check
+if [ $? -ne 0 ]; then
+    echo "ERROR: Whitespace issues and/or Merge conflict markers detected. Fix them before committing."
+    exit 1
+fi
+
+############################################
+# 3. Ruff linting (Python + SCons)
+############################################
+
+echo "Running Ruff linting on staged files..."
+
+RUFF_FAILED=0
+
+if ! git diff --cached --name-only -z --diff-filter=ACMR \
+    | xargs -0 -n 1 sh -c '
+        f=$1
+        case "$f" in
+            *.py|*/SConstruct|*/SConscript|SConstruct|SConscript)
+                printf "  Ruff: %s\n" "$f"
+                git show ":$f" | ruff check --stdin-filename "$f" -
+                ;;
+        esac
+    ' sh; then
+    RUFF_FAILED=1
+fi
+
+if [ "$RUFF_FAILED" -ne 0 ]; then
+    echo "ERROR: Ruff found linting errors in staged files."
+    exit 1
+fi
+
+############################################
+# 4. Success
+############################################
+
+echo "All pre-commit checks passed."
+exit 0
