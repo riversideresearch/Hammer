@@ -152,6 +152,17 @@ git log --oneline public/main..public/release/vX.Y.Z
 git diff --stat public/main..public/release/vX.Y.Z
 ```
 
+Use the githooks to check clang-format, git diff, and Ruff linting before
+committing:
+
+```bash
+git config --local core.hooksPath .githooks
+```
+
+This works in ordinary clones and linked worktrees. Do not edit
+`.git/config` directly: linked worktrees use a `.git` file that points at the
+shared Git directory.
+
 ### Test coverage
 
 Install coverage tools:
