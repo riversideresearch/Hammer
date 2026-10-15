@@ -1,9 +1,8 @@
 import importlib.machinery
 import importlib.util
-from pathlib import Path
 import tempfile
 import unittest
-
+from pathlib import Path
 
 SCRIPT = Path(__file__).parent / "hammer-migrate-v3.py"
 LOADER = importlib.machinery.SourceFileLoader("hammer_migrate_v3", str(SCRIPT))

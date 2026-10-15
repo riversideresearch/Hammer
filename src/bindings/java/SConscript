@@ -1,11 +1,10 @@
 # Copyright (c) 2026 Riverside Research
 # -*- python -*-
 
-from __future__ import absolute_import, division, print_function
 
 import os
-import sys
 import shutil
+import sys
 
 Import("env libhammer_shared testruns targets binding_results binding_test_stamps")
 
@@ -39,7 +38,7 @@ else:
     jni_platform_include = jni_include
 
 if not os.path.isdir(jni_include):
-    print("Warning: JNI headers not found at %s. Skipping Java bindings." % jni_include)
+    print(f"Warning: JNI headers not found at {jni_include}. Skipping Java bindings.")
     Return()
 
 javaenv = env.Clone(IMPLICIT_COMMAND_DEPENDENCIES=0)

@@ -79,6 +79,24 @@ static void test_packrat_grow_null_result(gconstpointer backend) {
     (void)res;
 }
 
+/* A zero-width context mutation must not prevent the root rule from growing. */
+static void test_packrat_grow_after_value_mutation(gconstpointer backend) {
+    HParserBackend be = (HParserBackend)GPOINTER_TO_INT(backend);
+
+    HParser *expr = h_indirect();
+    HParser *recursive = h_sequence(h_put_value(h_epsilon_p(), "value"), h_free_value("value"),
+                                    expr, h_ch('a'), NULL);
+    h_bind_indirect(expr, h_choice(recursive, h_ch('a'), NULL));
+
+    HParser *parser = h_sequence(expr, h_end_p(), NULL);
+    g_check_cmp_int(h_compile(parser, be, NULL), ==, 0);
+
+    HParseResult *res = h_parse(parser, (const uint8_t *)"aa", 2);
+    g_check_cmp_ptr(res, !=, NULL);
+    if (res)
+        h_parse_result_free(res);
+}
+
 void register_packrat_tests(void) {
     g_test_add_data_func("/core/parser/packrat/ast_bit_length", GINT_TO_POINTER(PB_PACKRAT),
                          test_packrat_ast_bit_length);
@@ -88,4 +106,6 @@ void register_packrat_tests(void) {
                          test_packrat_recall_cache_update);
     g_test_add_data_func("/core/parser/packrat/grow_null_result", GINT_TO_POINTER(PB_PACKRAT),
                          test_packrat_grow_null_result);
+    g_test_add_data_func("/core/parser/packrat/grow_after_value_mutation",
+                         GINT_TO_POINTER(PB_PACKRAT), test_packrat_grow_after_value_mutation);
 }

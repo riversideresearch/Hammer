@@ -1,7 +1,6 @@
 # Copyright (c) 2026 Riverside Research
 # -*- python -*-
 
-from __future__ import absolute_import, division, print_function
 
 import os
 import subprocess
@@ -34,7 +33,7 @@ if os.getenv("CC") == "clang":
 else:
     # try to detect if cc happens to be clang by inspecting --version
     cc = os.getenv("CC") or "cc"
-    ver = subprocess.run([cc, "--version"], capture_output=True).stdout
+    ver = subprocess.run([cc, "--version"], capture_output=True, check=False).stdout
     if b"clang" in ver.split():
         tools.append("clang")
         os.environ["CC"] = cc  # make sure we call it as we saw it
@@ -63,7 +62,7 @@ if "DESTDIR" in env:
             file=sys.stderr,
         )
         print("--!!-- you want; files will be installed in", file=sys.stderr)
-        print("--!!--    %s" % (calcInstallPath("$prefix"),), file=sys.stderr)
+        print("--!!--    {}".format(calcInstallPath("$prefix")), file=sys.stderr)
 
 
 env["libpath"] = calcInstallPath("$prefix", "lib")
@@ -226,9 +225,10 @@ if binding_results:
         rows = []
         for name, rf in br:
             try:
-                parts = open(env.subst(rf)).read().strip().split()
+                with open(env.subst(rf)) as result_file:
+                    parts = result_file.read().strip().split()
                 rows.append((name, int(parts[1]), int(parts[2])))
-            except Exception:
+            except (OSError, IndexError, ValueError):
                 rows.append(("N/A", 0, 0))
         if not rows:
             return 0
@@ -261,10 +261,10 @@ if GetOption("coverage"):
     # Create a command that runs gcov from the build directory
     # This ensures .gcov files are generated in the build directory
     gcov_script = (
-        """
+        f"""
 import os
 import subprocess
-build_base = "%s"
+build_base = "{build_base}"
 if os.path.exists(build_base):
     for root, dirs, files in os.walk(build_base):
         for file in files:
@@ -279,9 +279,8 @@ if os.path.exists(build_base):
                              stdout=subprocess.DEVNULL, 
                              stderr=subprocess.DEVNULL)
 """
-        % build_base
     )
-    env.Command("gcov", [], "python -c %s" % repr(gcov_script))
+    env.Command("gcov", [], f"python -c {gcov_script!r}")
 
 env.Alias("install", targets)
 
@@ -316,14 +315,14 @@ def uninstall_action(target, source, env):
     for path in lib_files + inc_files + pc_file:
         if os.path.exists(path) or os.path.islink(path):
             os.remove(path)
-            print("Removed: %s" % path)
+            print(f"Removed: {path}")
         else:
-            print("Not found (skipping): %s" % path)
+            print(f"Not found (skipping): {path}")
 
     for d in [env["backendsincpath"], env["parsersincpath"], env["incpath"]]:
         try:
             os.rmdir(d)
-            print("Removed directory: %s" % d)
+            print(f"Removed directory: {d}")
         except OSError:
             pass
 

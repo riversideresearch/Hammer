@@ -576,6 +576,17 @@ static void test_bug60_abnf(void) {
     free(s);
 }
 
+static void test_lr_cache_memory(void) {
+    HParser *expr = h_indirect();
+
+    HParser *tail = h_sequence(h_put_value(h_ch('a'), "value"), h_free_value("value"), NULL);
+
+    h_bind_indirect(expr, h_choice(h_sequence(expr, tail, NULL), h_ch('a'), NULL));
+
+    h_compile(expr, PB_PACKRAT, NULL);
+    g_check_parse_ok(expr, PB_PACKRAT, (const uint8_t *)"aa", 2);
+}
+
 void register_regression_tests(void) {
     g_test_add_func("/core/regression/bug118", test_bug118);
     g_test_add_func("/core/regression/seq_index_path", test_seq_index_path);
@@ -593,4 +604,5 @@ void register_regression_tests(void) {
     g_test_add_func("/core/regression/issue83", test_issue83);
     g_test_add_func("/core/regression/bug60", test_bug60);
     g_test_add_func("/core/regression/bug60_abnf", test_bug60_abnf);
+    g_test_add_func("/core/regression/lr_cache_memory", test_lr_cache_memory);
 }
