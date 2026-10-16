@@ -43,6 +43,7 @@ if "PKG_CONFIG_PATH" in os.environ:
     envvars["PKG_CONFIG_PATH"] = os.environ["PKG_CONFIG_PATH"]
 
 env = Environment(ENV=envvars, variables=vars, tools=tools, toolpath=["tools"])
+env["HAMMER_LIBRARY_PATH_ENV"] = "DYLD_LIBRARY_PATH" if sys.platform == "darwin" else "LD_LIBRARY_PATH"
 
 
 def calcInstallPath(*elements):
@@ -147,8 +148,9 @@ env.MergeFlags(
     "-std=c99 -D_POSIX_C_SOURCE=200809L -Wall -Wextra -Werror -Wno-unused-parameter -Wno-attributes -Wno-unused-variable"
 )
 
-# Linker options
-env.MergeFlags("-lrt")
+# Linker options. macOS provides these APIs through libSystem and has no librt.
+if sys.platform != "darwin":
+    env.MergeFlags("-lrt")
 env.Append(LIBS=["pthread"])
 
 if GetOption("coverage"):
@@ -290,6 +292,7 @@ def uninstall_action(target, source, env):
 
     lib_files = (
         _glob.glob(os.path.join(env["libpath"], "libhammer.so*"))
+        + _glob.glob(os.path.join(env["libpath"], "libhammer.dylib*"))
         + [os.path.join(env["libpath"], "libhammer.a")]
     )
 

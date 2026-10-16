@@ -42,8 +42,17 @@ pytestexec = pytestenv.Command(
     "hammer_tests.stamp",
     pytests + list(libhammer_python),
     [
-        "LD_LIBRARY_PATH={} PYTHONPATH={} {} {} --binding Python --results-file {}"
-        " -- {} -m unittest discover -v -s {} -p 'hammer_tests.py'".format(lib_dir, abs_pydir, sys.executable, reporter, results_file, env["python"], abs_pydir),
+        "{}={} PYTHONPATH={} {} {} --binding Python --results-file {}"
+        " -- {} -m unittest discover -v -s {} -p 'hammer_tests.py'".format(
+            env["HAMMER_LIBRARY_PATH_ENV"],
+            lib_dir,
+            abs_pydir,
+            sys.executable,
+            reporter,
+            results_file,
+            env["python"],
+            abs_pydir,
+        ),
         "touch $TARGET",
     ],
 )

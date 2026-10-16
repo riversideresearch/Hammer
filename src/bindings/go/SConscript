@@ -104,7 +104,7 @@ gotestexec = goenv.Command(
     [
         (
             "cd {} && "
-            "LD_LIBRARY_PATH={} "
+            "{}={} "
             "CGO_CFLAGS='-I{}/src' "
             "CGO_LDFLAGS='-L{} -lhammer' "
             "GOCACHE={} "
@@ -112,6 +112,7 @@ gotestexec = goenv.Command(
             "go test -v"
         ).format(
             abs_build_dir,
+            env["HAMMER_LIBRARY_PATH_ENV"],
             hammer_lib_dir,
             project_root,
             hammer_lib_dir,
