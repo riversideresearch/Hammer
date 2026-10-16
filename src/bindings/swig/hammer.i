@@ -135,7 +135,17 @@
 %typemap(freearg) void*[] { free($1); }
 %typemap(in) uint8_t {
   if (PyLong_Check($input)) {
-    $1 = (uint8_t)PyLong_AsLong($input);
+    long long value = PyLong_AsLongLong($input);
+    if (PyErr_Occurred()) {
+      PyErr_Clear();
+      PyErr_SetString(PyExc_ValueError, "expected an integer byte in the range 0..255");
+      return NULL;
+    }
+    if (value < 0 || value > 255) {
+      PyErr_SetString(PyExc_ValueError, "expected an integer byte in the range 0..255");
+      return NULL;
+    }
+    $1 = (uint8_t)value;
   }
   else if (!PyBytes_Check($input)) {
     PyErr_SetString(PyExc_ValueError, "Expecting an integer or bytes");
@@ -597,6 +607,8 @@ struct HArena_ {};
   static PyObject* hpt_to_python(const HParsedToken *token) {
     // Caller holds a reference to returned object
     PyObject *ret;
+    if (PyErr_Occurred())
+      return NULL;
     if (token == NULL) {
       Py_RETURN_NONE;
     }
@@ -633,30 +645,34 @@ struct HArena_ {};
   }
   static struct HParsedToken_* call_action(const struct HParseResult_ *p, void* user_data) {
     PyObject *callable = user_data;
-    PyObject *ret = PyObject_CallFunctionObjArgs(callable,
-						 hpt_to_python(p->ast),
-						 NULL);
-    if (ret == NULL) {
-      PyErr_Print();
-      assert(ret != NULL);
-    }
+    PyObject *arg = hpt_to_python(p->ast);
+    PyObject *ret;
+    if (arg == NULL)
+      return NULL;
+    ret = PyObject_CallFunctionObjArgs(callable, arg, NULL);
+    Py_DECREF(arg);
+    if (ret == NULL)
+      return NULL;
     HParsedToken *tok = h_make(p->arena, h_tt_python, ret);
     return tok;
    }
 
   static bool call_predicate(struct HParseResult_ *p, void* user_data) {
     PyObject *callable = user_data;
-    PyObject *ret = PyObject_CallFunctionObjArgs(callable,
-						 hpt_to_python(p->ast),
-						 NULL);
-    bool rret = false;
-    if (ret == NULL) {
-      PyErr_Print();
-      assert(ret != NULL);
-    }
-    rret = (bool)PyObject_IsTrue(ret);
+    PyObject *arg = hpt_to_python(p->ast);
+    PyObject *ret;
+    int rret;
+    if (arg == NULL)
+      return false;
+    ret = PyObject_CallFunctionObjArgs(callable, arg, NULL);
+    Py_DECREF(arg);
+    if (ret == NULL)
+      return false;
+    rret = PyObject_IsTrue(ret);
     Py_DECREF(ret);
-    return rret;
+    if (rret < 0)
+      return false;
+    return rret != 0;
   }
 
   static PyObject *h_parse_python(const HParser *parser, const uint8_t *input, size_t length) {
@@ -664,10 +680,18 @@ struct HArena_ {};
     PyObject *result;
 
     if (parse_result == NULL) {
+      if (PyErr_Occurred())
+        return NULL;
       Py_RETURN_NONE;
     }
     result = hpt_to_python(parse_result->ast);
     h_parse_result_free(parse_result);
+    if (result == NULL)
+      return NULL;
+    if (PyErr_Occurred()) {
+      Py_DECREF(result);
+      return NULL;
+    }
     return result;
   }
 
@@ -681,12 +705,19 @@ struct HArena_ {};
 
     parse_result = h_parse_debug(parser, input, length, &diagnostic, show_diagnostic);
     if (parse_result == NULL) {
+      if (PyErr_Occurred()) {
+        if (diagnostic != NULL)
+          h_parse_diagnostic_free(diagnostic);
+        return NULL;
+      }
       Py_INCREF(Py_None);
       result = Py_None;
     } else {
       result = hpt_to_python(parse_result->ast);
       h_parse_result_free(parse_result);
-      if (result == NULL) {
+      if (result == NULL || PyErr_Occurred()) {
+        if (result != NULL)
+          Py_DECREF(result);
         if (diagnostic != NULL)
           h_parse_diagnostic_free(diagnostic);
         return NULL;
