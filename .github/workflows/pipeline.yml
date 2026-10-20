@@ -92,3 +92,16 @@ jobs:
         with:
           name: libhammer-deb
           path: ${{ steps.deb.outputs.deb_file }}
+
+  macos-build:
+    name: macos-build
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install test dependencies
+        run: brew install scons glib pkg-config
+
+      - name: Run native macOS build and tests
+        run: scons test

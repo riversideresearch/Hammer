@@ -141,11 +141,14 @@ env["CXX"] = os.getenv("CXX") or env["CXX"]
 env["CFLAGS"] = os.getenv("CFLAGS") or env["CFLAGS"]
 env["LINKFLAGS"] = os.getenv("LDFLAGS") or env["LINKFLAGS"]
 
-# Language standard and warnings
-# Using -D_POSIX_C_SOURCE=200809L here, not on an ad-hoc basis when,
-# #including, is important
+# Language standard and warnings. Darwin hides vasprintf when
+# _POSIX_C_SOURCE is defined, so use its native feature-test macro there.
+feature_test_macro = (
+    "-D_DARWIN_C_SOURCE" if sys.platform == "darwin" else "-D_POSIX_C_SOURCE=200809L"
+)
 env.MergeFlags(
-    "-std=c99 -D_POSIX_C_SOURCE=200809L -Wall -Wextra -Werror -Wno-unused-parameter -Wno-attributes -Wno-unused-variable"
+    f"-std=c99 {feature_test_macro} -Wall -Wextra -Werror -Wno-unused-parameter "
+    "-Wno-attributes -Wno-unused-variable"
 )
 
 # Linker options. macOS provides these APIs through libSystem and has no librt.
