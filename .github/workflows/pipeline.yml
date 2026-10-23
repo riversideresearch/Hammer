@@ -105,3 +105,27 @@ jobs:
 
       - name: Run native macOS build and tests
         run: scons test
+
+      - name: Validate installed native macOS library
+        shell: bash
+        run: |
+          set -euo pipefail
+          PREFIX="$RUNNER_TEMP/hammer-prefix"
+          STAGING_ROOT="$RUNNER_TEMP/hammer-stage"
+          CONSUMER_DIR="$(mktemp -d "$RUNNER_TEMP/hammer-consumer.XXXXXX")"
+
+          scons install prefix="$PREFIX"
+          test "$(otool -D "$PREFIX/lib/libhammer.dylib" | tail -n +2)" = "$PREFIX/lib/libhammer.dylib"
+
+          cp tests/installed_consumer_smoke.c "$CONSUMER_DIR/"
+          (
+            cd "$CONSUMER_DIR"
+            export PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig"
+            cc installed_consumer_smoke.c -o installed_consumer_smoke \
+              $(pkg-config --cflags --libs libhammer)
+            env -u DYLD_LIBRARY_PATH -u DYLD_FALLBACK_LIBRARY_PATH ./installed_consumer_smoke
+          )
+
+          scons install prefix="$PREFIX" DESTDIR="$STAGING_ROOT"
+          STAGED_DYLIB="$STAGING_ROOT${PREFIX}/lib/libhammer.dylib"
+          test "$(otool -D "$STAGED_DYLIB" | tail -n +2)" = "$PREFIX/lib/libhammer.dylib"

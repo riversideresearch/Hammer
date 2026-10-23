@@ -72,6 +72,15 @@ env["parsersincpath"] = calcInstallPath("$prefix", "include", "hammer", "parsers
 env["backendsincpath"] = calcInstallPath("$prefix", "include", "hammer", "backends")
 env["pkgconfigpath"] = calcInstallPath("$prefix", "lib", "pkgconfig")
 
+# DESTDIR is only a staging location. The installed Mach-O identity must always
+# name the library's final location under the logical prefix.
+if sys.platform == "darwin":
+    env.Append(
+        SHLINKFLAGS=[
+            f"-Wl,-install_name,{os.path.join(env['prefix'], 'lib', 'libhammer.dylib')}"
+        ]
+    )
+
 with open("VERSION", "r") as f:
     version = f.read().strip()
 
