@@ -22,6 +22,28 @@ Hammer is written in C and provides packrat, regex/RVM, LL(k), LALR(k), and GLR 
 sudo apt install gcc scons
 ```
 
+### macOS native C library
+
+macOS is not officially supported, but the native C library build, test, and
+install workflow is validated with Apple's Command Line Tools and Homebrew:
+
+```bash
+xcode-select --install
+brew install scons glib pkg-config
+```
+
+On Apple Silicon, use a native ARM64 shell and native Homebrew tools (normally
+under `/opt/homebrew`), rather than mixing them with Rosetta or Intel Homebrew
+tools. Hammer's install prefix is independent of Homebrew's prefix: select the
+Hammer destination explicitly, then expose that destination's pkg-config
+metadata when building consumers.
+
+```bash
+scons install prefix=/absolute/path/to/hammer
+export PKG_CONFIG_PATH=/absolute/path/to/hammer/lib/pkgconfig
+pkg-config --modversion libhammer
+```
+
 ### Optional Dependencies for Testing
 
 - pkg-config
@@ -40,10 +62,9 @@ To make Hammer available system-wide, use `scons install`. This places include f
 
 To remove installed files, use `scons uninstall` (with the same `prefix` if non-default).
 
-To check which variant and version of Hammer is currently installed:
+To check the version of Hammer currently installed:
 
 ```bash
-PKG_CONFIG_PATH=/usr/local/lib/pkgconfig pkg-config --variable=variant libhammer
 PKG_CONFIG_PATH=/usr/local/lib/pkgconfig pkg-config --modversion libhammer
 ```
 

@@ -116,7 +116,7 @@ cpptestexec = cppenv.Command(
     "hammer_tests.stamp",
     [cpp_test],
     [
-        f"LD_LIBRARY_PATH={hammer_lib_dir} {sys.executable} {reporter} --binding C++ --results-file {results_file} -- {cpp_test[0].path}",
+        f"{env['HAMMER_LIBRARY_PATH_ENV']}={hammer_lib_dir} {sys.executable} {reporter} --binding C++ --results-file {results_file} -- {cpp_test[0].path}",
         "touch $TARGET",
     ],
 )

@@ -215,6 +215,7 @@ if GetOption("with_tests"):
         **ctest_program_kwargs,
     )
     _libdir = libhammer_shared[0].dir.abspath if libhammer_shared is not None else ""
+    _libpath_env = env["HAMMER_LIBRARY_PATH_ENV"]
     _exe = ctestexec[0].path
     reporter = os.path.join(Dir("#").abspath, "tools", "test_reporter.py")
     core_results_dir = os.path.join(Dir("#").abspath, env.subst("$BUILD_BASE"), "src")
@@ -223,7 +224,7 @@ if GetOption("with_tests"):
         "core_tests.stamp",
         [ctestexec],
         [
-            f"LD_LIBRARY_PATH={_libdir} {sys.executable} {reporter} --binding Core --results-file {core_results_file} -- {_exe}",
+            f"{_libpath_env}={_libdir} {sys.executable} {reporter} --binding Core --results-file {core_results_file} -- {_exe}",
             "touch $TARGET",
         ],
     )

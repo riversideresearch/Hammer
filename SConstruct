@@ -43,6 +43,7 @@ if "PKG_CONFIG_PATH" in os.environ:
     envvars["PKG_CONFIG_PATH"] = os.environ["PKG_CONFIG_PATH"]
 
 env = Environment(ENV=envvars, variables=vars, tools=tools, toolpath=["tools"])
+env["HAMMER_LIBRARY_PATH_ENV"] = "DYLD_LIBRARY_PATH" if sys.platform == "darwin" else "LD_LIBRARY_PATH"
 
 
 def calcInstallPath(*elements):
@@ -70,6 +71,15 @@ env["incpath"] = calcInstallPath("$prefix", "include", "hammer")
 env["parsersincpath"] = calcInstallPath("$prefix", "include", "hammer", "parsers")
 env["backendsincpath"] = calcInstallPath("$prefix", "include", "hammer", "backends")
 env["pkgconfigpath"] = calcInstallPath("$prefix", "lib", "pkgconfig")
+
+# DESTDIR is only a staging location. The installed Mach-O identity must always
+# name the library's final location under the logical prefix.
+if sys.platform == "darwin":
+    env.Append(
+        SHLINKFLAGS=[
+            f"-Wl,-install_name,{os.path.join(env['prefix'], 'lib', 'libhammer.dylib')}"
+        ]
+    )
 
 with open("VERSION", "r") as f:
     version = f.read().strip()
@@ -140,15 +150,19 @@ env["CXX"] = os.getenv("CXX") or env["CXX"]
 env["CFLAGS"] = os.getenv("CFLAGS") or env["CFLAGS"]
 env["LINKFLAGS"] = os.getenv("LDFLAGS") or env["LINKFLAGS"]
 
-# Language standard and warnings
-# Using -D_POSIX_C_SOURCE=200809L here, not on an ad-hoc basis when,
-# #including, is important
+# Language standard and warnings. Darwin hides vasprintf when
+# _POSIX_C_SOURCE is defined, so use its native feature-test macro there.
+feature_test_macro = (
+    "-D_DARWIN_C_SOURCE" if sys.platform == "darwin" else "-D_POSIX_C_SOURCE=200809L"
+)
 env.MergeFlags(
-    "-std=c99 -D_POSIX_C_SOURCE=200809L -Wall -Wextra -Werror -Wno-unused-parameter -Wno-attributes -Wno-unused-variable"
+    f"-std=c99 {feature_test_macro} -Wall -Wextra -Werror -Wno-unused-parameter "
+    "-Wno-attributes -Wno-unused-variable"
 )
 
-# Linker options
-env.MergeFlags("-lrt")
+# Linker options. macOS provides these APIs through libSystem and has no librt.
+if sys.platform != "darwin":
+    env.MergeFlags("-lrt")
 env.Append(LIBS=["pthread"])
 
 if GetOption("coverage"):
@@ -290,6 +304,7 @@ def uninstall_action(target, source, env):
 
     lib_files = (
         _glob.glob(os.path.join(env["libpath"], "libhammer.so*"))
+        + _glob.glob(os.path.join(env["libpath"], "libhammer.dylib*"))
         + [os.path.join(env["libpath"], "libhammer.a")]
     )
 

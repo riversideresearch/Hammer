@@ -101,14 +101,14 @@ reporter = os.path.join(Dir("#").abspath, "tools", "test_reporter.py")
 results_file = os.path.join(javadir, "hammer_java.results")
 
 javatestenv = javaenv.Clone()
-javatestenv["ENV"]["LD_LIBRARY_PATH"] = hammer_lib_dir + ":" + javadir
+javatestenv["ENV"][env["HAMMER_LIBRARY_PATH_ENV"]] = hammer_lib_dir + ":" + javadir
 javatestexec = javatestenv.Command(
     "hammer_tests.stamp",
     ["#src/bindings/java/HammerTests.java"] + list(jar_file),
     [
         "javac -cp " + os.path.join(javadir, "hammer.jar") +
         " -d " + java_classes_dir + " $SOURCE",
-        "LD_LIBRARY_PATH=" + hammer_lib_dir + ":" + javadir +
+        env["HAMMER_LIBRARY_PATH_ENV"] + "=" + hammer_lib_dir + ":" + javadir +
         " " + sys.executable + " " + reporter +
         " --binding Java --results-file " + results_file +
         " -- java --enable-native-access=ALL-UNNAMED"
