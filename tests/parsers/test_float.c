@@ -323,8 +323,8 @@ void register_floating_point_parser_tests(void) {
                          test_float_truncated);
     g_test_add_data_func("/core/parser/float//regular/range", GINT_TO_POINTER(PB_REGULAR),
                          test_float_range);
-    g_test_add_data_func("/core/parser/float/range-precision-double",
-                         GINT_TO_POINTER(PB_REGULAR), test_float_range_precision_and_double);
+    g_test_add_data_func("/core/parser/float/range-precision-double", GINT_TO_POINTER(PB_REGULAR),
+                         test_float_range_precision_and_double);
     g_test_add_data_func("/core/parser/regular/float_range_higher", GINT_TO_POINTER(PB_REGULAR),
                          test_float_range_higher);
     g_test_add_data_func("/core/parser/regular/float_range_edge_case", GINT_TO_POINTER(PB_REGULAR),

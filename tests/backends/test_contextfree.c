@@ -21,9 +21,7 @@ static HParsedToken *drop_action(const HParseResult *p, void *user_data) {
     return h_act_ignore(p, user_data);
 }
 
-static bool accept_predicate(HParseResult *p, void *user_data) {
-    return true;
-}
+static bool accept_predicate(HParseResult *p, void *user_data) { return true; }
 
 static void test_contextfree_backend_registration(void) {
     g_check_cmp_int(h_is_backend_available(PB_LL), ==, 1);
@@ -94,12 +92,9 @@ static void test_contextfree_common_combinators(void) {
 
     HParserBackend backends[] = {PB_LL, PB_LALR, PB_GLR};
     for (size_t i = 0; i < sizeof(backends) / sizeof(backends[0]); i++) {
-        HParser *parser = h_sequence(
-            h_token((const uint8_t *)"ab", 2),
-            h_optional(h_ch('c')),
-            h_many1(h_in(letters, sizeof(letters))),
-            h_action(h_ch('!'), drop_action, NULL),
-            NULL);
+        HParser *parser = h_sequence(h_token((const uint8_t *)"ab", 2), h_optional(h_ch('c')),
+                                     h_many1(h_in(letters, sizeof(letters))),
+                                     h_action(h_ch('!'), drop_action, NULL), NULL);
         check_contextfree_backend_accepts(parser, backends[i], input, sizeof(input) - 1);
     }
 }

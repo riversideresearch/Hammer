@@ -39,8 +39,7 @@ HParsedToken *regex_identity_action(const HParseResult *p, void *user_data) {
 }
 
 static void test_regex_action_in_sequence(void) {
-    HParser *parser =
-        h_sequence(h_action(h_ch('a'), regex_identity_action, NULL), h_ch('b'), NULL);
+    HParser *parser = h_sequence(h_action(h_ch('a'), regex_identity_action, NULL), h_ch('b'), NULL);
 
     g_check_parse_match(parser, PB_REGULAR, "ab", 2, "(u0x61 u0x62)");
 }
@@ -64,6 +63,5 @@ void register_regex_tests(void) {
     g_test_add_func("/core/backends/regex/repetition_optional", test_regex_repetition_and_optional);
     g_test_add_func("/core/backends/regex/signed_integers", test_regex_signed_integers);
     g_test_add_func("/core/backends/regex/action_in_sequence", test_regex_action_in_sequence);
-    g_test_add_func("/core/backends/regex/attr_bool_in_sequence",
-                    test_regex_attr_bool_in_sequence);
+    g_test_add_func("/core/backends/regex/attr_bool_in_sequence", test_regex_attr_bool_in_sequence);
 }

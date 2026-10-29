@@ -5,6 +5,7 @@
 #include "internal.h"
 #include "parsers/parser_internal.h"
 #include "test_suite.h"
+
 #include <glib.h>
 
 #define ITERATIONS 100
@@ -287,9 +288,9 @@ static void leak_free(HAllocator *mm, void *p) {
 
 static void leak_init(LeakAlloc *la) {
     la->allocs = 0;
-    la->frees  = 0;
+    la->frees = 0;
     la->base.alloc = leak_malloc;
-    la->base.free   = leak_free;
+    la->base.free = leak_free;
 }
 
 static void test_dispatch_no_parse_failure_leak(void) {
@@ -298,13 +299,11 @@ static void test_dispatch_no_parse_failure_leak(void) {
 
     HArena *arena = h_new_arena(&la.base, 0);
 
-    uint8_t buf[] = {1, 0x99};  //opcode 1, mismatched character
+    uint8_t buf[] = {1, 0x99}; // opcode 1, mismatched character
     HParser *discriminator = h_uint8();
     HParser *body = h_ch(0x41);
 
-    OpcodeMap entries[] = {
-        {1, body}
-    };
+    OpcodeMap entries[] = {{1, body}};
 
     HParser *message = h_dispatch(discriminator, entries, NULL);
 
@@ -348,7 +347,8 @@ static void test_dispatch_prettyprint(gconstpointer backend) {
     HParser *dispatch = h_dispatch__s(disc, map, 1, NULL);
 
     /* The pretty-printer should show both the body and the opcode */
-    g_check_parse_match(dispatch, (HParserBackend)GPOINTER_TO_INT(backend), "ab", 2, "(u0x61 u0x62)");
+    g_check_parse_match(dispatch, (HParserBackend)GPOINTER_TO_INT(backend), "ab", 2,
+                        "(u0x61 u0x62)");
 }
 
 void register_dispatch_tests(void) {
@@ -364,6 +364,8 @@ void register_dispatch_tests(void) {
     g_test_add_func("/core/dispatch/bytes", test_dispatch_bytes);
     g_test_add_func("/core/dispatch/5_bytes", test_dispatch_5_bytes);
     g_test_add_func("/core/dispatch/no_parse_failure_leak", test_dispatch_no_parse_failure_leak);
-    g_test_add_func("/core/dispatch/copies_stack_local_opcode_map", test_dispatch_copies_stack_local_opcode_map);
-    g_test_add_data_func("/core/dispatch/prettyprint",GINT_TO_POINTER(PB_PACKRAT), test_dispatch_prettyprint);
+    g_test_add_func("/core/dispatch/copies_stack_local_opcode_map",
+                    test_dispatch_copies_stack_local_opcode_map);
+    g_test_add_data_func("/core/dispatch/prettyprint", GINT_TO_POINTER(PB_PACKRAT),
+                         test_dispatch_prettyprint);
 }

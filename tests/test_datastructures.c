@@ -490,8 +490,7 @@ static void test_hash_bytes(void) {
 static void test_hash_bytes_large(void) {
     const uint8_t buf[32] = "123456789012345678901234567890";
     const uint8_t different[32] = "123456789012345678901234567891";
-    g_check_cmp_int(h_hash_bytes(buf, sizeof(buf)), !=,
-                    h_hash_bytes(different, sizeof(different)));
+    g_check_cmp_int(h_hash_bytes(buf, sizeof(buf)), !=, h_hash_bytes(different, sizeof(different)));
 }
 static void test_symbol_put(void) {
     HArena *arena = h_new_arena(&system_allocator, 4096);
