@@ -3,7 +3,7 @@
 #include <string.h>
 
 HParsedToken *opt_ext_len(const HParseResult *p, void *user_data) {
-    unsigned int temp = p->ast->uint;
+    unsigned int temp = p->ast->token_data.uint;
     return H_MAKE_UINT(temp - 4);
 }
 

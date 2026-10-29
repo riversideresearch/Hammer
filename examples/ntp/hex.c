@@ -11,7 +11,7 @@
  */
 HParsedToken *act_hex_to_dec(const HParseResult *p, void *user_data) {
     const HParsedToken *parseToken = p->ast;
-    size_t numElements = parseToken->seq->used;
+    size_t numElements = parseToken->token_data.seq->used;
 
     HParsedToken *newSeq = H_MAKE_SEQ();
 
@@ -21,12 +21,12 @@ HParsedToken *act_hex_to_dec(const HParseResult *p, void *user_data) {
         // First hex digit (high nibble)
         const HParsedToken *innerElem = h_seq_index(elem, 0);
         uint8_t hi =
-            (innerElem->uint > '9') ? (innerElem->uint | 0x20) - 'a' + 10 : innerElem->uint - '0';
+            (innerElem->token_data.uint > '9') ? (innerElem->token_data.uint | 0x20) - 'a' + 10 : innerElem->token_data.uint - '0';
 
         // Second hex digit (low nibble)
         innerElem = h_seq_index(elem, 1);
         uint8_t lo =
-            (innerElem->uint > '9') ? (innerElem->uint | 0x20) - 'a' + 10 : innerElem->uint - '0';
+            (innerElem->token_data.uint > '9') ? (innerElem->token_data.uint | 0x20) - 'a' + 10 : innerElem->token_data.uint - '0';
 
         // Combine into one byte
         uint8_t value = (hi << 4) | lo;
