@@ -20,13 +20,15 @@ HParsedToken *act_hex_to_dec(const HParseResult *p, void *user_data) {
 
         // First hex digit (high nibble)
         const HParsedToken *innerElem = h_seq_index(elem, 0);
-        uint8_t hi =
-            (innerElem->token_data.uint > '9') ? (innerElem->token_data.uint | 0x20) - 'a' + 10 : innerElem->token_data.uint - '0';
+        uint8_t hi = (innerElem->token_data.uint > '9')
+                         ? (innerElem->token_data.uint | 0x20) - 'a' + 10
+                         : innerElem->token_data.uint - '0';
 
         // Second hex digit (low nibble)
         innerElem = h_seq_index(elem, 1);
-        uint8_t lo =
-            (innerElem->token_data.uint > '9') ? (innerElem->token_data.uint | 0x20) - 'a' + 10 : innerElem->token_data.uint - '0';
+        uint8_t lo = (innerElem->token_data.uint > '9')
+                         ? (innerElem->token_data.uint | 0x20) - 'a' + 10
+                         : innerElem->token_data.uint - '0';
 
         // Combine into one byte
         uint8_t value = (hi << 4) | lo;
