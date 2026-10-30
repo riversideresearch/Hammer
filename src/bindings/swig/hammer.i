@@ -452,6 +452,12 @@ static void h_action_collection_free(struct HPythonActionCollection_ *collection
 %warnfilter(451) HSourceLocation_::function_name;
 %warnfilter(451) HParserTestcase_::output_unambiguous;
 %warnfilter(451) HResultTiming;
+#ifdef SWIGJAVA
+// Raw dispatch helpers take a native array pointer plus caller-controlled count.
+// Java must use the safe OpcodeMap[] wrapper below.
+%ignore h_dispatch__m;
+%ignore h_dispatch__s;
+#endif
 %include "hammer.h"
 
 #ifdef SWIGJAVA
