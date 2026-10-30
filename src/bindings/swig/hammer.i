@@ -294,6 +294,53 @@
   }
 %}
 
+// h_dispatch is a C macro that obtains its entry count from a native array.
+// Java passes an OpcodeMap[] instead, which this typemap marshals to a temporary
+// contiguous native array. h_dispatch__s copies the entries before it returns.
+%typemap(jni)    (const OpcodeMap *entries, size_t entry_count) "jlongArray"
+%typemap(jtype)  (const OpcodeMap *entries, size_t entry_count) "long[]"
+%typemap(jstype) (const OpcodeMap *entries, size_t entry_count) "OpcodeMap[]"
+%typemap(javain) (const OpcodeMap *entries, size_t entry_count) "opcodeMapsToHandles($javainput)"
+%typemap(in) (const OpcodeMap *entries, size_t entry_count) {
+  jsize _sz = JCALL1(GetArrayLength, jenv, $input);
+  jlong *_handles = JCALL2(GetLongArrayElements, jenv, $input, 0);
+  if (_handles == NULL && _sz != 0)
+    return $null;
+  OpcodeMap *_entries = calloc((size_t)_sz, sizeof(*_entries));
+  if (_entries == NULL && _sz != 0) {
+    JCALL3(ReleaseLongArrayElements, jenv, $input, _handles, JNI_ABORT);
+    SWIG_JavaThrowException(jenv, SWIG_JavaOutOfMemoryError,
+                            "could not allocate dispatch entries");
+    return $null;
+  }
+  for (jsize _i = 0; _i < _sz; _i++) {
+    if (_handles[_i] == 0) {
+      free(_entries);
+      JCALL3(ReleaseLongArrayElements, jenv, $input, _handles, JNI_ABORT);
+      SWIG_JavaThrowException(jenv, SWIG_JavaNullPointerException,
+                              "dispatch entries must not be null");
+      return $null;
+    }
+    _entries[_i] = *(OpcodeMap *)(intptr_t)_handles[_i];
+  }
+  JCALL3(ReleaseLongArrayElements, jenv, $input, _handles, JNI_ABORT);
+  $1 = _entries;
+  $2 = (size_t)_sz;
+}
+%typemap(freearg) (const OpcodeMap *entries, size_t entry_count) {
+  free((void *)$1);
+}
+
+// This lives in hammer.java (same package as OpcodeMap), so protected getCPtr is accessible.
+%pragma(java) modulecode=%{
+  static long[] opcodeMapsToHandles(OpcodeMap[] entries) {
+    long[] handles = new long[entries.length];
+    for (int i = 0; i < entries.length; i++)
+      handles[i] = OpcodeMap.getCPtr(entries[i]);
+    return handles;
+  }
+%}
+
 // parse() returns a Java-owned HParseResult whose finalizer calls h_parse_result_free.
 %newobject HParser_::parse;
 
@@ -406,6 +453,29 @@ static void h_action_collection_free(struct HPythonActionCollection_ *collection
 %warnfilter(451) HParserTestcase_::output_unambiguous;
 %warnfilter(451) HResultTiming;
 %include "hammer.h"
+
+#ifdef SWIGJAVA
+/*
+ * h_dispatch is a C macro and cannot be emitted as a JNI entry point.  Give
+ * Java an equivalent function that receives a marshalled OpcodeMap[].
+ */
+%extend OpcodeMap {
+    OpcodeMap() {
+        return calloc(1, sizeof(OpcodeMap));
+    }
+}
+
+%apply (const OpcodeMap *entries, size_t entry_count) {
+    (const OpcodeMap *map, size_t count)
+};
+%rename(h_dispatch) h_dispatch_java;
+%inline %{
+static HParser *h_dispatch_java(HParser *discriminator, const OpcodeMap *map, size_t count,
+                                HParser *default_parser) {
+    return h_dispatch__s(discriminator, map, count, default_parser);
+}
+%}
+#endif
 
 // HArena_ is an opaque type (forward declaration only in allocator.h).
 // Provide a body so SWIG can process the %extend below.
