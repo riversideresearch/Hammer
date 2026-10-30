@@ -7,7 +7,7 @@
 // uint - 16bits (2 byte op code), (2 byte block #). Data can be 512bytes * 8 max or less
 // function used for bound checking
 bool validate_dataBytes(HParseResult *result, void *user_data) {
-    return result && result->ast && ((result->ast->uint) - 32) <= (512 * 8);
+    return result && result->ast && ((result->ast->token_data.uint) - 32) <= (512 * 8);
 }
 
 /*
