@@ -469,6 +469,11 @@ static void h_action_collection_free(struct HPythonActionCollection_ *collection
     (const OpcodeMap *map, size_t count)
 };
 %rename(h_dispatch) h_dispatch_java;
+%typemap(javaout) HParser *h_dispatch_java {
+    long cPtr = $jnicall;
+    java.lang.ref.Reference.reachabilityFence(map);
+    return (cPtr == 0) ? null : new HParser(cPtr, false);
+}
 %inline %{
 static HParser *h_dispatch_java(HParser *discriminator, const OpcodeMap *map, size_t count,
                                 HParser *default_parser) {
