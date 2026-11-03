@@ -9,8 +9,10 @@ It covers two things:
    entirely from fixed static buffers instead of the heap. Sections that only
    apply to that mode are marked **[STATIC]**.
 
-RTEMS supports the **packrat backend only**. Calls selecting regex, LL(k),
-LALR, or GLR return an unsupported-backend error.
+The heap-backed RTEMS build supports the **packrat** and **regex/RVM**
+backends. The static (no-heap) build supports packrat only because regex/RVM
+uses `realloc` while compiling. Calls selecting LL(k), LALR, or GLR return an
+unsupported-backend error.
 
 ## Build requirements
 
@@ -88,13 +90,14 @@ placing `-lhammer_tests` BEFORE `-lhammer`.
   assume.
 * Some desugar tests were removed, as they did not verify any functionality —
   they only verified desugar output formatting.
-* The RTEMS test archive follows the current native test source list. It
-  registers data-driven parser tests only for packrat; the regex,
-  context-free, and `k`-parameter backend suites are not registered. Trace
-  tests are excluded because they require GLib subprocess/thread support; two
-  allocator-failure tests require GLib subprocess trapping, and two
-  parser-free tests require GLib threads. The latter tests are not registered
-  on RTEMS.
+* The RTEMS test archive follows the current native test source list. Its
+  heap-backed configuration registers data-driven parser tests and backend
+  suites for packrat and regex. The static configuration registers packrat
+  only because regex/RVM requires `realloc`. The context-free and
+  `k`-parameter backend suites are not registered. Trace tests are excluded
+  because they require GLib subprocess/thread support; two allocator-failure
+  tests require GLib subprocess trapping, and two parser-free tests require
+  GLib threads. The latter tests are not registered on RTEMS.
 
 ## Static (no-heap) memory mode  **[STATIC]**
 

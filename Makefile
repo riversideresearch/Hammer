@@ -84,7 +84,6 @@ SRCS = \
     $(HAMMER_SRC)/backends/packrat.c \
     $(HAMMER_SRC)/backends/params.c \
     $(HAMMER_SRC)/backends/missing.c \
-    $(HAMMER_SRC)/backends/regex_stub.c \
     $(HAMMER_SRC)/parsers/and.c \
     $(HAMMER_SRC)/parsers/action.c \
     $(HAMMER_SRC)/parsers/attr_bool.c \
@@ -121,7 +120,11 @@ SRCS = \
     $(HAMMER_SRC)/parsers/xor.c
 
 ifneq ($(STATIC_BUILD),0)
-SRCS += $(HAMMER_SRC)/static_alloc.c
+SRCS += \
+	$(HAMMER_SRC)/backends/regex_stub.c \
+	$(HAMMER_SRC)/static_alloc.c
+else
+SRCS += $(HAMMER_SRC)/backends/regex.c
 endif
 
 # Keep the RTEMS test archive in sync with the native suite, including new

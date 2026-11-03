@@ -38,7 +38,11 @@ static HParserBackendVTable *backends[PB_MAX + 1] = {
     &h__missing_backend_vtable, /* For PB_INVALID */
     &h__packrat_backend_vtable, /* For PB_PACKRAT */
 #ifdef RTEMS_BUILD
-    &h__missing_backend_vtable, /* PB_REGULAR is unsupported on RTEMS */
+#ifdef STATIC_BUILD
+    &h__missing_backend_vtable, /* PB_REGULAR requires realloc */
+#else
+    &h__regex_backend_vtable, /* For PB_REGULAR */
+#endif
     &h__missing_backend_vtable, /* PB_LL is unsupported on RTEMS */
     &h__missing_backend_vtable, /* PB_LALR is unsupported on RTEMS */
     &h__missing_backend_vtable  /* PB_GLR is unsupported on RTEMS */

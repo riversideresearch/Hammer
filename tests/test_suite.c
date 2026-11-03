@@ -41,8 +41,10 @@ extern void register_whitespace_tests(void);
 extern void register_xor_tests(void);
 extern void register_missing_tests(void);
 extern void register_packrat_tests(void);
-#ifndef RTEMS_BUILD
+#if !defined(RTEMS_BUILD) || !defined(STATIC_BUILD)
 extern void register_regex_tests(void);
+#endif
+#ifndef RTEMS_BUILD
 extern void register_trace_tests(void);
 extern void register_contextfree_backend_tests(void);
 #endif
@@ -101,8 +103,10 @@ void register_all_hammer_tests(void) {
     register_xor_tests();
     register_missing_tests();
     register_packrat_tests();
-#ifndef RTEMS_BUILD
+#if !defined(RTEMS_BUILD) || !defined(STATIC_BUILD)
     register_regex_tests();
+#endif
+#ifndef RTEMS_BUILD
     register_contextfree_backend_tests();
 #endif
     register_hammer_tests();
