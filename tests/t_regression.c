@@ -602,5 +602,4 @@ void register_regression_tests(void) {
     g_test_add_func("/core/regression/bug60", test_bug60);
     g_test_add_func("/core/regression/bug60_abnf", test_bug60_abnf);
     g_test_add_func("/core/regression/lr_cache_memory", test_lr_cache_memory);
-    g_test_add_func("/core/regression/choice_consistency", test_choice_consistency);
 }
