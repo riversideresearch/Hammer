@@ -609,7 +609,7 @@ HParseResult *h_parse_bits(const HParser *parser, const uint8_t *input, size_t b
 
 HParseResult *h_parse_bits__m(HAllocator *mm__, const HParser *parser, const uint8_t *input,
                               size_t bit_length) {
-    if (!parser || (parser->backend != PB_PACKRAT && parser->backend != PB_REGULAR))
+    if (!parser || (parser->backend != PB_PACKRAT))
         return NULL;
     return h_parse_with_trace(mm__, parser, input, h_bit_length_to_bytes(bit_length), bit_length,
                               NULL);
@@ -661,7 +661,7 @@ HParseResult *h_parse_bits_debug__m(HAllocator *mm__, const HParser *parser, con
                                     bool dumpExecutionTrace) {
     if (diagnostic)
         *diagnostic = NULL;
-    if (!parser || (parser->backend != PB_PACKRAT && parser->backend != PB_REGULAR))
+    if (!parser || (parser->backend != PB_PACKRAT))
         return NULL;
 
     size_t length = h_bit_length_to_bytes(bit_length);
