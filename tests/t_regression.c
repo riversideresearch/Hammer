@@ -584,6 +584,15 @@ static void test_lr_cache_memory(void) {
     g_check_parse_ok(expr, PB_PACKRAT, (const uint8_t *)"aa", 2);
 }
 
+static void test_choice_consistency(void) {
+    HParser *p = h_choice(h_ch('a'), h_token((const uint8_t *)"aa", 2), NULL);
+    g_check_parse_match(p, PB_PACKRAT, "aa", 2, "u0x61");
+    g_check_parse_match(p, PB_GLR, "aa", 2, "u0x61");
+    g_check_parse_match(p, PB_LALR, "aa", 2, "u0x61");
+    g_check_parse_match(p, PB_LL, "aa", 2, "u0x61");
+    g_check_parse_match(p, PB_REGULAR, "aa", 2, "u0x61");
+}
+
 void register_regression_tests(void) {
     g_test_add_func("/core/regression/bug118", test_bug118);
     g_test_add_func("/core/regression/seq_index_path", test_seq_index_path);
@@ -602,4 +611,5 @@ void register_regression_tests(void) {
     g_test_add_func("/core/regression/bug60", test_bug60);
     g_test_add_func("/core/regression/bug60_abnf", test_bug60_abnf);
     g_test_add_func("/core/regression/lr_cache_memory", test_lr_cache_memory);
+    g_test_add_func("/core/regression/choice_consistency", test_choice_consistency);
 }
