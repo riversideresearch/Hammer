@@ -690,8 +690,8 @@ HParser *h_float_range__m(HAllocator *mm__, const HParser *p, const double lower
  * parse; len >64 results in a NULL parser.
  * Use h_bytes() or a sequence of smaller integer parsers for wider fields.
  */
-HParser *h_bits(size_t len, _Bool sign);
-HParser *h_bits__m(HAllocator *mm__, size_t len, _Bool sign);
+HParser *h_bits(size_t len, bool sign);
+HParser *h_bits__m(HAllocator *mm__, size_t len, bool sign);
 
 /**
  * @brief Returns a parser that parses the specified number of bytes. The input does not have to be
