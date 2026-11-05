@@ -93,6 +93,9 @@ jar_file = javaenv.Command(
         "jar cf $TARGET -C " + java_classes_dir + " .",
     ],
 )
+# Java proxy output can change without changing hammer_wrap.c. Depend on the
+# interface copy so Java-only typemap changes regenerate the jar.
+javaenv.Depends(jar_file, swig_iface)
 javaenv.Depends(jar_file, jni_lib)
 Default(jar_file)
 
