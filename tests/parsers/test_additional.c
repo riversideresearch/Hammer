@@ -1038,6 +1038,17 @@ static void test_many_internal(gconstpointer backend) {
         HParsedToken *reshaped = desugared_many->reshape(&mock_result, NULL);
         g_check_cmp_ptr(reshaped, !=, NULL);
         g_check_cmp_size(reshaped->index, ==, seq_token->index);
+        g_check_cmp_size(reshaped->token_data.seq->used, ==, 2);
+        g_check_cmp_ptr(reshaped->token_data.seq->elements[0], ==, char_token1);
+        g_check_cmp_ptr(reshaped->token_data.seq->elements[1], ==, char_token2);
+
+        /* A tail-only node must not index elements[SIZE_MAX] or emit a value. */
+        HParsedToken *tail_only = h_make_seq(arena);
+        h_carray_append(tail_only->token_data.seq, empty_seq);
+        HParseResult tail_result = {.arena = arena, .ast = tail_only, .bit_length = 0};
+        HParsedToken *tail_reshaped = desugared_many->reshape(&tail_result, NULL);
+        g_check_cmp_ptr(tail_reshaped, !=, NULL);
+        g_check_cmp_size(tail_reshaped->token_data.seq->used, ==, 0);
         // Also test with a sequence that has used=3 to cover the assert(n <= 3)
         HParsedToken *seq_token2 = h_make_seq(arena);
         HParsedToken *inner_seq_with_3 = h_make_seq(arena);
@@ -1054,6 +1065,8 @@ static void test_many_internal(gconstpointer backend) {
         HParsedToken *reshaped2 = desugared_many->reshape(&mock_result2, NULL);
         g_check_cmp_ptr(reshaped2, !=, NULL);
         g_check_cmp_size(reshaped2->index, ==, seq_token2->index);
+        g_check_cmp_size(reshaped2->token_data.seq->used, ==, 1);
+        g_check_cmp_ptr(reshaped2->token_data.seq->elements[0], ==, char_tok2);
         h_delete_arena(arena);
     }
 

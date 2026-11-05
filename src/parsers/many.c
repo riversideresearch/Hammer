@@ -96,7 +96,9 @@ static HParsedToken *reshape_many(const HParseResult *p, void *user) {
         if (tok->token_data.seq->used > 0) {
             size_t n = tok->token_data.seq->used;
             assert(n <= 3);
-            h_carray_append(seq, tok->token_data.seq->elements[n - 2]);
+            /* A node can contain only the tail when its value has no AST. */
+            if (n >= 2)
+                h_carray_append(seq, tok->token_data.seq->elements[n - 2]);
             tok = tok->token_data.seq->elements[n - 1];
         } else {
             tok = NULL;
