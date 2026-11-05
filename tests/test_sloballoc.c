@@ -210,7 +210,46 @@ static void test_slob_coalesce_after_shrink(void) {
     g_check_cmp_int(slobcheck(slob), ==, 0);
 }
 
+static void test_sloballoc_offset_regions(void) {
+    uint8_t mem[4096];
+    const size_t offsets = sizeof(long double) + sizeof(void *);
+
+    for (size_t offset = 0; offset < offsets; ++offset) {
+        SLOB *slob = slobinit(mem + offset, sizeof(mem) - offset);
+        g_assert_nonnull(slob);
+        g_check_cmp_int(slobcheck(slob), ==, 0);
+
+        /* Typed accesses also let UBSan check the returned payload alignment. */
+        long double *value = sloballoc(slob, 8 * sizeof(*value));
+        g_assert_nonnull(value);
+        value[0] = 1.25L;
+        value[1] = 2.5L;
+
+        long double *resized = slobrealloc(slob, value, 2 * sizeof(*value));
+        g_assert_nonnull(resized);
+        g_assert_true(resized[0] == 1.25L && resized[1] == 2.5L);
+        g_check_cmp_int(slobcheck(slob), ==, 0);
+
+        value = slobrealloc(slob, resized, 16 * sizeof(*value));
+        g_assert_nonnull(value);
+        g_assert_true(value[0] == 1.25L && value[1] == 2.5L);
+        slobfree(slob, value);
+        g_check_cmp_int(slobcheck(slob), ==, 0);
+
+        HAllocator *mm = h_sloballoc(mem + offset, sizeof(mem) - offset);
+        g_assert_nonnull(mm);
+        value = mm->alloc(mm, sizeof(*value));
+        g_assert_nonnull(value);
+        *value = 3.75L;
+        resized = mm->realloc(mm, value, 4 * sizeof(*value));
+        g_assert_nonnull(resized);
+        g_assert_true(*resized == 3.75L);
+        mm->free(mm, resized);
+    }
+}
+
 void register_sloballoc_tests(void) {
+    g_test_add_func("/core/sloballoc/offset_regions", test_sloballoc_offset_regions);
     g_test_add_func("/core/sloballoc/slobinit", test_slobinit);
     g_test_add_func("/core/sloballoc/sloballoc_small_size", test_sloballoc_small_size);
     g_test_add_func("/core/sloballoc/sloballoc_overflow", test_sloballoc_overflow);
