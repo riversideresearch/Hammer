@@ -996,6 +996,8 @@ HParser *h_drop_from___ma(HAllocator *mm__, void *args[]);
  *
  * @param p_array Array of parsers
  * @return Result token type: The type of the first successful parser's result.
+ * @note Packrat is the only backend with ordered choice, other backends will not apply each parser
+ * in order.
  */
 HParser *h_choice(HParser *p, ...) __attribute__((sentinel));
 HParser *h_choice__m(HAllocator *mm__, HParser *p, ...) __attribute__((sentinel));
