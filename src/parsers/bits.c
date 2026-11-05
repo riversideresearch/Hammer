@@ -149,7 +149,7 @@ HParser *h_bits__m(HAllocator *mm__, size_t len, bool sign) {
 }
 
 #define SIZED_BITS(name_pre, len, signedp)                                                         \
-    HParser *h_##name_pre##len() { return h_bits__m(&system_allocator, len, signedp); }            \
+    HParser *h_##name_pre##len(void) { return h_bits__m(&system_allocator, len, signedp); }        \
     HParser *h_##name_pre##len##__m(HAllocator *mm__) { return h_bits__m(mm__, len, signedp); }
 SIZED_BITS(int, 8, true)
 SIZED_BITS(int, 16, true)

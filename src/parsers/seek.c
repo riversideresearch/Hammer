@@ -141,6 +141,6 @@ HParser *h_seek__m(HAllocator *mm__, int64_t offset, int whence) {
     return h_new_parser(mm__, &seek_vt, env);
 }
 
-HParser *h_tell() { return h_tell__m(&system_allocator); }
+HParser *h_tell(void) { return h_tell__m(&system_allocator); }
 
 HParser *h_tell__m(HAllocator *mm__) { return h_new_parser(mm__, &tell_vt, NULL); }

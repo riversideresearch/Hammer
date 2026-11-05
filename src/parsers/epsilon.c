@@ -22,7 +22,7 @@ static const HParserVtable epsilon_vt = {
     .higher = false,
 };
 
-HParser *h_epsilon_p() { return h_epsilon_p__m(&system_allocator); }
+HParser *h_epsilon_p(void) { return h_epsilon_p__m(&system_allocator); }
 HParser *h_epsilon_p__m(HAllocator *mm__) {
     return h_new_parser_with_free(mm__, &epsilon_vt, NULL, h_no_free_env);
 }
