@@ -516,8 +516,8 @@ HParseResult *h_parse__m(HAllocator *mm__, const HParser *parser, const uint8_t 
  * @brief Parse an input whose valid length is specified exactly in bits.
  *
  * The input buffer must contain at least ceil(bit_length / 8) bytes. Any
- * unused bits in the final byte are ignored. This one-shot API is supported
- * by the Packrat and Regular backends.
+ * unused bits in the final byte are ignored.
+ * @note Packrat supported only
  */
 HParseResult *h_parse_bits(const HParser *parser, const uint8_t *input, size_t bit_length);
 HParseResult *h_parse_bits__m(HAllocator *mm__, const HParser *parser, const uint8_t *input,

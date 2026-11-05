@@ -154,7 +154,7 @@ static void test_parse_bits_packrat(void) {
     h_parse_result_free(res);
 
     HParser *rollback = h_many(h_sequence(h_ch('a'), h_ch('b'), NULL));
-    const uint8_t input2[] = {0x3d}; // 'a'
+    const uint8_t input2[] = {0x61}; // 'a'
     res = h_parse(rollback, input2, 1);
     g_check_cmp_int(res->bit_length, ==, 0);
     g_check_cmp_int(res->ast->bit_length, ==, 0);
