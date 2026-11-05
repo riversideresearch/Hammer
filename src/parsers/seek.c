@@ -2,6 +2,8 @@
 #include "../trace.h"
 #include "parser_internal.h"
 
+#include <stdint.h>
+
 typedef struct {
     int64_t offset;
     int whence;
@@ -41,38 +43,28 @@ static HParseResult *parse_seek(void *env, HParseState *state) {
         return NULL; /* invalid argument */
     }
 
-    /* calculate target position and do basic overflow checks */
-    if (s->offset < 0 && (size_t)(-(s->offset + 1)) + 1 > pos) {
-        h_trace_note_failure(stream->trace, H_PARSE_ERROR_HIGHER_ORDER,
-                             "seek target is before the start of input", start, start);
-        return NULL; /* underflow */
-    }
-    if (s->offset > 0 && (size_t)s->offset > SIZE_MAX - pos) {
-        h_trace_note_failure(stream->trace, H_PARSE_ERROR_HIGHER_ORDER,
-                             "seek target overflows the input position", start, start);
-        return NULL; /* overflow */
-    }
+    /* Validate the full signed offset before narrowing it to size_t. */
     if (s->offset < 0) {
-        /* This form remains safe when offset == SSIZE_MIN. */
-        size_t delta = (size_t)(-(s->offset + 1)) + 1U;
+        /* This form remains safe when offset == INT64_MIN. */
+        uintmax_t delta = (uintmax_t)(-(s->offset + 1)) + 1U;
 
-        if (delta > pos) {
+        if (delta > (uintmax_t)pos) {
             h_trace_note_failure(stream->trace, H_PARSE_ERROR_HIGHER_ORDER,
                                  "seek target is before the start of input", start, start);
             return NULL;
         }
 
-        pos -= delta;
+        pos -= (size_t)delta;
     } else {
-        size_t delta = (size_t)s->offset;
+        uintmax_t delta = (uintmax_t)s->offset;
 
-        if (delta > SIZE_MAX - pos) {
+        if (delta > (uintmax_t)(SIZE_MAX - pos)) {
             h_trace_note_failure(stream->trace, H_PARSE_ERROR_HIGHER_ORDER,
                                  "seek target overflows the input position", start, start);
             return NULL;
         }
 
-        pos += delta;
+        pos += (size_t)delta;
     }
 
     /* perform the seek and check for overrun */
