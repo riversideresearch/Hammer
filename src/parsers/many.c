@@ -92,14 +92,24 @@ static HParsedToken *reshape_many(const HParseResult *p, void *user) {
     HCountedArray *seq = h_carray_new(p->arena);
     const HParsedToken *tok = ast;
     while (tok) {
-        assert(tok->token_type == TT_SEQUENCE);
-        if (tok->token_data.seq->used > 0) {
-            size_t n = tok->token_data.seq->used;
-            assert(n <= 3);
-            h_carray_append(seq, tok->token_data.seq->elements[n - 2]);
-            tok = tok->token_data.seq->elements[n - 1];
-        } else {
+        HAMMER_ASSERT(tok->token_type == TT_SEQUENCE);
+        size_t n = tok->token_data.seq->used;
+        HParsedToken *const *elements = tok->token_data.seq->elements;
+        switch (n) {
+        case 0: /* Empty sequence. */
             tok = NULL;
+            break;
+        case 1: /* Tail only; no value to append. */
+            tok = elements[0];
+            break;
+        case 2: /* Value and tail. */
+        case 3: /* Separator, value, and tail. */
+            if (elements[n - 2] != NULL)
+                h_carray_append(seq, elements[n - 2]);
+            tok = elements[n - 1];
+            break;
+        default:
+            HAMMER_ASSERT(false);
         }
     }
 

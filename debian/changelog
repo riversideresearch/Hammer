@@ -10,6 +10,11 @@ libhammer (3.4.0-1) unstable; urgency=medium
   * Propagate Python callback exceptions and reject integer byte inputs outside
     the range 0..255
   * Fix native macOS builds and installation and add macOS CI coverage
+  * Fix strict C prototypes, allocator metadata conversions, and C++ boolean
+    declarations for Clang builds
+  * Prevent index underflow when repetition AST nodes contain only a tail
+  * Omit ignored repetition values consistently across all parsing backends
+  * Keep AST type and allocator alignment checks active in release builds
   * Update test macros for compatibility with GLib 2.72
   * Fix h_drop_from() index handling and validation and guard h_act_second()
     against short sequences
