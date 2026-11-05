@@ -619,7 +619,7 @@ HParseResult *h_parse__m(HAllocator *mm__, const HParser *parser, const uint8_t 
 }
 
 HParseResult *h_parse_bits(const HParser *parser, const uint8_t *input, size_t bit_length) {
-    return h_parse_bits__m(&system_allocator, parser, input, bit_length);
+    return h_parse_bits__m(h_default_parse_allocator, parser, input, bit_length);
 }
 
 HParseResult *h_parse_bits__m(HAllocator *mm__, const HParser *parser, const uint8_t *input,
@@ -667,7 +667,7 @@ HParseResult *h_parse_debug__m(HAllocator *mm__, const HParser *parser, const ui
 
 HParseResult *h_parse_bits_debug(const HParser *parser, const uint8_t *input, size_t bit_length,
                                  HParseDiagnostic **diagnostic, bool dumpExecutionTrace) {
-    return h_parse_bits_debug__m(&system_allocator, parser, input, bit_length, diagnostic,
+    return h_parse_bits_debug__m(h_default_parse_allocator, parser, input, bit_length, diagnostic,
                                  dumpExecutionTrace);
 }
 
