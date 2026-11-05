@@ -1,15 +1,17 @@
-from __future__ import absolute_import, division, print_function
 
 from string import Template
 
 
 def replace_action(target, source, env):
-    open(str(target[0]), "w").write(Template(open(str(source[0]), "r").read()).safe_substitute(env))
+    with open(str(source[0])) as source_file:
+        contents = Template(source_file.read()).safe_substitute(env)
+    with open(str(target[0]), "w") as target_file:
+        target_file.write(contents)
     return 0
 
 
 def replace_string(target, source, env):
-    return "building '%s' from '%s'" % (str(target[0]), str(source[0]))
+    return f"building '{target[0]!s}' from '{source[0]!s}'"
 
 
 def generate(env, **kw):

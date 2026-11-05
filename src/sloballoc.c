@@ -3,6 +3,8 @@
 
 #include "sloballoc.h"
 
+#include "internal.h"
+
 #include <assert.h>
 #include <stdint.h>
 #include <string.h>
@@ -37,6 +39,27 @@ struct slob {
     uint8_t data[];
 };
 
+typedef union {
+    size_t size;
+    void *ptr;
+} SLOBMetadataAlignment;
+
+typedef struct {
+    char byte;
+    SLOBMetadataAlignment metadata;
+} SLOBMetadataAlignmentProbe;
+
+/*
+ * Region alignment, header sizes, and rounded block sizes preserve metadata
+ * alignment. Byte arithmetic loses that type information, so check the
+ * invariant before converting through void * to a metadata pointer.
+ * offsetof supplies the required alignment without C11 _Alignof.
+ */
+static void *slob_metadata_at(void *address) {
+    HAMMER_ASSERT((uintptr_t)address % offsetof(SLOBMetadataAlignmentProbe, metadata) == 0);
+    return address;
+}
+
 static size_t slob_align_up(size_t size) {
     size_t rem = size % SLOB_ALIGNMENT;
     if (rem == 0)
@@ -67,7 +90,7 @@ SLOB *slobinit(void *mem, size_t size) {
         return NULL;
 
     slob->size = slob_align_down(size - sizeof(SLOB));
-    slob->head = (struct block *)((uint8_t *)slob + sizeof(SLOB));
+    slob->head = slob_metadata_at((uint8_t *)slob + sizeof(SLOB));
     slob->head->size = slob->size - sizeof(struct alloc);
     slob->head->next = NULL;
 
@@ -98,7 +121,7 @@ void *sloballoc(SLOB *slob, size_t size) {
         if (b->size >= remblock) {
             // cut from the end of the block
             b->size -= sizeof(struct alloc) + size;
-            struct alloc *a = (struct alloc *)(((struct alloc *)b)->data + b->size);
+            struct alloc *a = slob_metadata_at(((struct alloc *)b)->data + b->size);
             a->size = size;
             return a->data;
         } else if (b->size >= size) {
@@ -126,7 +149,7 @@ void *slobrealloc(SLOB *slob, void *a_, size_t size) {
     size = slob_align_up(size);
     if (size == 0)
         return NULL;
-    struct alloc *a = (struct alloc *)((uint8_t *)a_ - sizeof(struct alloc));
+    struct alloc *a = slob_metadata_at((uint8_t *)a_ - sizeof(struct alloc));
     assert((uint8_t *)a >= slob->data);
     assert(a->data + a->size <= slob->data + slob->size);
     size_t old_size = a->size;
@@ -136,7 +159,7 @@ void *slobrealloc(SLOB *slob, void *a_, size_t size) {
         size_t remaining = old_size - size;
         if (remaining >= sizeof(struct block) + sizeof(struct alloc)) {
             uint8_t *tail = (uint8_t *)a + sizeof(struct alloc) + size;
-            struct block *b = (struct block *)tail;
+            struct block *b = slob_metadata_at(tail);
             b->size = remaining - sizeof(struct alloc);
             void *b_payload = tail + sizeof(struct alloc);
             if (b->size > 0)
@@ -158,7 +181,7 @@ void *slobrealloc(SLOB *slob, void *a_, size_t size) {
 }
 
 void slobfree(SLOB *slob, void *a_) {
-    struct alloc *a = (struct alloc *)((uint8_t *)a_ - sizeof(struct alloc));
+    struct alloc *a = slob_metadata_at((uint8_t *)a_ - sizeof(struct alloc));
     struct block *b, **p, *left = NULL, *right = NULL, **rightp = NULL;
 
     // sanity check: a lies inside slob
@@ -214,7 +237,7 @@ int slobcheck(SLOB *slob) {
 
 #define FORBLOCKS                                                                                  \
     for (p = slob->data; p != slob->data + slob->size;                                             \
-         p += sizeof(struct alloc) + ((struct alloc *)p)->size)
+         p += sizeof(struct alloc) + ((struct alloc *)slob_metadata_at(p))->size)
 
     // 1. memory area is divided seamlessly and exactly into n blocks
     FORBLOCKS {
@@ -224,7 +247,7 @@ int slobcheck(SLOB *slob) {
             return 2;
         nblocks++;
 
-        struct alloc *a = (struct alloc *)p;
+        struct alloc *a = slob_metadata_at(p);
         if (a->size > UINTPTR_MAX - (uintptr_t)p)
             return 3;
 
@@ -267,7 +290,9 @@ int slobcheck(SLOB *slob) {
 
 static size_t h_slob_offset(void) { return slob_align_up(sizeof(HAllocator)); }
 
-static SLOB *h_slob_get(HAllocator *mm) { return (SLOB *)((uint8_t *)mm + h_slob_offset()); }
+static SLOB *h_slob_get(HAllocator *mm) {
+    return slob_metadata_at((uint8_t *)mm + h_slob_offset());
+}
 
 static void *h_slob_alloc(HAllocator *mm, size_t size) {
     SLOB *slob = h_slob_get(mm);

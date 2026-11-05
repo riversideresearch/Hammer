@@ -23,7 +23,40 @@ static void test_static_alloc_pool_accounting(void) {
     g_assert_cmpuint(h_parse_pool_high_water(), ==, 8);
 }
 
+static void test_static_alloc_parse_bits_uses_parse_pool(void) {
+    const uint8_t input[] = {0xa0};
+
+    h_static_alloc_init();
+    h_default_allocator = h_grammar_allocator;
+    h_default_parse_allocator = h_parse_allocator;
+
+    HParser *parser = h_bits(3, false);
+    g_assert_nonnull(parser);
+    g_assert_cmpint(h_compile(parser, PB_PACKRAT, NULL), ==, 0);
+    g_assert_cmpuint(h_parse_pool_used(), ==, 0);
+
+    HParseResult *result = h_parse_bits(parser, input, 3);
+    g_assert_nonnull(result);
+    g_assert_cmpuint(result->ast->token_data.uint, ==, 5);
+    g_assert_cmpuint(h_parse_pool_used(), >, 0);
+    h_parse_result_free(result);
+
+    h_parse_pool_reset();
+    g_assert_cmpuint(h_parse_pool_used(), ==, 0);
+
+    result = h_parse_bits_debug(parser, input, 3, NULL, false);
+    g_assert_nonnull(result);
+    g_assert_cmpuint(result->ast->token_data.uint, ==, 5);
+    g_assert_cmpuint(h_parse_pool_used(), >, 0);
+    h_parse_result_free(result);
+
+    h_parse_pool_reset();
+    g_assert_cmpuint(h_parse_pool_used(), ==, 0);
+}
+
 void register_static_alloc_tests(void) {
     g_test_add_func("/core/static_alloc/pool_accounting", test_static_alloc_pool_accounting);
+    g_test_add_func("/core/static_alloc/parse_bits_uses_parse_pool",
+                    test_static_alloc_parse_bits_uses_parse_pool);
 }
 #endif /* defined(RTEMS_BUILD) && defined(STATIC_BUILD) */

@@ -1,5 +1,5 @@
-import subprocess
 import os
+import subprocess
 
 good_dir = "good_packets"
 bad_dir = "bad_packets"
@@ -16,7 +16,7 @@ def run_test(file_path):
             return True, output
         else:
             return False, output
-    except Exception as e:
+    except OSError as e:
         return False, str(e)
 
 def test_directory(directory, should_pass):

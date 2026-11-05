@@ -17,25 +17,31 @@ static int parse_permutation_tail(const HSequence *s, HCountedArray *seq, const 
 
     HInputStream bak = state->input_stream;
     HActionPlan *bak_plan = state->action_plan;
+    HSymbolLogEntry *tail_checkpoint = h_symbol_checkpoint(state);
 
     // try available parsers as first element of the permutation tail
     HParseResult *match = NULL;
     size_t i;
     for (i = 0; i < n; i++) {
         if (set[i]) {
+            HSymbolLogEntry *candidate_checkpoint = h_symbol_checkpoint(state);
             state->action_plan = bak_plan;
             match = h_do_parse(ps[i], state);
 
-            if (want_suspend(state))
+            if (want_suspend(state)) {
+                h_symbol_rollback(state, candidate_checkpoint);
                 return 0; // bail out early, leaving overrun flag
+            }
 
             // save result
             if (match)
                 seq->elements[i] = (void *)match->ast;
 
             // treat empty optionals (TT_NONE) like failure here
-            if (match && match->ast && match->ast->token_type == TT_NONE)
+            if (match && match->ast && match->ast->token_type == TT_NONE) {
                 match = NULL;
+                h_symbol_rollback(state, candidate_checkpoint);
+            }
 
             if (match) {
                 // remove parser from active set
@@ -47,9 +53,12 @@ static int parse_permutation_tail(const HSequence *s, HCountedArray *seq, const 
                     return 1;
                 } else {
                     // place parser back in active set and try the next
+                    h_symbol_rollback(state, candidate_checkpoint);
                     set[i] = 1;
                     state->action_plan = bak_plan;
                 }
+            } else {
+                h_symbol_rollback(state, candidate_checkpoint);
             }
 
             state->input_stream = bak; // rewind input
@@ -72,6 +81,7 @@ static int parse_permutation_tail(const HSequence *s, HCountedArray *seq, const 
     }
 
     // permutations exhausted
+    h_symbol_rollback(state, tail_checkpoint);
     state->action_plan = bak_plan;
     return 0;
 }

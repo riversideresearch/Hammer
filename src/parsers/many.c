@@ -22,9 +22,11 @@ static HParseResult *parse_many(void *env, HParseState *state) {
     size_t count = 0;
     HInputStream bak;
     HActionPlan *iteration_plan = NULL;
+    HSymbolLogEntry *iteration_checkpoint = NULL;
     while (env_->min_p || env_->count > count) {
         bak = state->input_stream;
         iteration_plan = state->action_plan;
+        iteration_checkpoint = h_symbol_checkpoint(state);
         size_t iteration_start = h_input_stream_pos(&state->input_stream);
         if (count > 0 && env_->sep != NULL) {
             HParseResult *sep = h_do_parse(env_->sep, state);
@@ -35,6 +37,7 @@ static HParseResult *parse_many(void *env, HParseState *state) {
         if (!elem)
             goto stop;
         if (env_->min_p && h_input_stream_pos(&state->input_stream) == iteration_start) {
+            h_symbol_rollback(state, iteration_checkpoint);
             state->input_stream = bak;
             state->action_plan = iteration_plan;
             size_t at = bak.pos + bak.index;
@@ -56,6 +59,7 @@ succ:; // necessary for the label to be here...
     res->bit_offset = 0;
     return make_result(state->arena, res);
 stop:
+    h_symbol_rollback(state, iteration_checkpoint);
     if (want_suspend(state))
         return NULL; // bail out early, leaving overrun flag
     if (count >= env_->count) {
@@ -88,14 +92,24 @@ static HParsedToken *reshape_many(const HParseResult *p, void *user) {
     HCountedArray *seq = h_carray_new(p->arena);
     const HParsedToken *tok = ast;
     while (tok) {
-        assert(tok->token_type == TT_SEQUENCE);
-        if (tok->token_data.seq->used > 0) {
-            size_t n = tok->token_data.seq->used;
-            assert(n <= 3);
-            h_carray_append(seq, tok->token_data.seq->elements[n - 2]);
-            tok = tok->token_data.seq->elements[n - 1];
-        } else {
+        HAMMER_ASSERT(tok->token_type == TT_SEQUENCE);
+        size_t n = tok->token_data.seq->used;
+        HParsedToken *const *elements = tok->token_data.seq->elements;
+        switch (n) {
+        case 0: /* Empty sequence. */
             tok = NULL;
+            break;
+        case 1: /* Tail only; no value to append. */
+            tok = elements[0];
+            break;
+        case 2: /* Value and tail. */
+        case 3: /* Separator, value, and tail. */
+            if (elements[n - 2] != NULL)
+                h_carray_append(seq, elements[n - 2]);
+            tok = elements[n - 1];
+            break;
+        default:
+            HAMMER_ASSERT(false);
         }
     }
 

@@ -37,7 +37,7 @@ HParsedToken *h_act_first(const HParseResult *p, void *user_data) {
 HParsedToken *h_act_second(const HParseResult *p, void *user_data) {
     assert(p->ast);
     assert(p->ast->token_type == TT_SEQUENCE);
-    assert(p->ast->token_data.seq->used > 0);
+    HAMMER_ASSERT(p->ast->token_data.seq->used > 1);
 
     return p->ast->token_data.seq->elements[1];
 }
