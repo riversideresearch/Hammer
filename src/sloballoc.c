@@ -3,6 +3,8 @@
 
 #include "sloballoc.h"
 
+#include "internal.h"
+
 #include <assert.h>
 #include <stdint.h>
 #include <string.h>
@@ -54,7 +56,7 @@ typedef struct {
  * offsetof supplies the required alignment without C11 _Alignof.
  */
 static void *slob_metadata_at(void *address) {
-    assert((uintptr_t)address % offsetof(SLOBMetadataAlignmentProbe, metadata) == 0);
+    HAMMER_ASSERT((uintptr_t)address % offsetof(SLOBMetadataAlignmentProbe, metadata) == 0);
     return address;
 }
 

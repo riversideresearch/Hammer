@@ -92,7 +92,7 @@ static HParsedToken *reshape_many(const HParseResult *p, void *user) {
     HCountedArray *seq = h_carray_new(p->arena);
     const HParsedToken *tok = ast;
     while (tok) {
-        assert(tok->token_type == TT_SEQUENCE);
+        HAMMER_ASSERT(tok->token_type == TT_SEQUENCE);
         size_t n = tok->token_data.seq->used;
         HParsedToken *const *elements = tok->token_data.seq->elements;
         switch (n) {
@@ -104,7 +104,8 @@ static HParsedToken *reshape_many(const HParseResult *p, void *user) {
             break;
         case 2: /* Value and tail. */
         case 3: /* Separator, value, and tail. */
-            h_carray_append(seq, elements[n - 2]);
+            if (elements[n - 2] != NULL)
+                h_carray_append(seq, elements[n - 2]);
             tok = elements[n - 1];
             break;
         default:

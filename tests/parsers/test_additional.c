@@ -1271,7 +1271,88 @@ static void test_optional_internal(gconstpointer backend) {
     // If chunked parsing is not supported, we can't test this path
 }
 
+static void test_many_reshape_rejects_non_sequence(void) {
+    if (g_test_subprocess()) {
+        HParser *parser = h_many(h_ch('a'));
+        HCFChoice *desugared = h_desugar(&system_allocator, NULL, parser);
+        g_assert_nonnull(desugared);
+        g_assert_nonnull(desugared->reshape);
+        HArena *arena = h_new_arena(&system_allocator, 0);
+        HParseResult result = {.arena = arena, .ast = h_make_uint(arena, 'a'), .bit_length = 8};
+        desugared->reshape(&result, NULL);
+        g_error("reshape_many accepted a non-sequence AST");
+    }
+
+    g_test_trap_subprocess(NULL, 0, G_TEST_SUBPROCESS_DEFAULT);
+    g_test_trap_assert_failed();
+    g_test_trap_assert_stderr("*Hammer assertion failed*");
+}
+
+static void test_repetition_ignored_values(gconstpointer backend) {
+    HParserBackend be = (HParserBackend)GPOINTER_TO_INT(backend);
+
+    for (size_t ignored = 0; ignored < 2; ++ignored) {
+        for (size_t kind = 0; kind < 4; ++kind) {
+            HParserGraph *graph = h_parser_graph_begin();
+            g_assert_nonnull(graph);
+            HParser *element = h_ch('a');
+            if (ignored)
+                element = h_ignore(element);
+            HParser *parser;
+            switch (kind) {
+            case 0:
+                parser = h_many(element);
+                break;
+            case 1:
+                parser = h_many1(element);
+                break;
+            case 2:
+                parser = h_sepBy(element, h_ch(','));
+                break;
+            default:
+                parser = h_sepBy1(element, h_ch(','));
+                break;
+            }
+            h_parser_graph_end(graph);
+            g_assert_cmpint(h_compile(parser, be, NULL), ==, 0);
+
+            const char *inputs[] = {"", "a", kind < 2 ? "aaa" : "a,a,a"};
+            for (size_t i = 0; i < 3; ++i) {
+                size_t length = strlen(inputs[i]);
+                HParseResult *res = h_parse(parser, (const uint8_t *)inputs[i], length);
+                if (i == 0 && (kind == 1 || kind == 3)) {
+                    g_assert_null(res);
+                    continue;
+                }
+                g_assert_nonnull(res);
+                g_assert_nonnull(res->ast);
+                g_check_cmp_int(res->ast->token_type, ==, TT_SEQUENCE);
+                g_check_cmp_size(res->bit_length, ==, length * 8);
+                size_t expected = ignored || i == 0 ? 0 : (i == 1 ? 1 : 3);
+                g_check_cmp_size(res->ast->token_data.seq->used, ==, expected);
+                for (size_t j = 0; j < res->ast->token_data.seq->used; ++j) {
+                    const HParsedToken *value = res->ast->token_data.seq->elements[j];
+                    g_assert_nonnull(value);
+                    g_check_cmp_int(value->token_type, ==, TT_UINT);
+                    g_check_cmp_uint64(value->token_data.uint, ==, 'a');
+                }
+                h_parse_result_free(res);
+            }
+            h_parser_graph_free(graph);
+        }
+    }
+}
+
 void register_additional_parser_tests(void) {
+    g_test_add_func("/core/parser/many_reshape_rejects_non_sequence",
+                    test_many_reshape_rejects_non_sequence);
+    HParserBackend backends[] = {PB_PACKRAT, PB_REGULAR, PB_LL, PB_LALR, PB_GLR};
+    for (size_t i = 0; i < sizeof(backends) / sizeof(backends[0]); ++i) {
+        char *path = g_strdup_printf("/core/parser/%s/repetition_ignored_values",
+                                     h_get_name_for_backend(backends[i]));
+        g_test_add_data_func(path, GINT_TO_POINTER(backends[i]), test_repetition_ignored_values);
+        g_free(path);
+    }
     g_test_add_data_func("/core/parser/packrat/butnot_edge_cases", GINT_TO_POINTER(PB_PACKRAT),
                          test_butnot_edge_cases);
     g_test_add_data_func("/core/parser/packrat/difference_edge_cases", GINT_TO_POINTER(PB_PACKRAT),

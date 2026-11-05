@@ -248,7 +248,25 @@ static void test_sloballoc_offset_regions(void) {
     }
 }
 
+static void test_sloballoc_rejects_misaligned_metadata(void) {
+    if (g_test_subprocess()) {
+        uint8_t mem[1024];
+        SLOB *slob = slobinit(mem, sizeof(mem));
+        g_assert_nonnull(slob);
+        void *value = sloballoc(slob, 32);
+        g_assert_nonnull(value);
+        slobfree(slob, (uint8_t *)value + 1);
+        g_error("slobfree accepted misaligned metadata");
+    }
+
+    g_test_trap_subprocess(NULL, 0, G_TEST_SUBPROCESS_DEFAULT);
+    g_test_trap_assert_failed();
+    g_test_trap_assert_stderr("*Hammer assertion failed*");
+}
+
 void register_sloballoc_tests(void) {
+    g_test_add_func("/core/sloballoc/rejects_misaligned_metadata",
+                    test_sloballoc_rejects_misaligned_metadata);
     g_test_add_func("/core/sloballoc/offset_regions", test_sloballoc_offset_regions);
     g_test_add_func("/core/sloballoc/slobinit", test_slobinit);
     g_test_add_func("/core/sloballoc/sloballoc_small_size", test_sloballoc_small_size);
