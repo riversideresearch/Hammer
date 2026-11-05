@@ -137,7 +137,8 @@ static void test_derives_epsilon_seq_nonempty(void) {
 
     if (g) {
         HCFChoice *desugared = h_desugar(&system_allocator, NULL, p);
-        if (desugared && desugared->type == HCF_CHOICE && desugared->data.seq && desugared->data.seq[0]) {
+        if (desugared && desugared->type == HCF_CHOICE && desugared->data.seq &&
+            desugared->data.seq[0]) {
             bool result = h_derives_epsilon_seq(g, desugared->data.seq[0]->items);
             // many can derive epsilon (zero repetitions), but the sequence itself
             // contains h_ch('a') which does NOT derive epsilon
@@ -457,7 +458,8 @@ static void test_mentions_symbol(void) {
         HCFChoice *desugared1 = h_desugar(&system_allocator, NULL, p1);
         HCFChoice *desugared2 = h_desugar(&system_allocator, NULL, p2);
 
-        if (desugared && desugared->type == HCF_CHOICE && desugared->data.seq && desugared->data.seq[0]) {
+        if (desugared && desugared->type == HCF_CHOICE && desugared->data.seq &&
+            desugared->data.seq[0]) {
             // Test that mentions_symbol finds p1 in the sequence
             // This is tested indirectly through remove_productions_with
             // which calls eliminate_dead_rules
@@ -502,6 +504,8 @@ static void test_stringmap_get_lookahead(void) {
     lookahead.length = 1;
     lookahead.bit_offset = 0;
     lookahead.margin = 0;
+    lookahead.bit_limit = 0;
+    lookahead.bit_limit_set = false;
     lookahead.endianness = 0;
     lookahead.overrun = false;
     lookahead.last_chunk = true;
@@ -521,6 +525,8 @@ static void test_stringmap_get_lookahead(void) {
     lookahead2.length = 0;
     lookahead2.bit_offset = 0;
     lookahead2.margin = 0;
+    lookahead2.bit_limit = 0;
+    lookahead2.bit_limit_set = false;
     lookahead2.endianness = 0;
     lookahead2.overrun = true;
     lookahead2.last_chunk = true;
@@ -539,6 +545,8 @@ static void test_stringmap_get_lookahead(void) {
     lookahead3.length = 0;
     lookahead3.bit_offset = 0;
     lookahead3.margin = 0;
+    lookahead3.bit_limit = 0;
+    lookahead3.bit_limit_set = false;
     lookahead3.endianness = 0;
     lookahead3.overrun = true;
     lookahead3.last_chunk = false;
@@ -555,6 +563,8 @@ static void test_stringmap_get_lookahead(void) {
     lookahead4.length = 1;
     lookahead4.bit_offset = 0;
     lookahead4.margin = 0;
+    lookahead4.bit_limit = 0;
+    lookahead4.bit_limit_set = false;
     lookahead4.endianness = 0;
     lookahead4.overrun = false;
     lookahead4.last_chunk = true;
@@ -596,7 +606,8 @@ static void test_predict(void) {
 
     if (g) {
         HCFChoice *desugared = h_desugar(&system_allocator, NULL, p);
-        if (desugared && desugared->type == HCF_CHOICE && desugared->data.seq && desugared->data.seq[0]) {
+        if (desugared && desugared->type == HCF_CHOICE && desugared->data.seq &&
+            desugared->data.seq[0]) {
             HStringMap *predict = h_predict(1, g, desugared, desugared->data.seq[0]);
             g_check_cmp_ptr(predict, !=, NULL);
             // remove_all_shorter is called inside h_predict
@@ -613,7 +624,8 @@ static void test_follow_via_predict(void) {
 
     if (g) {
         HCFChoice *desugared = h_desugar(&system_allocator, NULL, p);
-        if (desugared && desugared->type == HCF_CHOICE && desugared->data.seq && desugared->data.seq[0]) {
+        if (desugared && desugared->type == HCF_CHOICE && desugared->data.seq &&
+            desugared->data.seq[0]) {
             // h_follow_ is called via stringset_extend in h_predict
             HStringMap *predict = h_predict(2, g, desugared, desugared->data.seq[0]);
             g_check_cmp_ptr(predict, !=, NULL);
@@ -722,7 +734,8 @@ static void test_pprint_string(void) {
     if (g) {
         // pprint_string is called via h_pprint_sequence for CHAR sequences
         HCFChoice *desugared = h_desugar(&system_allocator, NULL, p);
-        if (desugared && desugared->type == HCF_CHOICE && desugared->data.seq && desugared->data.seq[0]) {
+        if (desugared && desugared->type == HCF_CHOICE && desugared->data.seq &&
+            desugared->data.seq[0]) {
             h_pprint_sequence(f, g, desugared->data.seq[0]);
         }
         h_cfgrammar_free(g);

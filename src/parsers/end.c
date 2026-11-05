@@ -2,10 +2,20 @@
 #include "parser_internal.h"
 
 static HParseResult *parse_end(void *env, HParseState *state) {
-    if (state->input_stream.index < state->input_stream.length)
-        return NULL;
+    size_t position = h_input_stream_pos(&state->input_stream);
+    size_t limit = h_input_stream_length(&state->input_stream);
 
-    assert(state->input_stream.index == state->input_stream.length);
+    if (position < limit) {
+        if (position >= h_input_stream_physical_length(&state->input_stream) &&
+            !state->input_stream.last_chunk)
+            state->input_stream.overrun = true;
+        return NULL;
+    }
+
+    if (position > limit) {
+        state->input_stream.overrun = true;
+        return NULL;
+    }
     if (state->input_stream.last_chunk) {
         HParseResult *ret = a_new(HParseResult, 1);
         ret->ast = NULL;

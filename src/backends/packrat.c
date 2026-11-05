@@ -40,11 +40,51 @@ static HParserCacheValue *cached_lr(HParseState *state, HLeftRec *lr) {
     return ret;
 }
 
+static bool input_stream_equal(const HInputStream *a, const HInputStream *b) {
+    return a->input == b->input && a->pos == b->pos && a->index == b->index &&
+           a->length == b->length && a->bit_offset == b->bit_offset && a->margin == b->margin &&
+           a->endianness == b->endianness && a->overrun == b->overrun &&
+           a->last_chunk == b->last_chunk && a->trace == b->trace;
+}
+
+static HHashValue hash_combine(HHashValue hash, HHashValue value) {
+    return hash * UINT32_C(33) + value;
+}
+
+static HHashValue hash_size(size_t value) {
+    uint64_t value64 = value;
+    return (HHashValue)(value64 ^ (value64 >> 32));
+}
+
+static HHashValue input_stream_hash(const HInputStream *input) {
+    HHashValue hash = h_hash_ptr(input->input);
+    hash = hash_combine(hash, hash_size(input->pos));
+    hash = hash_combine(hash, hash_size(input->index));
+    hash = hash_combine(hash, hash_size(input->length));
+    hash = hash_combine(hash, input->bit_offset);
+    hash = hash_combine(hash, input->margin);
+    hash = hash_combine(hash, (unsigned char)input->endianness);
+    hash = hash_combine(hash, input->overrun);
+    hash = hash_combine(hash, input->last_chunk);
+    return hash_combine(hash, h_hash_ptr(input->trace));
+}
+
+static HLeftRec *active_left_recursion(const HParserCacheKey *key, HParseState *state) {
+    for (HSlistNode *node = state->lr_stack->head; node; node = node->next) {
+        HLeftRec *left_recursion = node->elem;
+        if (left_recursion->rule == key->parser &&
+            input_stream_equal(&left_recursion->input_pos, &key->input_pos))
+            return left_recursion;
+    }
+    return NULL;
+}
+
 // internal helper to perform an uncached parse and common error-handling
 static inline HParseResult *perform_lowlevel_parse(HParseState *state, const HParser *parser,
                                                    HActionPlan **action_plan) {
     HParseResult *res;
     HActionPlan *caller_plan, *local_plan;
+    HSymbolLogEntry *symbol_checkpoint;
     HInputStream bak;
     size_t len;
 
@@ -52,6 +92,7 @@ static inline HParseResult *perform_lowlevel_parse(HParseState *state, const HPa
     if (!parser)
         return NULL;
 
+    symbol_checkpoint = state->symbol_log;
     /*
      * Each parser invocation builds an independent, immutable action-plan
      * delta. The caller commits that delta only if this result is selected.
@@ -63,13 +104,16 @@ static inline HParseResult *perform_lowlevel_parse(HParseState *state, const HPa
     local_plan = state->action_plan;
     state->action_plan = caller_plan;
 
-    if (!res)
+    if (!res) {
+        h_symbol_rollback(state, symbol_checkpoint);
         return NULL; // NB: input position is considered invalid on failure
+    }
 
     // combinators' parse functions by design do not have to check for overrun.
     // turn such bogus successes into parse failure.
     if (state->input_stream.overrun) {
         res->bit_length = 0;
+        h_symbol_rollback(state, symbol_checkpoint);
         return NULL;
     }
 
@@ -97,13 +141,30 @@ HParserCacheValue *recall(HParserCacheKey *k, HParseState *state, HHashValue key
     HParserCacheValue *cached = h_hashtable_get_precomp(state->cache, k, keyhash);
     HRecursionHead *head = h_hashtable_get(state->recursion_heads, &k->input_pos);
 
+    /*
+     * A value parser can change the generation before a direct recursive call
+     * reaches the provisional cache entry. While the matching frame is
+     * active, it remains the recursion seed even though its normal cache key
+     * has a different generation. A root production being reevaluated by
+     * grow() has no matching active frame, so it is still parsed normally.
+     */
+    if (!cached) {
+        HLeftRec *left_recursion = active_left_recursion(k, state);
+        if (left_recursion) {
+            cached = cached_lr(state, left_recursion);
+            cached->input_stream = left_recursion->seed_input_stream;
+            return cached;
+        }
+    }
+
     if (!head) {
         /* No heads found */
         return cached;
     } else {
         /* Some heads found */
         if (!cached && head->head_parser != k->parser &&
-            !h_slist_find(head->involved_set, k->parser)) {
+            !h_slist_find(head->involved_set, k->parser) && !h_is_put_value_parser(k->parser) &&
+            !h_is_get_value_parser(k->parser)) {
             /* Nothing in the cache, and the key parser is not involved */
             cached = cached_result(state, NULL, NULL);
             cached->input_stream = k->input_pos;
@@ -164,8 +225,11 @@ static inline bool pos_lt(HInputStream pos1, HInputStream pos2) {
             (pos1.index == pos2.index && pos1.bit_offset < pos2.bit_offset));
 }
 
-/* If recall() returns NULL, we need to store a dummy failure in the cache and compute the
- * future parse.
+/*
+ * Re-evaluate a left-recursive root until its result no longer grows. The
+ * previous seed remains on the LR stack only while its production runs, so a
+ * direct recursive call can find it even after a value mutation changes the
+ * cache generation.
  */
 
 HParseResult *grow(HParserCacheKey *k, HParseState *state, HRecursionHead *head,
@@ -177,6 +241,13 @@ HParseResult *grow(HParserCacheKey *k, HParseState *state, HRecursionHead *head,
         h_platform_errx(1, "impossible match");
     HParseResult *old_res = old_cached->value.right;
     HActionPlan *old_plan = old_res ? old_cached->action_plan : NULL;
+    HSymbolLogEntry *symbol_checkpoint = h_symbol_checkpoint(state);
+    HLeftRec active_seed = {.seed = old_res,
+                            .seed_plan = old_plan,
+                            .rule = k->parser,
+                            .input_pos = k->input_pos,
+                            .seed_input_stream = old_cached->input_stream,
+                            .head = head};
 
     // rewind the input
     state->input_stream = k->input_pos;
@@ -184,13 +255,20 @@ HParseResult *grow(HParserCacheKey *k, HParseState *state, HRecursionHead *head,
     // reset the eval_set of the head of the recursion at each beginning of growth
     head->eval_set = h_slist_copy(head->involved_set);
     HActionPlan *tmp_plan = NULL;
+    h_slist_push(state->lr_stack, &active_seed);
     HParseResult *tmp_res = perform_lowlevel_parse(state, k->parser, &tmp_plan);
+    h_slist_pop(state->lr_stack);
 
     if (tmp_res) {
         if (pos_lt(old_cached->input_stream, state->input_stream)) {
             h_hashtable_put(state->cache, k, cached_result(state, tmp_res, tmp_plan));
             return grow(k, state, head, action_plan);
         } else {
+            /*
+             * This successful parse is discarded because it did not grow the
+             * seed, so its value-state changes must be discarded as well.
+             */
+            h_symbol_rollback(state, symbol_checkpoint);
             // we're done with growing, we can remove data from the recursion head
             h_hashtable_del(state->recursion_heads, &k->input_pos);
             HParserCacheValue *cached = h_hashtable_get(state->cache, k);
@@ -203,6 +281,7 @@ HParseResult *grow(HParserCacheKey *k, HParseState *state, HRecursionHead *head,
             }
         }
     } else {
+        h_symbol_rollback(state, symbol_checkpoint);
         h_hashtable_del(state->recursion_heads, &k->input_pos);
         state->input_stream = old_cached->input_stream;
         *action_plan = old_plan;
@@ -219,8 +298,9 @@ HParseResult *lr_answer(HParserCacheKey *k, HParseState *state, HLeftRec *growab
             return growable->seed;
         } else {
             // update cache
-            h_hashtable_put(state->cache, k,
-                            cached_result(state, growable->seed, growable->seed_plan));
+            HParserCacheValue *seed = cached_result(state, growable->seed, growable->seed_plan);
+            h_hashtable_put(state->cache, k, seed);
+            growable->seed_input_stream = seed->input_stream;
             if (!growable->seed) {
                 *action_plan = NULL;
                 return NULL;
@@ -245,6 +325,7 @@ HParseResult *h_do_parse(const HParser *parser, HParseState *state) {
 
     key->input_pos = state->input_stream;
     key->parser = parser;
+    key->symbol_table_generation = state->symbol_table_generation;
     keyhash = cache_key_hash(key);
 
     if (parser->vtable->higher) {
@@ -262,6 +343,8 @@ HParseResult *h_do_parse(const HParser *parser, HParseState *state) {
             base->seed = NULL;
             base->seed_plan = NULL;
             base->rule = parser;
+            base->input_pos = key->input_pos;
+            base->seed_input_stream = key->input_pos;
             base->head = NULL;
             h_slist_push(state->lr_stack, base);
             /* cache it */
@@ -330,19 +413,27 @@ void h_packrat_free(HParser *parser) {
 }
 
 static uint32_t cache_key_hash(const void *key) {
+    const HParserCacheKey *cache_key = key;
 #ifdef DETAILED_PACKRAT_STATISTICS
     ++(packrat_hash_count);
     packrat_hash_bytes += sizeof(HParserCacheKey);
 #endif
-    return h_hash_bytes(key, sizeof(HParserCacheKey));
+    HHashValue hash = input_stream_hash(&cache_key->input_pos);
+    hash = hash_combine(hash, h_hash_ptr(cache_key->parser));
+    return hash_combine(hash, (HHashValue)(cache_key->symbol_table_generation ^
+                                           (cache_key->symbol_table_generation >> 32)));
 }
 
 static bool cache_key_equal(const void *key1, const void *key2) {
+    const HParserCacheKey *cache_key1 = key1;
+    const HParserCacheKey *cache_key2 = key2;
 #ifdef DETAILED_PACKRAT_STATISTICS
     ++(packrat_cmp_count);
     packrat_cmp_bytes += sizeof(HParserCacheKey);
 #endif
-    return memcmp(key1, key2, sizeof(HParserCacheKey)) == 0;
+    return cache_key1->parser == cache_key2->parser &&
+           cache_key1->symbol_table_generation == cache_key2->symbol_table_generation &&
+           input_stream_equal(&cache_key1->input_pos, &cache_key2->input_pos);
 }
 
 static uint32_t pos_hash(const void *key) {
@@ -350,7 +441,7 @@ static uint32_t pos_hash(const void *key) {
     ++(packrat_hash_count);
     packrat_hash_bytes += sizeof(HInputStream);
 #endif
-    return h_hash_bytes(key, sizeof(HInputStream));
+    return input_stream_hash(key);
 }
 
 static bool pos_equal(const void *key1, const void *key2) {
@@ -358,7 +449,7 @@ static bool pos_equal(const void *key1, const void *key2) {
     ++(packrat_cmp_count);
     packrat_cmp_bytes += sizeof(HInputStream);
 #endif
-    return memcmp(key1, key2, sizeof(HInputStream)) == 0;
+    return input_stream_equal(key1, key2);
 }
 
 HParseResult *h_packrat_parse(HAllocator *mm__, const HParser *parser, HInputStream *input_stream) {
@@ -381,6 +472,8 @@ HParseResult *h_packrat_parse(HAllocator *mm__, const HParser *parser, HInputStr
     parse_state->recursion_heads = h_hashtable_new(arena, pos_equal, pos_hash);
     parse_state->arena = arena;
     parse_state->symbol_table = NULL;
+    parse_state->symbol_log = NULL;
+    parse_state->symbol_table_generation = 0;
     parse_state->action_plan = NULL;
     HParseResult *res = h_do_parse(parser, parse_state);
     if (res && !h_action_plan_execute(arena, parse_state->action_plan))
@@ -476,6 +569,8 @@ bool h_packrat_parse_chunk(HSuspendedParser *s, HInputStream *input) {
     if (input->length > 0)
         memcpy((void *)((uint8_t *)cat->input + cat->length), input->input, input->length);
     cat->length = newlen;
+    cat->bit_limit = h_input_stream_physical_length(cat);
+    cat->bit_limit_set = true;
     cat->last_chunk = input->last_chunk;
 
     // reset our input stream and call the parser on it (again)

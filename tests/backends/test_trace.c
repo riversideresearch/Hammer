@@ -234,7 +234,7 @@ static void test_trace_flag_prints_condensed_report(void) {
         return;
     }
 
-    g_test_trap_subprocess(NULL, 0, G_TEST_SUBPROCESS_DEFAULT);
+    g_test_trap_subprocess(NULL, 0, (GTestSubprocessFlags)0);
     g_test_trap_assert_passed();
     g_test_trap_assert_stderr("*error: unexpected byte 'X'*input trail:*input context (3 bytes)*");
 }
@@ -790,7 +790,15 @@ static void test_with_context_owns_metadata(void) {
     g_check_string(outer->diagnostic_source->file_name, ==, __FILE__);
     g_check_string(outer->diagnostic_source->function_name, ==, "test_with_context_owns_metadata");
     g_check_cmp_size(outer->diagnostic_source->line, ==, macro_line);
+#if defined(__has_builtin)
+#if __has_builtin(__builtin_COLUMN)
+    g_check_cmp_size(outer->diagnostic_source->column, !=, 0);
+#else
     g_check_cmp_size(outer->diagnostic_source->column, ==, 0);
+#endif
+#else
+    g_check_cmp_size(outer->diagnostic_source->column, ==, 0);
+#endif
 
     h_parser_free(outer);
     h_parser_free(parser);

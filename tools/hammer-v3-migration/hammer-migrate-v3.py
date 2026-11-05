@@ -3,10 +3,9 @@
 
 import argparse
 import difflib
-from pathlib import Path
 import re
 import sys
-
+from pathlib import Path
 
 VERSION = "1.0"
 SOURCE_SUFFIXES = {".c", ".cc", ".cpp", ".cxx", ".h", ".hh", ".hpp", ".hxx"}

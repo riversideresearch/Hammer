@@ -12,7 +12,7 @@ static void test_seek_default_case(gconstpointer backend) {
     HParser *seek = h_seek(0, SEEK_SET);
 
     typedef struct {
-        ssize_t offset;
+        int64_t offset;
         int whence;
     } HSeek;
 
@@ -40,13 +40,13 @@ static void test_seek_overflow(gconstpointer backend) {
     HParser *seek = h_seek(1, SEEK_END);
 
     typedef struct {
-        ssize_t offset;
+        int64_t offset;
         int whence;
     } HSeek;
 
     HSeek *seek_env = (HSeek *)seek->env;
     if (seek_env) {
-        seek_env->offset = (ssize_t)(SIZE_MAX / 2 - 1);
+        seek_env->offset = (int64_t)(SIZE_MAX / 2 - 1);
         seek_env->whence = SEEK_END;
         h_compile(seek, be, NULL);
         HParseResult *res = h_parse(seek, (const uint8_t *)"abc", 3);

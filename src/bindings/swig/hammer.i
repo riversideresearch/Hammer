@@ -135,7 +135,17 @@
 %typemap(freearg) void*[] { free($1); }
 %typemap(in) uint8_t {
   if (PyLong_Check($input)) {
-    $1 = (uint8_t)PyLong_AsLong($input);
+    long long value = PyLong_AsLongLong($input);
+    if (PyErr_Occurred()) {
+      PyErr_Clear();
+      PyErr_SetString(PyExc_ValueError, "expected an integer byte in the range 0..255");
+      return NULL;
+    }
+    if (value < 0 || value > 255) {
+      PyErr_SetString(PyExc_ValueError, "expected an integer byte in the range 0..255");
+      return NULL;
+    }
+    $1 = (uint8_t)value;
   }
   else if (!PyBytes_Check($input)) {
     PyErr_SetString(PyExc_ValueError, "Expecting an integer or bytes");
@@ -284,6 +294,53 @@
   }
 %}
 
+// h_dispatch is a C macro that obtains its entry count from a native array.
+// Java passes an OpcodeMap[] instead, which this typemap marshals to a temporary
+// contiguous native array. h_dispatch__s copies the entries before it returns.
+%typemap(jni)    (const OpcodeMap *entries, size_t entry_count) "jlongArray"
+%typemap(jtype)  (const OpcodeMap *entries, size_t entry_count) "long[]"
+%typemap(jstype) (const OpcodeMap *entries, size_t entry_count) "OpcodeMap[]"
+%typemap(javain) (const OpcodeMap *entries, size_t entry_count) "opcodeMapsToHandles($javainput)"
+%typemap(in) (const OpcodeMap *entries, size_t entry_count) {
+  jsize _sz = JCALL1(GetArrayLength, jenv, $input);
+  jlong *_handles = JCALL2(GetLongArrayElements, jenv, $input, 0);
+  if (_handles == NULL && _sz != 0)
+    return $null;
+  OpcodeMap *_entries = calloc((size_t)_sz, sizeof(*_entries));
+  if (_entries == NULL && _sz != 0) {
+    JCALL3(ReleaseLongArrayElements, jenv, $input, _handles, JNI_ABORT);
+    SWIG_JavaThrowException(jenv, SWIG_JavaOutOfMemoryError,
+                            "could not allocate dispatch entries");
+    return $null;
+  }
+  for (jsize _i = 0; _i < _sz; _i++) {
+    if (_handles[_i] == 0) {
+      free(_entries);
+      JCALL3(ReleaseLongArrayElements, jenv, $input, _handles, JNI_ABORT);
+      SWIG_JavaThrowException(jenv, SWIG_JavaNullPointerException,
+                              "dispatch entries must not be null");
+      return $null;
+    }
+    _entries[_i] = *(OpcodeMap *)(intptr_t)_handles[_i];
+  }
+  JCALL3(ReleaseLongArrayElements, jenv, $input, _handles, JNI_ABORT);
+  $1 = _entries;
+  $2 = (size_t)_sz;
+}
+%typemap(freearg) (const OpcodeMap *entries, size_t entry_count) {
+  free((void *)$1);
+}
+
+// This lives in hammer.java (same package as OpcodeMap), so protected getCPtr is accessible.
+%pragma(java) modulecode=%{
+  static long[] opcodeMapsToHandles(OpcodeMap[] entries) {
+    long[] handles = new long[entries.length];
+    for (int i = 0; i < entries.length; i++)
+      handles[i] = OpcodeMap.getCPtr(entries[i]);
+    return handles;
+  }
+%}
+
 // parse() returns a Java-owned HParseResult whose finalizer calls h_parse_result_free.
 %newobject HParser_::parse;
 
@@ -395,7 +452,41 @@ static void h_action_collection_free(struct HPythonActionCollection_ *collection
 %warnfilter(451) HSourceLocation_::function_name;
 %warnfilter(451) HParserTestcase_::output_unambiguous;
 %warnfilter(451) HResultTiming;
+#ifdef SWIGJAVA
+// Raw dispatch helpers take a native array pointer plus caller-controlled count.
+// Java must use the safe OpcodeMap[] wrapper below.
+%ignore h_dispatch__m;
+%ignore h_dispatch__s;
+#endif
 %include "hammer.h"
+
+#ifdef SWIGJAVA
+/*
+ * h_dispatch is a C macro and cannot be emitted as a JNI entry point.  Give
+ * Java an equivalent function that receives a marshalled OpcodeMap[].
+ */
+%extend OpcodeMap {
+    OpcodeMap() {
+        return calloc(1, sizeof(OpcodeMap));
+    }
+}
+
+%apply (const OpcodeMap *entries, size_t entry_count) {
+    (const OpcodeMap *map, size_t count)
+};
+%rename(h_dispatch) h_dispatch_java;
+%typemap(javaout) HParser *h_dispatch_java {
+    long cPtr = $jnicall;
+    java.lang.ref.Reference.reachabilityFence(map);
+    return (cPtr == 0) ? null : new HParser(cPtr, false);
+}
+%inline %{
+static HParser *h_dispatch_java(HParser *discriminator, const OpcodeMap *map, size_t count,
+                                HParser *default_parser) {
+    return h_dispatch__s(discriminator, map, count, default_parser);
+}
+%}
+#endif
 
 // HArena_ is an opaque type (forward declaration only in allocator.h).
 // Provide a body so SWIG can process the %extend below.
@@ -597,6 +688,8 @@ struct HArena_ {};
   static PyObject* hpt_to_python(const HParsedToken *token) {
     // Caller holds a reference to returned object
     PyObject *ret;
+    if (PyErr_Occurred())
+      return NULL;
     if (token == NULL) {
       Py_RETURN_NONE;
     }
@@ -633,30 +726,34 @@ struct HArena_ {};
   }
   static struct HParsedToken_* call_action(const struct HParseResult_ *p, void* user_data) {
     PyObject *callable = user_data;
-    PyObject *ret = PyObject_CallFunctionObjArgs(callable,
-						 hpt_to_python(p->ast),
-						 NULL);
-    if (ret == NULL) {
-      PyErr_Print();
-      assert(ret != NULL);
-    }
+    PyObject *arg = hpt_to_python(p->ast);
+    PyObject *ret;
+    if (arg == NULL)
+      return NULL;
+    ret = PyObject_CallFunctionObjArgs(callable, arg, NULL);
+    Py_DECREF(arg);
+    if (ret == NULL)
+      return NULL;
     HParsedToken *tok = h_make(p->arena, h_tt_python, ret);
     return tok;
    }
 
   static bool call_predicate(struct HParseResult_ *p, void* user_data) {
     PyObject *callable = user_data;
-    PyObject *ret = PyObject_CallFunctionObjArgs(callable,
-						 hpt_to_python(p->ast),
-						 NULL);
-    bool rret = false;
-    if (ret == NULL) {
-      PyErr_Print();
-      assert(ret != NULL);
-    }
-    rret = (bool)PyObject_IsTrue(ret);
+    PyObject *arg = hpt_to_python(p->ast);
+    PyObject *ret;
+    int rret;
+    if (arg == NULL)
+      return false;
+    ret = PyObject_CallFunctionObjArgs(callable, arg, NULL);
+    Py_DECREF(arg);
+    if (ret == NULL)
+      return false;
+    rret = PyObject_IsTrue(ret);
     Py_DECREF(ret);
-    return rret;
+    if (rret < 0)
+      return false;
+    return rret != 0;
   }
 
   static PyObject *h_parse_python(const HParser *parser, const uint8_t *input, size_t length) {
@@ -664,10 +761,18 @@ struct HArena_ {};
     PyObject *result;
 
     if (parse_result == NULL) {
+      if (PyErr_Occurred())
+        return NULL;
       Py_RETURN_NONE;
     }
     result = hpt_to_python(parse_result->ast);
     h_parse_result_free(parse_result);
+    if (result == NULL)
+      return NULL;
+    if (PyErr_Occurred()) {
+      Py_DECREF(result);
+      return NULL;
+    }
     return result;
   }
 
@@ -681,12 +786,19 @@ struct HArena_ {};
 
     parse_result = h_parse_debug(parser, input, length, &diagnostic, show_diagnostic);
     if (parse_result == NULL) {
+      if (PyErr_Occurred()) {
+        if (diagnostic != NULL)
+          h_parse_diagnostic_free(diagnostic);
+        return NULL;
+      }
       Py_INCREF(Py_None);
       result = Py_None;
     } else {
       result = hpt_to_python(parse_result->ast);
       h_parse_result_free(parse_result);
-      if (result == NULL) {
+      if (result == NULL || PyErr_Occurred()) {
+        if (result != NULL)
+          Py_DECREF(result);
         if (diagnostic != NULL)
           h_parse_diagnostic_free(diagnostic);
         return NULL;

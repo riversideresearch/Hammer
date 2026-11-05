@@ -10,26 +10,41 @@ static HParseResult *parse_xor(void *env, HParseState *state) {
     HTwoParsers *parsers = (HTwoParsers *)env;
     // cache the initial state of the input stream
     HInputStream start_state = state->input_stream;
+    HActionPlan *start_plan = state->action_plan;
+    HSymbolLogEntry *symbol_checkpoint = h_symbol_checkpoint(state);
     HParseResult *r1 = h_do_parse(parsers->p1, state);
-    if (want_suspend(state))
+    if (want_suspend(state)) {
+        h_symbol_rollback(state, symbol_checkpoint);
+        state->action_plan = start_plan;
         return NULL; // bail out early, leaving overrun flag
-    HInputStream after_p1_state = state->input_stream;
+    }
     // reset input stream, parse again
     state->input_stream = start_state;
+    state->action_plan = start_plan;
+    h_symbol_rollback(state, symbol_checkpoint);
     HParseResult *r2 = h_do_parse(parsers->p2, state);
-    if (want_suspend(state))
+    if (want_suspend(state)) {
+        h_symbol_rollback(state, symbol_checkpoint);
+        state->action_plan = start_plan;
         return NULL; // bail out early, leaving overrun flag
+    }
     if (NULL == r1) {
         if (NULL != r2) {
             return r2;
         } else {
+            h_symbol_rollback(state, symbol_checkpoint);
+            state->action_plan = start_plan;
             return NULL;
         }
     } else {
         if (NULL == r2) {
-            state->input_stream = after_p1_state;
-            return r1;
+            h_symbol_rollback(state, symbol_checkpoint);
+            state->input_stream = start_state;
+            state->action_plan = start_plan;
+            return h_do_parse(parsers->p1, state);
         } else {
+            h_symbol_rollback(state, symbol_checkpoint);
+            state->action_plan = start_plan;
             return NULL;
         }
     }

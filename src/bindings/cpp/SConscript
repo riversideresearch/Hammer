@@ -1,7 +1,6 @@
 # Copyright (c) 2026 Riverside Research
 # -*- python -*-
 
-from __future__ import absolute_import, division, print_function
 
 import glob as _glob
 import os
@@ -17,7 +16,7 @@ if libhammer_shared is None:
 
 cxx = str(env.get("CXX", "g++"))
 if not shutil.which(cxx):
-    print("Warning: C++ compiler (%s) not found. Skipping C++ bindings." % cxx)
+    print(f"Warning: C++ compiler ({cxx}) not found. Skipping C++ bindings.")
     Return()
 
 project_root = Dir("#").abspath
@@ -52,7 +51,7 @@ try:
     ).decode().strip()
     cppenv.MergeFlags(flags)
     gtest_found = True
-except Exception:
+except (OSError, subprocess.CalledProcessError):
     pass
 
 if not gtest_found:
@@ -117,8 +116,7 @@ cpptestexec = cppenv.Command(
     "hammer_tests.stamp",
     [cpp_test],
     [
-        "LD_LIBRARY_PATH=%s %s %s --binding C++ --results-file %s -- %s"
-        % (hammer_lib_dir, sys.executable, reporter, results_file, cpp_test[0].path),
+        f"{env['HAMMER_LIBRARY_PATH_ENV']}={hammer_lib_dir} {sys.executable} {reporter} --binding C++ --results-file {results_file} -- {cpp_test[0].path}",
         "touch $TARGET",
     ],
 )

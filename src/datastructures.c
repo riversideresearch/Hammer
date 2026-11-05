@@ -486,6 +486,57 @@ static HHashValue h_hash_symbol_name(const void *key) {
     return h_hash_bytes((const uint8_t *)key, strlen((const char *)key));
 }
 
+typedef enum {
+    H_SYMBOL_UNDO_PUT,
+    H_SYMBOL_UNDO_FREE,
+} HSymbolUndoKind;
+
+struct HSymbolLogEntry_ {
+    HSymbolLogEntry *previous;
+    HSymbolUndoKind kind;
+    const char *key;
+    void *value;
+};
+
+static void h_symbol_put_raw(HParseState *state, const char *key, void *value) {
+    if (!state->symbol_table) {
+        state->symbol_table = h_slist_new(state->arena);
+        h_slist_push(state->symbol_table,
+                     h_hashtable_new(state->arena, h_eq_symbol_name, h_hash_symbol_name));
+    }
+    h_hashtable_put(h_slist_top(state->symbol_table), key, value);
+}
+
+static void h_symbol_free_raw(HParseState *state, const char *key) {
+    if (state->symbol_table) {
+        HHashTable *head = h_slist_top(state->symbol_table);
+        if (head)
+            h_hashtable_del(head, key);
+    }
+}
+
+static void h_symbol_log(HParseState *state, HSymbolUndoKind kind, const char *key, void *value) {
+    HSymbolLogEntry *entry = h_arena_malloc_noinit(state->arena, sizeof(*entry));
+    entry->previous = state->symbol_log;
+    entry->kind = kind;
+    entry->key = key;
+    entry->value = value;
+    state->symbol_log = entry;
+}
+
+void h_symbol_rollback(HParseState *state, HSymbolLogEntry *checkpoint) {
+    while (state->symbol_log != checkpoint) {
+        HSymbolLogEntry *entry = state->symbol_log;
+        assert(entry != NULL);
+        if (entry->kind == H_SYMBOL_UNDO_PUT)
+            h_symbol_free_raw(state, entry->key);
+        else
+            h_symbol_put_raw(state, entry->key, entry->value);
+        state->symbol_table_generation++;
+        state->symbol_log = entry->previous;
+    }
+}
+
 void h_symbol_put(HParseState *state, const char *key, void *value) {
     if (!state->symbol_table) {
         state->symbol_table = h_slist_new(state->arena);
@@ -494,7 +545,9 @@ void h_symbol_put(HParseState *state, const char *key, void *value) {
     }
     HHashTable *head = h_slist_top(state->symbol_table);
     assert(!h_hashtable_present(head, key));
-    h_hashtable_put(head, key, value);
+    h_symbol_put_raw(state, key, value);
+    h_symbol_log(state, H_SYMBOL_UNDO_PUT, key, NULL);
+    state->symbol_table_generation++;
 }
 
 void *h_symbol_get(HParseState *state, const char *key) {
@@ -512,7 +565,11 @@ void *h_symbol_free(HParseState *state, const char *key) {
         HHashTable *head = h_slist_top(state->symbol_table);
         if (head) {
             void *store = h_hashtable_get(head, key);
-            h_hashtable_del(head, key);
+            if (h_hashtable_present(head, key)) {
+                h_symbol_log(state, H_SYMBOL_UNDO_FREE, key, store);
+                h_symbol_free_raw(state, key);
+                state->symbol_table_generation++;
+            }
             return store;
         }
     }
