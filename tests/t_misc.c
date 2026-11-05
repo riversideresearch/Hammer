@@ -211,6 +211,7 @@ static void test_glue_act_first_second_last(void) {
     g_check_parse_match(act_last2, PB_PACKRAT, "xy", 2, "u0x79");
 }
 
+#ifndef RTEMS_BUILD
 static void test_glue_act_second_rejects_short_sequence(void) {
     if (g_test_subprocess()) {
         HParser *p = h_action(h_sequence(h_ch('x'), NULL), h_act_second, NULL);
@@ -224,6 +225,7 @@ static void test_glue_act_second_rejects_short_sequence(void) {
     g_test_trap_assert_failed();
     g_test_trap_assert_stderr("*Hammer assertion failed*");
 }
+#endif
 
 static void test_glue_act_ignore(void) {
     HParser *p = h_action(h_sequence(h_ch('a'), h_ch('b'), NULL), h_act_ignore, NULL);
@@ -510,8 +512,10 @@ void register_misc_tests(void) {
 #endif
     g_test_add_func("/core/misc/glue_act_index", test_glue_act_index);
     g_test_add_func("/core/misc/glue_act_first_second_last", test_glue_act_first_second_last);
+#ifndef RTEMS_BUILD
     g_test_add_func("/core/misc/glue_act_second_rejects_short_sequence",
                     test_glue_act_second_rejects_short_sequence);
+#endif
     g_test_add_func("/core/misc/glue_act_ignore", test_glue_act_ignore);
     g_test_add_func("/core/misc/glue_make_functions", test_glue_make_functions);
     g_test_add_func("/core/misc/glue_seq_flatten", test_glue_seq_flatten);

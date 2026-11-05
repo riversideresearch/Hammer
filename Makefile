@@ -131,6 +131,7 @@ endif
 # parser and backend tests, without maintaining a second handwritten list.
 RTEMS_HOST_ONLY_TEST_SRCS = \
 	$(TEST_DIR)/backends/test_trace.c \
+	$(TEST_DIR)/installed_consumer_smoke.c \
 	$(TEST_DIR)/test_static_alloc.c
 TEST_SRCS := $(filter-out $(RTEMS_HOST_ONLY_TEST_SRCS), \
 	$(sort $(shell find $(TEST_DIR) -type f -name '*.c' -print)))

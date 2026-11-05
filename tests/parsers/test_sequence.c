@@ -131,6 +131,7 @@ static void test_drop_from_no_indices(gconstpointer backend) {
     g_check_parse_match(dropped, be, "ab", 2, "(u0x61 u0x62)");
 }
 
+#ifndef RTEMS_BUILD
 static void test_drop_from_rejects_out_of_range_index(void) {
     if (g_test_subprocess()) {
         HParser *seq = h_sequence(h_ch('a'), NULL);
@@ -154,6 +155,7 @@ static void test_drop_from_rejects_duplicate_indices(void) {
     g_test_trap_assert_failed();
     g_test_trap_assert_stderr("*Hammer assertion failed*");
 }
+#endif
 
 static void test_drop_from_accepts_unsorted_distinct_indices(gconstpointer backend) {
     HParserBackend be = (HParserBackend)GPOINTER_TO_INT(backend);
@@ -244,10 +246,12 @@ void register_sequence_tests(void) {
                          test_drop_from_m);
     g_test_add_data_func("/core/parser/packrat/drop_from_no_indices", GINT_TO_POINTER(PB_PACKRAT),
                          test_drop_from_no_indices);
+#ifndef RTEMS_BUILD
     g_test_add_func("/core/parser/packrat/drop_from_rejects_out_of_range_index",
                     test_drop_from_rejects_out_of_range_index);
     g_test_add_func("/core/parser/packrat/drop_from_rejects_duplicate_indices",
                     test_drop_from_rejects_duplicate_indices);
+#endif
     g_test_add_data_func("/core/parser/packrat/drop_from_accepts_unsorted_distinct_indices",
                          GINT_TO_POINTER(PB_PACKRAT),
                          test_drop_from_accepts_unsorted_distinct_indices);
