@@ -649,6 +649,78 @@ public class HammerTests {
         assertEqual("tell:position", 8L, r.getAst().seqElement(1).uintValue());
     }
 
+    static void testDispatch() {
+        OpcodeMap first = new OpcodeMap();
+        first.setOpcode(1);
+        first.setParser(hammer.h_ch((short)'a'));
+        OpcodeMap second = new OpcodeMap();
+        second.setOpcode(2);
+        second.setParser(hammer.h_ch((short)'b'));
+
+        HParser p = hammer.h_dispatch(
+            hammer.h_uint8(), new OpcodeMap[]{first, second}, hammer.h_ch((short)'z'));
+
+        HParseResult firstResult = p.parse(new byte[]{1, (byte)'a'});
+        assertNotNull("dispatch:first_case", firstResult);
+        assertEqual("dispatch:first_value", 'a', firstResult.getAst().seqElement(1).uintValue());
+
+        HParseResult secondResult = p.parse(new byte[]{2, (byte)'b'});
+        assertNotNull("dispatch:second_case", secondResult);
+        assertEqual("dispatch:second_value", 'b', secondResult.getAst().seqElement(1).uintValue());
+
+        assertNotNull("dispatch:default_case", p.parse(new byte[]{3, (byte)'z'}));
+        assertNull("dispatch:wrong_case_body", p.parse(new byte[]{1, (byte)'b'}));
+
+        OpcodeMap duplicate = new OpcodeMap();
+        duplicate.setOpcode(1);
+        duplicate.setParser(hammer.h_ch((short)'b'));
+        HParser duplicateParser = hammer.h_dispatch(
+            hammer.h_uint8(), new OpcodeMap[]{first, duplicate}, null);
+        assertNotNull("dispatch:duplicate_first_wins",
+                      duplicateParser.parse(new byte[]{1, (byte)'a'}));
+        assertNull("dispatch:duplicate_second_ignored",
+                   duplicateParser.parse(new byte[]{1, (byte)'b'}));
+
+        OpcodeMap noBody = new OpcodeMap();
+        noBody.setOpcode(1);
+        HParser nullBodyParser = hammer.h_dispatch(
+            hammer.h_uint8(), new OpcodeMap[]{noBody}, hammer.h_ch((short)'z'));
+        assertNull("dispatch:null_mapped_body",
+                   nullBodyParser.parse(new byte[]{1, (byte)'z'}));
+        assertNotNull("dispatch:null_mapped_body_default_for_unmatched",
+                      nullBodyParser.parse(new byte[]{2, (byte)'z'}));
+
+        OpcodeMap maxOpcode = new OpcodeMap();
+        maxOpcode.setOpcode(-1);
+        maxOpcode.setParser(hammer.h_ch((short)'a'));
+        assertEqual("dispatch:opcode_uint32_conversion", 0xffffffffL, maxOpcode.getOpcode());
+        HParser maxOpcodeParser = hammer.h_dispatch(
+            hammer.h_uint32(), new OpcodeMap[]{maxOpcode}, null);
+        assertNotNull("dispatch:opcode_uint32_max",
+                      maxOpcodeParser.parse(new byte[]{
+                          (byte)0xff, (byte)0xff, (byte)0xff, (byte)0xff, (byte)'a'}));
+    }
+
+    static HParser makeDispatchParser() {
+        OpcodeMap entry = new OpcodeMap();
+        entry.setOpcode(1);
+        entry.setParser(hammer.h_ch((short)'a'));
+        return hammer.h_dispatch(hammer.h_uint8(), new OpcodeMap[]{entry}, null);
+    }
+
+    static void testDispatchBackends() {
+        assertTrue("dispatch:packrat_backend",
+                   makeDispatchParser().compile(HParserBackend.PB_PACKRAT));
+        assertTrue("dispatch:regular_backend",
+                   !makeDispatchParser().compile(HParserBackend.PB_REGULAR));
+        assertTrue("dispatch:ll_backend",
+                   !makeDispatchParser().compile(HParserBackend.PB_LL));
+        assertTrue("dispatch:lalr_backend",
+                   !makeDispatchParser().compile(HParserBackend.PB_LALR));
+        assertTrue("dispatch:glr_backend",
+                   !makeDispatchParser().compile(HParserBackend.PB_GLR));
+    }
+
     // -------------------------------------------------------------------------
 
     public static void main(String[] args) {
@@ -696,6 +768,8 @@ public class HammerTests {
         testFreeValue();
         testSkip();
         testTell();
+        testDispatch();
+        testDispatchBackends();
 
         System.out.printf("Results: %d passed, %d failed%n", passed, failed);
         if (failed > 0) System.exit(1);
