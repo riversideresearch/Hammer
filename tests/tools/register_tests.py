@@ -12,10 +12,10 @@ Usage:
 Or use it manually to see what registrations are needed.
 """
 
+import glob
 import os
 import re
 import sys
-import glob
 
 
 def find_test_files(src_dir="src"):

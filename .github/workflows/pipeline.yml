@@ -29,13 +29,16 @@ jobs:
       - name: Install clang-format
         if: matrix.check == 'clang-format'
         run: |
-          sudo apt-get update
-          sudo apt-get install -y clang-format
+          python3 -m pip install 'clang-format==23.1.5'
+          clang-format --version
 
       - name: Check formatting
         if: matrix.check == 'clang-format'
         run: |
-          find src examples -name '*.c' -o -name '*.h' | xargs clang-format --dry-run --Werror
+          find . \
+            -type d -name build -prune -o \
+            -type f \( -name '*.c' -o -name '*.h' -o -name '*.cc' -o -name '*.cpp' -o -name '*.hpp' \) \
+            -exec clang-format --dry-run --Werror {} +
 
       - name: Install ruff
         if: matrix.check == 'ruff'
@@ -92,3 +95,40 @@ jobs:
         with:
           name: libhammer-deb
           path: ${{ steps.deb.outputs.deb_file }}
+
+  macos-build:
+    name: macos-build
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install test dependencies
+        run: brew install scons glib pkg-config
+
+      - name: Run native macOS build and tests
+        run: scons test
+
+      - name: Validate installed native macOS library
+        shell: bash
+        run: |
+          set -euo pipefail
+          PREFIX="$RUNNER_TEMP/hammer-prefix"
+          STAGING_ROOT="$RUNNER_TEMP/hammer-stage"
+          CONSUMER_DIR="$(mktemp -d "$RUNNER_TEMP/hammer-consumer.XXXXXX")"
+
+          scons install prefix="$PREFIX"
+          test "$(otool -D "$PREFIX/lib/libhammer.dylib" | tail -n +2)" = "$PREFIX/lib/libhammer.dylib"
+
+          cp tests/installed_consumer_smoke.c "$CONSUMER_DIR/"
+          (
+            cd "$CONSUMER_DIR"
+            export PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig"
+            cc installed_consumer_smoke.c -o installed_consumer_smoke \
+              $(pkg-config --cflags --libs libhammer)
+            env -u DYLD_LIBRARY_PATH -u DYLD_FALLBACK_LIBRARY_PATH ./installed_consumer_smoke
+          )
+
+          scons install prefix="$PREFIX" DESTDIR="$STAGING_ROOT"
+          STAGED_DYLIB="$STAGING_ROOT${PREFIX}/lib/libhammer.dylib"
+          test "$(otool -D "$STAGED_DYLIB" | tail -n +2)" = "$PREFIX/lib/libhammer.dylib"

@@ -19,8 +19,8 @@
 #endif
 
 typedef struct {
-    uint32_t opcode;
     HParser *parser;
+    uint32_t opcode;
     bool used;
 } DispatchBucket;
 
@@ -28,7 +28,9 @@ typedef struct {
     HParser *discriminator;
     HParser *default_parser;
     OpcodeMap *map;
+    DispatchBucket *buckets;
     size_t size;
+    size_t bucket_count;
 } HDispatch;
 
 static void free_env(HAllocator *allocator, void *environment) {
@@ -37,6 +39,7 @@ static void free_env(HAllocator *allocator, void *environment) {
     if (dispatch == NULL)
         return;
 
+    allocator->free(allocator, dispatch->buckets);
     allocator->free(allocator, dispatch->map);
     allocator->free(allocator, dispatch);
 }
@@ -117,14 +120,53 @@ static bool extract_opcode(HParseResult *result, size_t *opcode_out) {
     return true;
 }
 
-static HParser *extract_parser(DispatchBucket *buckets, size_t bucket_count, size_t h, size_t mask,
-                               size_t opcode, HParser *default_parser) {
+static HParser *extract_parser(const DispatchBucket *buckets, size_t h, size_t mask, size_t opcode,
+                               HParser *default_parser) {
     while (buckets[h].used) {
         if (buckets[h].opcode == opcode)
             return buckets[h].parser;
         h = (h + 1) & mask;
     }
     return default_parser;
+}
+
+// Built only once when the parser is created
+static bool build_dispatch_table(HAllocator *allocator, HDispatch *dispatch) {
+    if (dispatch->size > SIZE_MAX / 2)
+        return false;
+
+    size_t bucket_count = next_pow2(dispatch->size * 2);
+    if (bucket_count == SIZE_MAX || bucket_count < dispatch->size ||
+        bucket_count > SIZE_MAX / sizeof(*dispatch->buckets)) {
+        return false;
+    }
+
+    dispatch->buckets = allocator->alloc(allocator, bucket_count * sizeof(*dispatch->buckets));
+    if (!dispatch->buckets)
+        return false;
+    memset(dispatch->buckets, 0, bucket_count * sizeof(*dispatch->buckets));
+
+    size_t mask = bucket_count - 1;
+    for (size_t i = 0; i < dispatch->size; ++i) {
+        uint32_t opcode = dispatch->map[i].opcode;
+        size_t h = (opcode ^ (opcode >> 16)) & mask;
+        size_t probe_count = 0;
+        while (dispatch->buckets[h].used && probe_count < bucket_count) {
+            h = (h + 1) & mask;
+            probe_count++;
+        }
+        if (probe_count >= bucket_count) {
+            allocator->free(allocator, dispatch->buckets);
+            dispatch->buckets = NULL;
+            return false;
+        }
+        dispatch->buckets[h].opcode = opcode;
+        dispatch->buckets[h].parser = dispatch->map[i].parser;
+        dispatch->buckets[h].used = true;
+    }
+
+    dispatch->bucket_count = bucket_count;
+    return true;
 }
 
 static HParseResult *parse_dispatch(void *env, HParseState *state) {
@@ -140,39 +182,11 @@ static HParseResult *parse_dispatch(void *env, HParseState *state) {
     size_t opcode = 0;
     bool has_opcode = extract_opcode(disc_result, &opcode);
 
-    size_t bucket_count = next_pow2(d->size * 2);
-    if (bucket_count == SIZE_MAX || bucket_count < d->size) {
-        return NULL;
-    }
-
-    DispatchBucket *buckets = h_arena_malloc(state->arena, bucket_count * sizeof(*buckets));
-    if (!buckets) {
-        return NULL;
-    }
-    memset(buckets, 0, bucket_count * sizeof(*buckets));
-
-    size_t mask = bucket_count - 1;
-    for (size_t i = 0; i < d->size; ++i) {
-        uint32_t op = d->map[i].opcode;
-        HParser *p = d->map[i].parser; // preserve the original parser pointer from the map
-        size_t h = (op ^ (op >> 16)) & mask;
-        size_t probe_count = 0;
-        while (buckets[h].used && probe_count < bucket_count) {
-            h = (h + 1) & mask;
-            probe_count++;
-        }
-        if (probe_count >= bucket_count) {
-            return NULL;
-        }
-        buckets[h].opcode = op;
-        buckets[h].parser = p;
-        buckets[h].used = true;
-    }
-
     HParser *body = d->default_parser;
     if (has_opcode) {
+        size_t mask = d->bucket_count - 1;
         size_t h = (opcode ^ (opcode >> 16)) & mask;
-        body = extract_parser(buckets, bucket_count, h, mask, opcode, d->default_parser);
+        body = extract_parser(d->buckets, h, mask, opcode, d->default_parser);
     }
     if (!body) {
         h_trace_note_dispatch(state->input_stream.trace, disc_result->ast, has_opcode, opcode,
@@ -206,48 +220,25 @@ static HParseResult *parse_dispatch(void *env, HParseState *state) {
     return dispatch_result;
 }
 
-static bool dispatch_isValidRegular(void *env) {
-    HDispatch *d = (HDispatch *)env;
-
-    if (!d->discriminator->vtable->isValidRegular(d->discriminator->env))
-        return false;
-    for (size_t i = 0; i < d->size; ++i) {
-        HParser *p = d->map[i].parser;
-        if (!p->vtable->isValidRegular(p->env))
-            return false;
-    }
-    return true;
-}
-
-static void desugar_dispatch(HAllocator *mm__, HCFStack *stk__, void *env) {
-    HDispatch *d = (HDispatch *)env;
-    HCFS_BEGIN_CHOICE() {
-        for (size_t i = 0; i < d->size; ++i) {
-            HParser *p = d->map[i].parser; // preserve the exact parser pointer from the map
-            HCFS_BEGIN_SEQ() {
-                HCFS_DESUGAR(d->discriminator);
-                HCFS_DESUGAR(p);
-            }
-            HCFS_END_SEQ();
-            HCFS_SET_DISPATCH_OPCODE(d->map[i].opcode);
-        }
-        HCFS_THIS_CHOICE->reshape = h_act_second;
-    }
-    HCFS_END_CHOICE();
-}
-
 static const HParserVtable dispatch_vt = {
     .name = "h_dispatch",
     .parse = parse_dispatch,
-    .isValidRegular = dispatch_isValidRegular,
+    /*
+     * The RVM backend cannot represent value-dependent dispatch. Its semantic
+     * actions run after branch selection, so an opcode check cannot safely
+     * select a body or backtrack to another branch.
+     */
+    .isValidRegular = h_false,
     .isValidCF = h_false,
-    // Dispatch involves runtime value-dependent branching (based on discriminator opcode).
-    // CF grammars cannot soundly represent this constraint: which opcode maps to which
-    // parser body is determined at parse time, not statically in the grammar.
-    // Desugaring would create choice(seq(discriminator, parser0), seq(discriminator, parser1), ...)
-    // but CF backends would see all combinations as valid, leading to unsound analysis.
-    // Therefore, dispatch is not valid for CF analysis.
-    .desugar = desugar_dispatch,
+    /*
+     * Dispatch involves runtime value-dependent branching (based on discriminator opcode).
+     * CF grammars cannot soundly represent this constraint: which opcode maps to which
+     * parser body is determined at parse time, not statically in the grammar.
+     * Desugaring would create choice(seq(discriminator, parser0), seq(discriminator, parser1), ...)
+     * but CF backends would see all combinations as valid, leading to unsound analysis.
+     * Therefore, dispatch is not valid for CF analysis.
+     * .desugar = desugar_dispatch,
+     */
     .higher = true,
 };
 
@@ -269,6 +260,7 @@ HParser *h_dispatch__m(HAllocator *mm__, HParser *discriminator, const OpcodeMap
     }
     env->map = h_new(OpcodeMap, size);
     if (!env->map) {
+        mm__->free(mm__, env);
         return NULL;
     }
     for (size_t i = 0; i < size; ++i) {
@@ -279,6 +271,14 @@ HParser *h_dispatch__m(HAllocator *mm__, HParser *discriminator, const OpcodeMap
     env->discriminator = discriminator;
     env->default_parser = default_parser;
     env->size = size;
+    env->buckets = NULL;
+    env->bucket_count = 0;
+
+    if (!build_dispatch_table(mm__, env)) {
+        mm__->free(mm__, env->map);
+        mm__->free(mm__, env);
+        return NULL;
+    }
 
     return h_new_parser_with_free(mm__, &dispatch_vt, env, free_env);
 }

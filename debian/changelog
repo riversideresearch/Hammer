@@ -1,3 +1,27 @@
+libhammer (3.4.0-1) unstable; urgency=medium
+
+  * Add Packrat-only h_parse_bits() and h_parse_bits_debug() APIs, including
+    allocator variants, for inputs with exact bit lengths
+  * Add Java h_dispatch() support with OpcodeMap arrays
+  * Fix symbol-state rollback across speculative parses and account for value
+    changes in Packrat caching and left recursion
+  * Build dispatch lookup tables during parser construction and reject dispatch
+    compilation for the unsupported regex backend
+  * Propagate Python callback exceptions and reject integer byte inputs outside
+    the range 0..255
+  * Fix native macOS builds and installation and add macOS CI coverage
+  * Update test macros for compatibility with GLib 2.72
+  * Fix h_drop_from() index handling and validation and guard h_act_second()
+    against short sequences
+  * Change h_seek(), h_seek__m(), and the C++ Seek() wrapper to use int64_t
+    offsets and document the compatibility impact
+  * Fix example token-field access and document backend choice limitations
+  * Add regression tests, shared pre-commit checks, and formatting updates
+  * Pin clang-format to 23.1.5 and check C and C++ formatting across the
+    repository, excluding build directories
+
+ -- Mahmoud Elbasiouny <melbasiouny@riversideresearch.org>  Thu, 05 Nov 2026 13:42:12 -0500
+
 libhammer (3.3.0-1) unstable; urgency=medium
 
   * Add thread-safe HParserGraph ownership and destruction APIs
