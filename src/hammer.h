@@ -517,7 +517,9 @@ HParseResult *h_parse__m(HAllocator *mm__, const HParser *parser, const uint8_t 
  *
  * The input buffer must contain at least ceil(bit_length / 8) bytes. Any
  * unused bits in the final byte are ignored.
- * @note Packrat supported only
+ * The length limits available input but does not require complete consumption.
+ * Use h_end_p() to require the parser to consume all valid bits.
+ * @note Only the Packrat backend is supported. Other backends return NULL.
  */
 HParseResult *h_parse_bits(const HParser *parser, const uint8_t *input, size_t bit_length);
 HParseResult *h_parse_bits__m(HAllocator *mm__, const HParser *parser, const uint8_t *input,
@@ -550,6 +552,12 @@ HParseResult *h_parse_debug(const HParser *parser, const uint8_t *input, size_t 
                             HParseDiagnostic **diagnostic, bool showDiagnostic);
 HParseResult *h_parse_debug__m(HAllocator *allocator, const HParser *parser, const uint8_t *input,
                                size_t length, HParseDiagnostic **diagnostic, bool showDiagnostic);
+/**
+ * @brief Like h_parse_debug(), with an input length specified in bits.
+ *
+ * Buffer requirements and backend restrictions are the same as h_parse_bits().
+ * Diagnostic ownership and tracing behavior are the same as h_parse_debug().
+ */
 HParseResult *h_parse_bits_debug(const HParser *parser, const uint8_t *input, size_t bit_length,
                                  HParseDiagnostic **diagnostic, bool showDiagnostic);
 HParseResult *h_parse_bits_debug__m(HAllocator *allocator, const HParser *parser,

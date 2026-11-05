@@ -8,25 +8,46 @@ Tested on Ubuntu 22.04 and 24.04 (VM and WSL).
 
 ### Formatting
 
-Install formatting tools:
+Use clang-format 23.1.5 locally and in CI. Different versions can produce
+different formatting with the same configuration.
+
+Install the pinned version with pipx:
 
 ```bash
-sudo apt install -y clang-format
+pipx install 'clang-format==23.1.5'
+clang-format --version
 ```
 
-Use `clang-format` to keep C code consistent.
+If pipx already manages clang-format, use
+`pipx install --force 'clang-format==23.1.5'` to replace that version.
+Make sure that the pipx binary directory comes before system directories in
+your `PATH`. The version command must report 23.1.5.
+
+Use `clang-format` to keep C and C++ code consistent.
 Examples:
 
-- Format all C sources and headers:
+- Format all C and C++ sources and headers outside build directories:
 
 ```bash
-clang-format -i **/*.c **/*.h
+find . \
+  -type d -name build -prune -o \
+  -type f \( -name '*.c' -o -name '*.h' -o -name '*.cc' -o -name '*.cpp' -o -name '*.hpp' \) \
+  -exec clang-format -i {} +
 ```
 
 - Format a single file:
 
 ```bash
 clang-format -i path/to/file.c
+```
+
+Run the same formatting check as CI:
+
+```bash
+find . \
+  -type d -name build -prune -o \
+  -type f \( -name '*.c' -o -name '*.h' -o -name '*.cc' -o -name '*.cpp' -o -name '*.hpp' \) \
+  -exec clang-format --dry-run --Werror {} +
 ```
 
 ### Version management

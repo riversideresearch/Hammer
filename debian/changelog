@@ -13,9 +13,12 @@ libhammer (3.4.0-1) unstable; urgency=medium
   * Update test macros for compatibility with GLib 2.72
   * Fix h_drop_from() index handling and validation and guard h_act_second()
     against short sequences
-  * Change h_seek() and the C++ Seek() wrapper to use int64_t offsets
+  * Change h_seek(), h_seek__m(), and the C++ Seek() wrapper to use int64_t
+    offsets and document the compatibility impact
   * Fix example token-field access and document backend choice limitations
   * Add regression tests, shared pre-commit checks, and formatting updates
+  * Pin clang-format to 23.1.5 and check C and C++ formatting across the
+    repository, excluding build directories
 
  -- Mahmoud Elbasiouny <melbasiouny@riversideresearch.org>  Thu, 05 Nov 2026 13:42:12 -0500
 

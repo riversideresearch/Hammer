@@ -29,8 +29,8 @@ jobs:
       - name: Install clang-format
         if: matrix.check == 'clang-format'
         run: |
-          sudo apt-get update
-          sudo apt-get install -y clang-format
+          python3 -m pip install 'clang-format==23.1.5'
+          clang-format --version
 
       - name: Check formatting
         if: matrix.check == 'clang-format'

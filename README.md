@@ -98,6 +98,35 @@ For backend differences, limitations, and examples, see the [Hammer wiki](https:
 
 To learn about Hammer, see the [Hammer wiki](https://github.com/riversideresearch/Hammer/wiki).
 
+### Exact-bit input lengths
+
+`h_parse()` takes an input length in bytes. With the Packrat backend,
+`h_parse_bits()` takes an exact input length in bits, including partial final bytes:
+
+```c
+const uint8_t input[] = {0xa5};
+HParser *p = h_sequence(h_bits(3, false), h_end_p(), NULL);
+HParseResult *result = h_parse_bits(p, input, 3);
+if (result != NULL)
+    h_parse_result_free(result);
+```
+
+The buffer must contain at least `ceil(bit_length / 8)` bytes. Bits beyond
+the specified length are outside the logical input. The length limits the
+input but does not require the parser to consume it all. Use `h_end_p()`
+to require complete consumption.
+
+`h_parse_bits_debug()` collects diagnostics like `h_parse_debug()`, with an
+input length in bits. Both functions have `__m` variants for custom allocators.
+These exact-bit APIs return `NULL` for backends other than Packrat.
+
+### Compatibility in 3.4.0
+
+`h_seek()`, `h_seek__m()`, and C++ `Seek()` now accept `int64_t` offsets
+instead of `ssize_t`. Rebuild dependent applications and update function-pointer
+declarations that use the previous signatures. This change can break binary
+compatibility on 32-bit platforms.
+
 ## Language Bindings
 
 Hammer provides bindings for use from languages other than C.
