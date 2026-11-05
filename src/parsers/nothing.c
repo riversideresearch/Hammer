@@ -41,7 +41,7 @@ static const HParserVtable nothing_vt = {
 
 bool h_is_nothing_parser(const HParser *parser) { return parser && parser->vtable == &nothing_vt; }
 
-HParser *h_nothing_p() { return h_nothing_p__m(h_default_allocator); }
+HParser *h_nothing_p(void) { return h_nothing_p__m(h_default_allocator); }
 HParser *h_nothing_p__m(HAllocator *mm__) {
     return h_new_parser_with_free(mm__, &nothing_vt, NULL, h_no_free_env);
 }

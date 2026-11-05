@@ -517,6 +517,19 @@ HParseResult *h_parse__m(HAllocator *mm__, const HParser *parser, const uint8_t 
                          size_t length);
 
 /**
+ * @brief Parse an input whose valid length is specified exactly in bits.
+ *
+ * The input buffer must contain at least ceil(bit_length / 8) bytes. Any
+ * unused bits in the final byte are ignored.
+ * The length limits available input but does not require complete consumption.
+ * Use h_end_p() to require the parser to consume all valid bits.
+ * @note Only the Packrat backend is supported. Other backends return NULL.
+ */
+HParseResult *h_parse_bits(const HParser *parser, const uint8_t *input, size_t bit_length);
+HParseResult *h_parse_bits__m(HAllocator *mm__, const HParser *parser, const uint8_t *input,
+                              size_t bit_length);
+
+/**
  * @brief Like h_parse(), but collects a parse-scoped furthest-position
  * diagnostic. Parsing behavior and return value are identical to h_parse().
  *
@@ -543,6 +556,17 @@ HParseResult *h_parse_debug(const HParser *parser, const uint8_t *input, size_t 
                             HParseDiagnostic **diagnostic, bool showDiagnostic);
 HParseResult *h_parse_debug__m(HAllocator *allocator, const HParser *parser, const uint8_t *input,
                                size_t length, HParseDiagnostic **diagnostic, bool showDiagnostic);
+/**
+ * @brief Like h_parse_debug(), with an input length specified in bits.
+ *
+ * Buffer requirements and backend restrictions are the same as h_parse_bits().
+ * Diagnostic ownership and tracing behavior are the same as h_parse_debug().
+ */
+HParseResult *h_parse_bits_debug(const HParser *parser, const uint8_t *input, size_t bit_length,
+                                 HParseDiagnostic **diagnostic, bool showDiagnostic);
+HParseResult *h_parse_bits_debug__m(HAllocator *allocator, const HParser *parser,
+                                    const uint8_t *input, size_t bit_length,
+                                    HParseDiagnostic **diagnostic, bool showDiagnostic);
 const HParseError *h_parse_diagnostic_error(const HParseDiagnostic *diagnostic);
 size_t h_parse_diagnostic_expected_count(const HParseDiagnostic *diagnostic);
 bool h_parse_diagnostic_expected(const HParseDiagnostic *diagnostic, size_t index,
@@ -670,8 +694,8 @@ HParser *h_float_range__m(HAllocator *mm__, const HParser *p, const double lower
  * parse; len >64 results in a NULL parser.
  * Use h_bytes() or a sequence of smaller integer parsers for wider fields.
  */
-HParser *h_bits(size_t len, _Bool sign);
-HParser *h_bits__m(HAllocator *mm__, size_t len, _Bool sign);
+HParser *h_bits(size_t len, bool sign);
+HParser *h_bits__m(HAllocator *mm__, size_t len, bool sign);
 
 /**
  * @brief Returns a parser that parses the specified number of bytes. The input does not have to be
@@ -963,7 +987,9 @@ HParser *h_sequence__ma(HAllocator *mm__, void *args[]);
 /**
  * @brief Given an `h_sequence` and a list of indices, returns a parser that parses the sequence but
  * returns it without the results at the dropped indices. If a negative integer appears in the
- * middle of the list, this combinator will silently ignore the rest of the list.
+ * middle of the list, this combinator will silently ignore the rest of the list. Indices may be
+ * listed in any order, but each must identify a distinct element of the sequence; duplicate or
+ * out-of-range indices are programmer errors.
  *
  * @param p Sequence parser
  * @param ... Indices of elements to drop
@@ -982,6 +1008,8 @@ HParser *h_drop_from___ma(HAllocator *mm__, void *args[]);
  *
  * @param p_array Array of parsers
  * @return Result token type: The type of the first successful parser's result.
+ * @note Packrat is the only backend with ordered choice, other backends will not apply each parser
+ * in order.
  */
 HParser *h_choice(HParser *p, ...) __attribute__((sentinel));
 HParser *h_choice__m(HAllocator *mm__, HParser *p, ...) __attribute__((sentinel));
@@ -1272,6 +1300,15 @@ HParser *h_with_endianness(char endianness, const HParser *p);
 HParser *h_with_endianness__m(HAllocator *mm__, char endianness, const HParser *p);
 
 /**
+ * Value combinators use a parse-local symbol table. Value changes are
+ * committed only when their parse path is committed. Failed branches,
+ * abandoned permutation orderings, incomplete repetition iterations, and
+ * discarded lookahead or filter probes do not retain value changes.
+ * Rewinding the input position also restores the value state for the
+ * speculative parse being rewound. Packrat memoization accounts for the
+ * current symbol-table state, so cached results do not become stale after a
+ * value is stored or removed.
+ *
  * @brief The 'h_put_value' combinator stashes the result of the parser it wraps in a symbol table
  * in the parse state, so that non- local actions and predicates can access this value.
  *
@@ -1281,6 +1318,8 @@ HParser *h_with_endianness__m(HAllocator *mm__, char endianness, const HParser *
  * @param p Parser whose result to stash
  * @param name NUL-terminated name to stash the result under (must be unique).
  * Names are compared by string contents and copied by this function.
+ * The name can be reused after a successful h_free_value() (or after the
+ * parser invocation that removed it succeeds).
  * @return Result token type: p's token type if name was not already in the symbol table.
  */
 HParser *h_put_value(const HParser *p, const char *name);
@@ -1289,6 +1328,8 @@ HParser *h_put_value__m(HAllocator *mm__, const HParser *p, const char *name);
 /**
  * @brief The 'h_get_value' combinator retrieves a named HParseResult that was previously stashed in
  * the parse state.
+ * The lookup observes the current symbol-table state. It fails if the value
+ * has not been stored or has already been successfully freed.
  *
  * @param name NUL-terminated name to retrieve. Names are compared by string
  * contents and copied by this function.
@@ -1310,6 +1351,8 @@ void h_pprint_ast_indexed(FILE *stream, const HParsedToken *token, size_t indent
 /**
  * @brief The 'h_free_value' combinator retrieves a named HParseResult that was previously stashed
  * in the parse state and deletes it from the symbol table
+ * The removal is committed only if the enclosing parser invocation succeeds;
+ * a failed parser or failed choice alternative restores the value.
  *
  * @param name NUL-terminated name to retrieve and delete. Names are compared
  * by string contents and copied by this function.
@@ -1353,8 +1396,8 @@ HParser *h_skip__m(HAllocator *mm__, size_t n);
  * @param whence SEEK_SET, SEEK_CUR, or SEEK_END
  * @return Result: TT_UINT. The new input position.
  */
-HParser *h_seek(ssize_t offset, int whence);
-HParser *h_seek__m(HAllocator *mm__, ssize_t offset, int whence);
+HParser *h_seek(int64_t offset, int whence);
+HParser *h_seek__m(HAllocator *mm__, int64_t offset, int whence);
 
 /**
  * @brief Report the current position in bits. Consumes no input.

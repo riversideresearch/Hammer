@@ -57,11 +57,18 @@ int h_test_run_all(void);
 
 /*
  * Every data-driven RTEMS parser test supplies an HParserBackend value.  The
- * port supports only packrat, so skip registrations for unsupported backends.
+ * heap-backed port supports packrat and regex; static mode supports packrat.
  */
+#ifdef STATIC_BUILD
+#define H_RTEMS_TEST_BACKEND_SUPPORTED(backend) ((backend) == PB_PACKRAT)
+#else
+#define H_RTEMS_TEST_BACKEND_SUPPORTED(backend) ((backend) == PB_PACKRAT || (backend) == PB_REGULAR)
+#endif
+
 #define g_test_add_data_func(name, data, func)                                                     \
     do {                                                                                           \
-        if ((HParserBackend)GPOINTER_TO_INT(data) == PB_PACKRAT)                                   \
+        HParserBackend backend = (HParserBackend)GPOINTER_TO_INT(data);                            \
+        if (H_RTEMS_TEST_BACKEND_SUPPORTED(backend))                                               \
             h_test_add_data((name), (void (*)(const void *))(func), (const void *)(data));         \
     } while (0)
 

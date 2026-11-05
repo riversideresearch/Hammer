@@ -30,19 +30,19 @@ int binarySearch(const uint16_t arr[], int left, int right, int key) {
 }
 
 bool is_zero(HParseResult *result, void *user_data) {
-    return result && result->ast && result->ast->uint == 0;
+    return result && result->ast && result->ast->token_data.uint == 0;
 }
 bool validate_pointer(HParseResult *result, void *user) {
     uint16_t curr = ((DNSContext *)user)->curr_storage;
     uint16_t len = ((DNSContext *)user)->packet_len;
-    uint16_t pValue = (uint16_t)result->ast->uint;
+    uint16_t pValue = (uint16_t)result->ast->token_data.uint;
     if (pValue < curr && pValue < len)
         return true;
     else
         return false;
 }
 bool validate_type(HParseResult *result, void *user_data) {
-    uint16_t type = (uint16_t)result->ast->uint;
+    uint16_t type = (uint16_t)result->ast->token_data.uint;
     int res = binarySearch(valid_types, 0, valid_types_count - 1, type);
     if (res >= 0)
         return true;
@@ -50,14 +50,14 @@ bool validate_type(HParseResult *result, void *user_data) {
         return false;
 }
 bool validate_rclass(HParseResult *result, void *user_data) {
-    uint16_t class = (uint16_t)result->ast->uint;
+    uint16_t class = (uint16_t)result->ast->token_data.uint;
     if (class >= 1 && class <= 4)
         return true;
     else
         return false;
 }
 bool validate_qclass(HParseResult *result, void *user_data) {
-    uint16_t class = (uint16_t)result->ast->uint;
+    uint16_t class = (uint16_t)result->ast->token_data.uint;
     if ((class >= 1 && class <= 4) || class == 254 || class == 255)
         return true;
     else
@@ -65,37 +65,37 @@ bool validate_qclass(HParseResult *result, void *user_data) {
 }
 
 bool validate_pflag(HParseResult *result, void *user_data) {
-    return result && result->ast && result->ast->uint == 3;
+    return result && result->ast && result->ast->token_data.uint == 3;
 }
 
 HParsedToken *store_qdcount(const HParseResult *result, void *user) {
     if (user && result && result->ast) {
-        ((DNSContext *)user)->qdcount = (uint16_t)result->ast->uint;
+        ((DNSContext *)user)->qdcount = (uint16_t)result->ast->token_data.uint;
     }
     return (HParsedToken *)result->ast;
 }
 HParsedToken *store_ancount(const HParseResult *result, void *user) {
     if (user && result && result->ast) {
-        ((DNSContext *)user)->ancount = (uint16_t)result->ast->uint;
+        ((DNSContext *)user)->ancount = (uint16_t)result->ast->token_data.uint;
     }
     return (HParsedToken *)result->ast;
 }
 HParsedToken *store_nscount(const HParseResult *result, void *user) {
     if (user && result && result->ast) {
-        ((DNSContext *)user)->nscount = (uint16_t)result->ast->uint;
+        ((DNSContext *)user)->nscount = (uint16_t)result->ast->token_data.uint;
     }
     return (HParsedToken *)result->ast;
 }
 HParsedToken *store_arcount(const HParseResult *result, void *user) {
     if (user && result && result->ast) {
-        ((DNSContext *)user)->arcount = (uint16_t)result->ast->uint;
+        ((DNSContext *)user)->arcount = (uint16_t)result->ast->token_data.uint;
     }
     return (HParsedToken *)result->ast;
 }
 
 HParsedToken *updateCurr(const HParseResult *result, void *user) {
     if (result && result->ast) {
-        uint32_t bitpos = (uint32_t)result->ast->uint;
+        uint32_t bitpos = (uint32_t)result->ast->token_data.uint;
         ((DNSContext *)user)->curr_storage = (uint16_t)bitpos / 8; // position in bytes
     }
     return (HParsedToken *)result->ast;

@@ -1,11 +1,10 @@
 # Copyright (c) 2026 Riverside Research
 # -*- python -*-
 
-from __future__ import absolute_import, division, print_function
 
 import os
-import sys
 import shutil
+import sys
 
 Import("env libhammer_shared testruns targets binding_results binding_test_stamps")
 
@@ -39,7 +38,7 @@ else:
     jni_platform_include = jni_include
 
 if not os.path.isdir(jni_include):
-    print("Warning: JNI headers not found at %s. Skipping Java bindings." % jni_include)
+    print(f"Warning: JNI headers not found at {jni_include}. Skipping Java bindings.")
     Return()
 
 javaenv = env.Clone(IMPLICIT_COMMAND_DEPENDENCIES=0)
@@ -94,6 +93,9 @@ jar_file = javaenv.Command(
         "jar cf $TARGET -C " + java_classes_dir + " .",
     ],
 )
+# Java proxy output can change without changing hammer_wrap.c. Depend on the
+# interface copy so Java-only typemap changes regenerate the jar.
+javaenv.Depends(jar_file, swig_iface)
 javaenv.Depends(jar_file, jni_lib)
 Default(jar_file)
 
@@ -102,14 +104,14 @@ reporter = os.path.join(Dir("#").abspath, "tools", "test_reporter.py")
 results_file = os.path.join(javadir, "hammer_java.results")
 
 javatestenv = javaenv.Clone()
-javatestenv["ENV"]["LD_LIBRARY_PATH"] = hammer_lib_dir + ":" + javadir
+javatestenv["ENV"][env["HAMMER_LIBRARY_PATH_ENV"]] = hammer_lib_dir + ":" + javadir
 javatestexec = javatestenv.Command(
     "hammer_tests.stamp",
     ["#src/bindings/java/HammerTests.java"] + list(jar_file),
     [
         "javac -cp " + os.path.join(javadir, "hammer.jar") +
         " -d " + java_classes_dir + " $SOURCE",
-        "LD_LIBRARY_PATH=" + hammer_lib_dir + ":" + javadir +
+        env["HAMMER_LIBRARY_PATH_ENV"] + "=" + hammer_lib_dir + ":" + javadir +
         " " + sys.executable + " " + reporter +
         " --binding Java --results-file " + results_file +
         " -- java --enable-native-access=ALL-UNNAMED"

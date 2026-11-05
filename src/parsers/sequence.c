@@ -221,6 +221,45 @@ HParser *h_drop_from___v(HParser *p, va_list ap) {
     return h_drop_from___mv(h_default_allocator, p, ap);
 }
 
+static void validate_drop_indices(const HSequence *s, const size_t *indices, size_t count) {
+    HAMMER_ASSERT(count <= s->len);
+    for (size_t i = 0; i < count; ++i) {
+        HAMMER_ASSERT(indices[i] < s->len);
+        for (size_t j = 0; j < i; ++j)
+            HAMMER_ASSERT(indices[j] != indices[i]);
+    }
+}
+
+static bool drop_index_requested(const size_t *indices, size_t count, size_t index) {
+    for (size_t i = 0; i < count; ++i) {
+        if (indices[i] == index)
+            return true;
+    }
+    return false;
+}
+
+static HParser *drop_from_indices(HAllocator *mm__, HSequence *s, const size_t *indices,
+                                  size_t count) {
+    validate_drop_indices(s, indices, count);
+
+    HRewriteSequence *rewrite = h_new(HRewriteSequence, 1);
+    rewrite->sequence.p_array = h_new(HParser *, s->len);
+    rewrite->sequence.len = s->len;
+    rewrite->owned_parsers = count ? h_new(HParser *, count) : NULL;
+    rewrite->owned_len = 0;
+    for (size_t i = 0; i < s->len; ++i) {
+        if (drop_index_requested(indices, count, i)) {
+            HParser *ignored = h_ignore__m(mm__, s->p_array[i]);
+            rewrite->sequence.p_array[i] = ignored;
+            rewrite->owned_parsers[rewrite->owned_len++] = ignored;
+        } else {
+            rewrite->sequence.p_array[i] = s->p_array[i];
+        }
+    }
+
+    return h_new_parser_with_free(mm__, &sequence_vt, rewrite, h_free_rewrite_sequence_env);
+}
+
 HParser *h_drop_from___mv(HAllocator *mm__, HParser *p, va_list ap) {
     /* Saying `h_drop_from(h_sequence(a, b, c, d, e, NULL), 0, 4, -1)` is functionally
      * equivalent to `h_sequence(h_ignore(a), b, c, d, h_ignore(e), NULL)`. Thus, this
@@ -229,33 +268,33 @@ HParser *h_drop_from___mv(HAllocator *mm__, HParser *p, va_list ap) {
     if (!p)
         return NULL;
     HSequence *s = (HSequence *)(p->env);
-    size_t indices[s->len];
     size_t count = 0;
-    int arg = 0;
+    int arg;
 
-    for (arg = va_arg(ap, int); arg >= 0; arg = va_arg(ap, int)) {
-        indices[count] = (size_t)arg;
+    va_list count_ap;
+    va_copy(count_ap, ap);
+    for (arg = va_arg(count_ap, int); arg >= 0; arg = va_arg(count_ap, int)) {
+        HAMMER_ASSERT((size_t)arg < s->len);
+        HAMMER_ASSERT(count < s->len);
         count++;
     }
-    va_end(ap);
+    va_end(count_ap);
 
-    HRewriteSequence *rewrite = h_new(HRewriteSequence, 1);
-    rewrite->sequence.p_array = h_new(HParser *, s->len);
-    rewrite->sequence.len = s->len;
-    rewrite->owned_parsers = count ? h_new(HParser *, count) : NULL;
-    rewrite->owned_len = 0;
-    for (size_t i = 0, j = 0; i < s->len; ++i) {
-        if (j < count && indices[j] == i) {
-            HParser *ignored = h_ignore__m(mm__, s->p_array[i]);
-            rewrite->sequence.p_array[i] = ignored;
-            rewrite->owned_parsers[rewrite->owned_len++] = ignored;
-            ++j;
-        } else {
-            rewrite->sequence.p_array[i] = s->p_array[i];
-        }
+    size_t *indices = count ? h_new(size_t, count) : NULL;
+    size_t index = 0;
+    if (count > 0) {
+        va_list index_ap;
+        va_copy(index_ap, ap);
+        for (arg = va_arg(index_ap, int); arg >= 0; arg = va_arg(index_ap, int))
+            indices[index++] = (size_t)arg;
+        va_end(index_ap);
     }
 
-    return h_new_parser_with_free(mm__, &sequence_vt, rewrite, h_free_rewrite_sequence_env);
+    HParser *rewrite = drop_from_indices(mm__, s, indices, count);
+
+    if (indices)
+        h_free(indices);
+    return rewrite;
 }
 
 HParser *h_drop_from___a(void *args[]) { return h_drop_from___ma(h_default_allocator, args); }
@@ -265,27 +304,19 @@ HParser *h_drop_from___ma(HAllocator *mm__, void *args[]) {
     assert_message(p->vtable == &sequence_vt, "drop_from requires a sequence parser");
     HSequence *s = (HSequence *)(p->env);
     size_t count = 0;
-    for (int *arg = args[1]; *arg >= 0; ++arg)
+    const int *arg_indices = args[1];
+    for (const int *arg = arg_indices; *arg >= 0; ++arg) {
+        HAMMER_ASSERT((size_t)*arg < s->len);
+        HAMMER_ASSERT(count < s->len);
         ++count;
-
-    HRewriteSequence *rewrite = h_new(HRewriteSequence, 1);
-    rewrite->sequence.p_array = h_new(HParser *, s->len);
-    rewrite->sequence.len = s->len;
-    rewrite->owned_parsers = count ? h_new(HParser *, count) : NULL;
-    rewrite->owned_len = 0;
-
-    int i = 0, *argp = (int *)(args[1]);
-    while ((size_t)i < s->len) {
-        if (*argp >= 0 && i == *argp) {
-            HParser *ignored = h_ignore__m(mm__, s->p_array[i]);
-            rewrite->sequence.p_array[i] = ignored;
-            rewrite->owned_parsers[rewrite->owned_len++] = ignored;
-            ++argp;
-        } else {
-            rewrite->sequence.p_array[i] = s->p_array[i];
-        }
-        ++i;
     }
 
-    return h_new_parser_with_free(mm__, &sequence_vt, rewrite, h_free_rewrite_sequence_env);
+    size_t *indices = count ? h_new(size_t, count) : NULL;
+    for (size_t i = 0; i < count; ++i)
+        indices[i] = (size_t)arg_indices[i];
+
+    HParser *rewrite = drop_from_indices(mm__, s, indices, count);
+    if (indices)
+        h_free(indices);
+    return rewrite;
 }

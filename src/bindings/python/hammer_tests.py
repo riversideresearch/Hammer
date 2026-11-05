@@ -1,4 +1,3 @@
-from __future__ import absolute_import, division, print_function
 
 import os
 import tempfile
@@ -249,6 +248,30 @@ class TestAction(unittest.TestCase):
 
     def test_failure(self):
         self.assertEqual(self.parser.parse(b"XX"), None)
+
+
+class TestCallbackExceptions(unittest.TestCase):
+    def test_action_exception_propagates(self):
+        parser = h.action(h.ch(b"a"), lambda _: 1 / 0)
+        with self.assertRaises(ZeroDivisionError):
+            parser.parse(b"a")
+
+    def test_action_exception_propagates_from_parse_debug(self):
+        parser = h.action(h.ch(b"a"), lambda _: 1 / 0)
+        with self.assertRaises(ZeroDivisionError):
+            parser.parse_debug(b"a")
+
+    def test_predicate_exception_propagates(self):
+        parser = h.attr_bool(h.ch(b"a"), lambda _: 1 / 0)
+        with self.assertRaises(ZeroDivisionError):
+            parser.parse(b"a")
+
+    def test_deferred_action_exception_propagates(self):
+        collection = h.action_collection()
+        stashed = h.action_stash(h.ch(b"a"), lambda _: 1 / 0, collection)
+        parser = h.action_apply(stashed, collection)
+        with self.assertRaises(ZeroDivisionError):
+            parser.parse(b"a")
 
 
 class TestIn(unittest.TestCase):
@@ -686,6 +709,11 @@ class TestNewCombinators(unittest.TestCase):
         self.assertEqual(h.many_cap(h.ch(b"a"), 2).parse(b"aaa"), (b"a", b"a"))
         self.assertEqual(h.many1_cap(h.ch(b"a"), 2).parse(b"aaa"), (b"a", b"a"))
         self.assertIsNone(h.many1_cap(h.ch(b"a"), 2).parse(b""))
+
+    def test_ch_rejects_out_of_range_integers(self):
+        for value in (-1, 256):
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                    h.ch(value)
 
     def test_dispatch_mapping_and_default(self):
         parser = h.dispatch(

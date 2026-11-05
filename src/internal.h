@@ -91,6 +91,13 @@ typedef struct HInputStream_ {
     uint8_t bit_offset;
     uint8_t margin; // The number of bits on the end that is being read
                     // towards that should be ignored.
+    /*
+     * The logical end of the stream, expressed as an absolute bit position.
+     * bit_limit_set distinguishes an exact zero-bit limit from older
+     * HInputStream aggregate initializers, which use the physical byte length.
+     */
+    size_t bit_limit;
+    bool bit_limit_set;
     char endianness;
     bool overrun;
     bool last_chunk;
@@ -206,6 +213,8 @@ typedef struct HHashTable_ {
     HArena *arena;
 } HHashTable;
 
+typedef struct HSymbolLogEntry_ HSymbolLogEntry;
+
 /* The state of the parser.
  *
  * Members:
@@ -215,7 +224,9 @@ typedef struct HHashTable_ {
  * stack of HLeftRec's, used in Warth's recursion recursion_heads - table of recursion heads. Keys
  * are HParserCacheKey's with only an HInputStream (parser can be NULL), values are
  * HRecursionHead's. symbol_table - stack of tables of values that have been stashed in the context
- * of this parse.
+ * of this parse. symbol_table_generation changes whenever the symbol table changes and is part of
+ * packrat cache keys. symbol_log records inverse symbol operations so failed parser invocations
+ * can restore the symbol table.
  *
  */
 
@@ -226,6 +237,8 @@ struct HParseState_ {
     HSlist *lr_stack;
     HHashTable *recursion_heads;
     HSlist *symbol_table; // its contents are HHashTables
+    HSymbolLogEntry *symbol_log;
+    uint64_t symbol_table_generation;
     struct HActionPlan_ *action_plan;
 };
 
@@ -287,6 +300,7 @@ struct HParserBackendVTable_ {
 typedef struct HParserCacheKey_ {
     HInputStream input_pos;
     const HParser *parser;
+    uint64_t symbol_table_generation;
 } HParserCacheKey;
 
 typedef struct HActionPlan_ HActionPlan;
@@ -304,7 +318,7 @@ typedef enum HParserCacheValueType_ { PC_LEFT, PC_RIGHT } HParserCacheValueType;
  * Members:
  *   head_parser - the parse rule that started this recursion
  *   involved_set - A list of rules (HParser's) involved in the recursion
- *   eval_set -
+ *   eval_set - rules to evaluate during the current growth iteration
  */
 typedef struct HRecursionHead_ {
     const HParser *head_parser;
@@ -317,12 +331,16 @@ typedef struct HRecursionHead_ {
  * Members:
  *   seed - the HResult yielded by rule
  *   rule - the HParser that produces seed
+ *   input_pos - the input position where the recursion begins
+ *   seed_input_stream - the position immediately after the current seed
  *   head - the
  */
 typedef struct HLeftRec_ {
     HParseResult *seed;
     HActionPlan *seed_plan;
     const HParser *rule;
+    HInputStream input_pos;
+    HInputStream seed_input_stream;
     HRecursionHead *head;
 } HLeftRec;
 
@@ -377,15 +395,26 @@ char *h_get_short_name_with_no_params(HAllocator *mm__, HParserBackend be, void 
 int64_t h_read_bits(HInputStream *state, size_t count, char signed_p);
 void h_skip_bits(HInputStream *state, size_t count);
 void h_seek_bits(HInputStream *state, size_t pos);
+static inline size_t h_input_stream_physical_length(const HInputStream *state) {
+    if (state->pos > SIZE_MAX - state->length || state->pos + state->length > SIZE_MAX / 8)
+        return SIZE_MAX;
+    return (state->pos + state->length) * 8;
+}
 static inline size_t h_input_stream_pos(HInputStream *state) {
     assert(state->pos <= SIZE_MAX - state->index);
-    assert(state->pos + state->index < SIZE_MAX / 8);
-    return (state->pos + state->index) * 8 + (size_t)(state->bit_offset) + (size_t)(state->margin);
+    size_t byte_pos = state->pos + state->index;
+    if (byte_pos > SIZE_MAX / 8)
+        return SIZE_MAX;
+    size_t bit_pos = byte_pos * 8;
+    if (state->bit_offset > SIZE_MAX - bit_pos)
+        return SIZE_MAX;
+    bit_pos += state->bit_offset;
+    if (state->margin > SIZE_MAX - bit_pos)
+        return SIZE_MAX;
+    return bit_pos + state->margin;
 }
 static inline size_t h_input_stream_length(HInputStream *state) {
-    assert(state->pos <= SIZE_MAX - state->length);
-    assert(state->pos + state->length <= SIZE_MAX / 8);
-    return (state->pos + state->length) * 8;
+    return state->bit_limit_set ? state->bit_limit : h_input_stream_physical_length(state);
 }
 // need to decide if we want to make this public.
 HParseResult *h_do_parse(const HParser *parser, HParseState *state);
@@ -501,6 +530,8 @@ HHashValue h_hash_bytes(const uint8_t *buf, size_t len);
 void h_symbol_put(HParseState *state, const char *key, void *value);
 void *h_symbol_get(HParseState *state, const char *key);
 void *h_symbol_free(HParseState *state, const char *key);
+void h_symbol_rollback(HParseState *state, HSymbolLogEntry *checkpoint);
+static inline HSymbolLogEntry *h_symbol_checkpoint(HParseState *state) { return state->symbol_log; }
 
 typedef struct HCFSequence_ HCFSequence;
 

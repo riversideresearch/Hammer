@@ -4,7 +4,9 @@
 static HParseResult *parse_and(void *env, HParseState *state) {
     HInputStream bak = state->input_stream;
     HActionPlan *plan = state->action_plan;
+    HSymbolLogEntry *symbol_checkpoint = h_symbol_checkpoint(state);
     HParseResult *res = h_do_parse((HParser *)env, state);
+    h_symbol_rollback(state, symbol_checkpoint);
     if (!res)
         return NULL; // propagate failed input state, esp. overrun
     state->input_stream = bak;

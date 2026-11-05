@@ -1,7 +1,6 @@
 # Copyright (c) 2026 Riverside Research
 # -*- python -*-
 
-from __future__ import absolute_import, division, print_function
 import glob
 import os
 import re
@@ -25,7 +24,7 @@ parsers_headers = ["parsers/parser_internal.h"]
 backends_headers = ["backends/missing.h", "backends/lr.h", "backends/params.h", "backends/regex.h"]
 
 parsers = [
-    "parsers/%s.c" % s
+    f"parsers/{s}.c"
     for s in [
         "action",
         "and",
@@ -64,7 +63,7 @@ parsers = [
 ]
 
 backends = [
-    "backends/%s.c" % s
+    f"backends/{s}.c"
     for s in ["missing", "packrat", "params", "regex", "lr", "lr0", "lalr", "llk", "glr"]
 ]
 
@@ -133,11 +132,11 @@ def _basename_no_ext(path):
 _parser_names = sorted(_basename_no_ext(p).replace("parsers" + os.sep, "") for p in parsers)
 
 # discovered test filenames are like test_<name>.c → extract <name>
-_tested_names = set(
+_tested_names = {
     _basename_no_ext(t)[len("test_") :]
     for t in combinator_tests
     if _basename_no_ext(t).startswith("test_")
-)
+}
 
 # Also detect combinator tests registered inside tests/t_parser.c
 _tparser_path = os.path.join(tests_dir, "t_parser.c")
@@ -156,7 +155,7 @@ if os.path.exists(_tparser_path):
         }
         for n in list(_names_from_tp):
             _tested_names.add(_alias_map.get(n, n))
-    except Exception:
+    except (OSError, ValueError):
         pass
 
 static_library_name = "hammer"
@@ -218,6 +217,7 @@ if GetOption("with_tests"):
         **ctest_program_kwargs,
     )
     _libdir = libhammer_shared[0].dir.abspath if libhammer_shared is not None else ""
+    _libpath_env = env["HAMMER_LIBRARY_PATH_ENV"]
     _exe = ctestexec[0].path
     reporter = os.path.join(Dir("#").abspath, "tools", "test_reporter.py")
     core_results_dir = os.path.join(Dir("#").abspath, env.subst("$BUILD_BASE"), "src")
@@ -226,8 +226,7 @@ if GetOption("with_tests"):
         "core_tests.stamp",
         [ctestexec],
         [
-            "LD_LIBRARY_PATH=%s %s %s --binding Core --results-file %s -- %s"
-            % (_libdir, sys.executable, reporter, core_results_file, _exe),
+            f"{_libpath_env}={_libdir} {sys.executable} {reporter} --binding Core --results-file {core_results_file} -- {_exe}",
             "touch $TARGET",
         ],
     )
@@ -243,4 +242,4 @@ Export("libhammer_static libhammer_shared")
 for b in env.get("bindings", []):
     if b == "none":
         continue
-    env.SConscript(["bindings/%s/SConscript" % b])
+    env.SConscript([f"bindings/{b}/SConscript"])

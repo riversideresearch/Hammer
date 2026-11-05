@@ -84,7 +84,6 @@ SRCS = \
     $(HAMMER_SRC)/backends/packrat.c \
     $(HAMMER_SRC)/backends/params.c \
     $(HAMMER_SRC)/backends/missing.c \
-    $(HAMMER_SRC)/backends/regex_stub.c \
     $(HAMMER_SRC)/parsers/and.c \
     $(HAMMER_SRC)/parsers/action.c \
     $(HAMMER_SRC)/parsers/attr_bool.c \
@@ -121,13 +120,18 @@ SRCS = \
     $(HAMMER_SRC)/parsers/xor.c
 
 ifneq ($(STATIC_BUILD),0)
-SRCS += $(HAMMER_SRC)/static_alloc.c
+SRCS += \
+	$(HAMMER_SRC)/backends/regex_stub.c \
+	$(HAMMER_SRC)/static_alloc.c
+else
+SRCS += $(HAMMER_SRC)/backends/regex.c
 endif
 
 # Keep the RTEMS test archive in sync with the native suite, including new
 # parser and backend tests, without maintaining a second handwritten list.
 RTEMS_HOST_ONLY_TEST_SRCS = \
 	$(TEST_DIR)/backends/test_trace.c \
+	$(TEST_DIR)/installed_consumer_smoke.c \
 	$(TEST_DIR)/test_static_alloc.c
 TEST_SRCS := $(filter-out $(RTEMS_HOST_ONLY_TEST_SRCS), \
 	$(sort $(shell find $(TEST_DIR) -type f -name '*.c' -print)))

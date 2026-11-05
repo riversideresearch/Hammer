@@ -38,7 +38,11 @@ static HParserBackendVTable *backends[PB_MAX + 1] = {
     &h__missing_backend_vtable, /* For PB_INVALID */
     &h__packrat_backend_vtable, /* For PB_PACKRAT */
 #ifdef RTEMS_BUILD
-    &h__missing_backend_vtable, /* PB_REGULAR is unsupported on RTEMS */
+#ifdef STATIC_BUILD
+    &h__missing_backend_vtable, /* PB_REGULAR requires realloc */
+#else
+    &h__regex_backend_vtable, /* For PB_REGULAR */
+#endif
     &h__missing_backend_vtable, /* PB_LL is unsupported on RTEMS */
     &h__missing_backend_vtable, /* PB_LALR is unsupported on RTEMS */
     &h__missing_backend_vtable  /* PB_GLR is unsupported on RTEMS */
@@ -572,12 +576,30 @@ HParserBackendWithParams *h_get_backend_with_params_by_name(const char *name_wit
     return result;
 }
 
+static size_t h_byte_length_to_bits(size_t length) {
+    return length > SIZE_MAX / 8 ? SIZE_MAX : length * 8;
+}
+
+static size_t h_stream_end_bits(size_t pos, size_t length) {
+    if (pos > SIZE_MAX - length || pos + length > SIZE_MAX / 8)
+        return SIZE_MAX;
+    return (pos + length) * 8;
+}
+
+static size_t h_bit_length_to_bytes(size_t bit_length) {
+    return bit_length / 8 + (bit_length % 8 != 0 ? 1 : 0);
+}
+
 static HParseResult *h_parse_with_trace(HAllocator *mm__, const HParser *parser,
-                                        const uint8_t *input, size_t length, HTraceState *trace) {
+                                        const uint8_t *input, size_t length, size_t bit_length,
+                                        HTraceState *trace) {
     // Set up a parse state...
     HInputStream input_stream = {.pos = 0,
                                  .index = 0,
                                  .bit_offset = 0,
+                                 .margin = 0,
+                                 .bit_limit = bit_length,
+                                 .bit_limit_set = true,
                                  .overrun = 0,
                                  .endianness = DEFAULT_ENDIANNESS,
                                  .length = length,
@@ -593,7 +615,19 @@ HParseResult *h_parse(const HParser *parser, const uint8_t *input, size_t length
 }
 HParseResult *h_parse__m(HAllocator *mm__, const HParser *parser, const uint8_t *input,
                          size_t length) {
-    return h_parse_with_trace(mm__, parser, input, length, NULL);
+    return h_parse_with_trace(mm__, parser, input, length, h_byte_length_to_bits(length), NULL);
+}
+
+HParseResult *h_parse_bits(const HParser *parser, const uint8_t *input, size_t bit_length) {
+    return h_parse_bits__m(h_default_parse_allocator, parser, input, bit_length);
+}
+
+HParseResult *h_parse_bits__m(HAllocator *mm__, const HParser *parser, const uint8_t *input,
+                              size_t bit_length) {
+    if (!parser || (parser->backend != PB_PACKRAT))
+        return NULL;
+    return h_parse_with_trace(mm__, parser, input, h_bit_length_to_bytes(bit_length), bit_length,
+                              NULL);
 }
 
 // Twin of h_parse() that attaches an independent diagnostic collector to this
@@ -616,7 +650,38 @@ HParseResult *h_parse_debug__m(HAllocator *mm__, const HParser *parser, const ui
     if (diagnostic)
         *diagnostic = NULL;
     HTraceState *trace = h_trace_state_new(dumpExecutionTrace);
-    HParseResult *res = h_parse_with_trace(mm__, parser, input, length, trace);
+    HParseResult *res =
+        h_parse_with_trace(mm__, parser, input, length, h_byte_length_to_bits(length), trace);
+    HParseDiagnostic *collected = NULL;
+    if (diagnostic || h_trace_should_print_summary(trace))
+        TRACE_GET_DIAGNOSTIC(trace, &collected);
+    if (diagnostic)
+        *diagnostic = collected;
+    if (h_trace_should_print_summary(trace) && collected)
+        h_parse_diagnostic_fprint_with_input(stderr, collected, input, length);
+    if (!diagnostic)
+        h_parse_diagnostic_free(collected);
+    h_trace_state_free(trace);
+    return res;
+}
+
+HParseResult *h_parse_bits_debug(const HParser *parser, const uint8_t *input, size_t bit_length,
+                                 HParseDiagnostic **diagnostic, bool dumpExecutionTrace) {
+    return h_parse_bits_debug__m(h_default_parse_allocator, parser, input, bit_length, diagnostic,
+                                 dumpExecutionTrace);
+}
+
+HParseResult *h_parse_bits_debug__m(HAllocator *mm__, const HParser *parser, const uint8_t *input,
+                                    size_t bit_length, HParseDiagnostic **diagnostic,
+                                    bool dumpExecutionTrace) {
+    if (diagnostic)
+        *diagnostic = NULL;
+    if (!parser || (parser->backend != PB_PACKRAT))
+        return NULL;
+
+    size_t length = h_bit_length_to_bytes(bit_length);
+    HTraceState *trace = h_trace_state_new(dumpExecutionTrace);
+    HParseResult *res = h_parse_with_trace(mm__, parser, input, length, bit_length, trace);
     HParseDiagnostic *collected = NULL;
     if (diagnostic || h_trace_should_print_summary(trace))
         TRACE_GET_DIAGNOSTIC(trace, &collected);
@@ -1031,6 +1096,9 @@ bool h_parse_chunk(HSuspendedParser *s, const uint8_t *input, size_t length) {
     HInputStream input_stream = {.pos = s->pos,
                                  .index = 0,
                                  .bit_offset = 0,
+                                 .margin = 0,
+                                 .bit_limit = h_stream_end_bits(s->pos, length),
+                                 .bit_limit_set = true,
                                  .overrun = 0,
                                  .endianness = s->endianness,
                                  .length = length,
@@ -1057,6 +1125,9 @@ HParseResult *h_parse_finish(HSuspendedParser *s) {
         HInputStream empty = {.pos = s->pos,
                               .index = 0,
                               .bit_offset = 0,
+                              .margin = 0,
+                              .bit_limit = h_stream_end_bits(s->pos, 0),
+                              .bit_limit_set = true,
                               .overrun = 0,
                               .endianness = s->endianness,
                               .length = 0,
