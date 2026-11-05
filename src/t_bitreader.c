@@ -7,7 +7,10 @@
 #include <stdint.h>
 
 #define MK_INPUT_STREAM(buf, len, endianness_)                                                     \
-    {.input = (uint8_t *)buf, .length = len, .index = 0, .bit_offset = 0, .endianness = endianness_}
+    {                                                                                              \
+        .input = (uint8_t *)buf, .length = len, .index = 0, .bit_offset = 0,                       \
+        .endianness = endianness_                                                                  \
+    }
 
 static void test_bitreader_ints(void) {
     HInputStream is =
