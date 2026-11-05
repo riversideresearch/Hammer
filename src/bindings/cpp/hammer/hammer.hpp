@@ -233,7 +233,7 @@ static inline Parser Bind(Parser p, HContinuation k, void *env) {
 static inline Parser Bind(Parser p, HContinuation k) { return Parser(h_bind(p.parser, k, NULL)); }
 
 static inline Parser Skip(size_t n) { return Parser(h_skip(n)); }
-static inline Parser Seek(ssize_t offset, int whence) { return Parser(h_seek(offset, whence)); }
+static inline Parser Seek(int64_t offset, int whence) { return Parser(h_seek(offset, whence)); }
 static inline Parser Tell() { return Parser(h_tell()); }
 } // namespace hammer
 

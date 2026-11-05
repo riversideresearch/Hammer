@@ -513,6 +513,17 @@ HParseResult *h_parse__m(HAllocator *mm__, const HParser *parser, const uint8_t 
                          size_t length);
 
 /**
+ * @brief Parse an input whose valid length is specified exactly in bits.
+ *
+ * The input buffer must contain at least ceil(bit_length / 8) bytes. Any
+ * unused bits in the final byte are ignored.
+ * @note Packrat supported only
+ */
+HParseResult *h_parse_bits(const HParser *parser, const uint8_t *input, size_t bit_length);
+HParseResult *h_parse_bits__m(HAllocator *mm__, const HParser *parser, const uint8_t *input,
+                              size_t bit_length);
+
+/**
  * @brief Like h_parse(), but collects a parse-scoped furthest-position
  * diagnostic. Parsing behavior and return value are identical to h_parse().
  *
@@ -539,6 +550,11 @@ HParseResult *h_parse_debug(const HParser *parser, const uint8_t *input, size_t 
                             HParseDiagnostic **diagnostic, bool showDiagnostic);
 HParseResult *h_parse_debug__m(HAllocator *allocator, const HParser *parser, const uint8_t *input,
                                size_t length, HParseDiagnostic **diagnostic, bool showDiagnostic);
+HParseResult *h_parse_bits_debug(const HParser *parser, const uint8_t *input, size_t bit_length,
+                                 HParseDiagnostic **diagnostic, bool showDiagnostic);
+HParseResult *h_parse_bits_debug__m(HAllocator *allocator, const HParser *parser,
+                                    const uint8_t *input, size_t bit_length,
+                                    HParseDiagnostic **diagnostic, bool showDiagnostic);
 const HParseError *h_parse_diagnostic_error(const HParseDiagnostic *diagnostic);
 size_t h_parse_diagnostic_expected_count(const HParseDiagnostic *diagnostic);
 bool h_parse_diagnostic_expected(const HParseDiagnostic *diagnostic, size_t index,
@@ -980,6 +996,8 @@ HParser *h_drop_from___ma(HAllocator *mm__, void *args[]);
  *
  * @param p_array Array of parsers
  * @return Result token type: The type of the first successful parser's result.
+ * @note Packrat is the only backend with ordered choice, other backends will not apply each parser
+ * in order.
  */
 HParser *h_choice(HParser *p, ...) __attribute__((sentinel));
 HParser *h_choice__m(HAllocator *mm__, HParser *p, ...) __attribute__((sentinel));
@@ -1366,8 +1384,8 @@ HParser *h_skip__m(HAllocator *mm__, size_t n);
  * @param whence SEEK_SET, SEEK_CUR, or SEEK_END
  * @return Result: TT_UINT. The new input position.
  */
-HParser *h_seek(ssize_t offset, int whence);
-HParser *h_seek__m(HAllocator *mm__, ssize_t offset, int whence);
+HParser *h_seek(int64_t offset, int whence);
+HParser *h_seek__m(HAllocator *mm__, int64_t offset, int whence);
 
 /**
  * @brief Report the current position in bits. Consumes no input.
