@@ -712,7 +712,8 @@ HParser *h_bytes__m(HAllocator *mm__, size_t len);
  * requires byte alignment and a final input chunk; it suspends in a streaming
  * parse until the final chunk is available.
  *
- * @return Result token type: TT_BYTES, referencing the caller's input buffer
+ * @return Result token type: TT_BYTES. Direct parses reference the caller's
+ * input buffer; streaming parses retain a copy in the parse result.
  */
 HParser *h_take_rest(void);
 HParser *h_take_rest__m(HAllocator *mm__);

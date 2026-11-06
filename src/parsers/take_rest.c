@@ -2,15 +2,17 @@
 #include "parser_internal.h"
 
 /*
- * Capture the remaining final, byte-aligned input as one zero-copy token.
+ * Capture the remaining final, byte-aligned input as one token.
  *
  * This is a terminal parser: it cannot decide how many bytes
  * belong to a non-final streaming chunk, and it cannot represent a partial
- * byte as HBytes without copying or changing its meaning.
+ * byte as HBytes without copying or changing its meaning. Direct parses
+ * borrow the caller's buffer; Packrat's temporary streaming buffer is copied.
  */
 static HParseResult *parse_take_rest(void *env, HParseState *state) {
     HInputStream *stream = &state->input_stream;
     HParsedToken *result;
+    const uint8_t *token;
     size_t length;
 
     (void)env;
@@ -20,13 +22,19 @@ static HParseResult *parse_take_rest(void *env, HParseState *state) {
         return NULL;
     }
 
-    if (stream->bit_offset != 0 || stream->margin != 0)
+    if (stream->bit_offset != 0 || stream->margin != 0 || h_input_stream_length(stream) % 8 != 0)
         return NULL;
 
     length = stream->length - stream->index;
+    token = length > 0 ? stream->input + stream->index : NULL;
+    if (stream->input_is_temporary && length > 0) {
+        uint8_t *copy = a_new(uint8_t, length);
+        memcpy(copy, token, length);
+        token = copy;
+    }
     result = a_new(HParsedToken, 1);
     result->token_type = TT_BYTES;
-    result->token_data.bytes.token = stream->input + stream->index;
+    result->token_data.bytes.token = token;
     result->token_data.bytes.len = length;
     result->index = stream->index;
     result->bit_length = 0;
