@@ -569,6 +569,8 @@ bool h_packrat_parse_chunk(HSuspendedParser *s, HInputStream *input) {
     if (input->length > 0)
         memcpy((void *)((uint8_t *)cat->input + cat->length), input->input, input->length);
     cat->length = newlen;
+    cat->bit_limit = h_input_stream_physical_length(cat);
+    cat->bit_limit_set = true;
     cat->last_chunk = input->last_chunk;
 
     // reset our input stream and call the parser on it (again)

@@ -504,6 +504,8 @@ static void test_stringmap_get_lookahead(void) {
     lookahead.length = 1;
     lookahead.bit_offset = 0;
     lookahead.margin = 0;
+    lookahead.bit_limit = 0;
+    lookahead.bit_limit_set = false;
     lookahead.endianness = 0;
     lookahead.overrun = false;
     lookahead.last_chunk = true;
@@ -523,6 +525,8 @@ static void test_stringmap_get_lookahead(void) {
     lookahead2.length = 0;
     lookahead2.bit_offset = 0;
     lookahead2.margin = 0;
+    lookahead2.bit_limit = 0;
+    lookahead2.bit_limit_set = false;
     lookahead2.endianness = 0;
     lookahead2.overrun = true;
     lookahead2.last_chunk = true;
@@ -541,6 +545,8 @@ static void test_stringmap_get_lookahead(void) {
     lookahead3.length = 0;
     lookahead3.bit_offset = 0;
     lookahead3.margin = 0;
+    lookahead3.bit_limit = 0;
+    lookahead3.bit_limit_set = false;
     lookahead3.endianness = 0;
     lookahead3.overrun = true;
     lookahead3.last_chunk = false;
@@ -557,6 +563,8 @@ static void test_stringmap_get_lookahead(void) {
     lookahead4.length = 1;
     lookahead4.bit_offset = 0;
     lookahead4.margin = 0;
+    lookahead4.bit_limit = 0;
+    lookahead4.bit_limit_set = false;
     lookahead4.endianness = 0;
     lookahead4.overrun = false;
     lookahead4.last_chunk = true;

@@ -91,6 +91,13 @@ typedef struct HInputStream_ {
     uint8_t bit_offset;
     uint8_t margin; // The number of bits on the end that is being read
                     // towards that should be ignored.
+    /*
+     * The logical end of the stream, expressed as an absolute bit position.
+     * bit_limit_set distinguishes an exact zero-bit limit from older
+     * HInputStream aggregate initializers, which use the physical byte length.
+     */
+    size_t bit_limit;
+    bool bit_limit_set;
     char endianness;
     bool overrun;
     bool last_chunk;
@@ -388,15 +395,26 @@ char *h_get_short_name_with_no_params(HAllocator *mm__, HParserBackend be, void 
 int64_t h_read_bits(HInputStream *state, size_t count, char signed_p);
 void h_skip_bits(HInputStream *state, size_t count);
 void h_seek_bits(HInputStream *state, size_t pos);
+static inline size_t h_input_stream_physical_length(const HInputStream *state) {
+    if (state->pos > SIZE_MAX - state->length || state->pos + state->length > SIZE_MAX / 8)
+        return SIZE_MAX;
+    return (state->pos + state->length) * 8;
+}
 static inline size_t h_input_stream_pos(HInputStream *state) {
     assert(state->pos <= SIZE_MAX - state->index);
-    assert(state->pos + state->index < SIZE_MAX / 8);
-    return (state->pos + state->index) * 8 + (size_t)(state->bit_offset) + (size_t)(state->margin);
+    size_t byte_pos = state->pos + state->index;
+    if (byte_pos > SIZE_MAX / 8)
+        return SIZE_MAX;
+    size_t bit_pos = byte_pos * 8;
+    if (state->bit_offset > SIZE_MAX - bit_pos)
+        return SIZE_MAX;
+    bit_pos += state->bit_offset;
+    if (state->margin > SIZE_MAX - bit_pos)
+        return SIZE_MAX;
+    return bit_pos + state->margin;
 }
 static inline size_t h_input_stream_length(HInputStream *state) {
-    assert(state->pos <= SIZE_MAX - state->length);
-    assert(state->pos + state->length <= SIZE_MAX / 8);
-    return (state->pos + state->length) * 8;
+    return state->bit_limit_set ? state->bit_limit : h_input_stream_physical_length(state);
 }
 // need to decide if we want to make this public.
 HParseResult *h_do_parse(const HParser *parser, HParseState *state);

@@ -29,13 +29,16 @@ jobs:
       - name: Install clang-format
         if: matrix.check == 'clang-format'
         run: |
-          sudo apt-get update
-          sudo apt-get install -y clang-format
+          python3 -m pip install 'clang-format==23.1.5'
+          clang-format --version
 
       - name: Check formatting
         if: matrix.check == 'clang-format'
         run: |
-          find src examples -name '*.c' -o -name '*.h' | xargs clang-format --dry-run --Werror
+          find . \
+            -type d -name build -prune -o \
+            -type f \( -name '*.c' -o -name '*.h' -o -name '*.cc' -o -name '*.cpp' -o -name '*.hpp' \) \
+            -exec clang-format --dry-run --Werror {} +
 
       - name: Install ruff
         if: matrix.check == 'ruff'

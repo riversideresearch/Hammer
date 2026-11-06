@@ -110,6 +110,7 @@ All Hammer functions are exposed as static methods of the `hammer` class in the 
 | `hammer.h_not_in(byte[])`                 | Match any byte not in the given charset               |
 | `hammer.h_sequence__a(HParser[])`         | Match each parser in order; result is `TT_SEQUENCE`   |
 | `hammer.h_choice__a(HParser[])`           | Try each parser in order; return first success        |
+| `hammer.h_dispatch(d, OpcodeMap[], def)`  | Select a parser by an integer discriminator           |
 | `hammer.h_many(p)`                        | Match `p` zero or more times; result is `TT_SEQUENCE` |
 | `hammer.h_many1(p)`                       | Match `p` one or more times; result is `TT_SEQUENCE`  |
 | `hammer.h_repeat_n(p, n)`                 | Match `p` exactly `n` times; result is `TT_SEQUENCE`  |
@@ -133,6 +134,23 @@ All Hammer functions are exposed as static methods of the `hammer` class in the 
 | `hammer.h_put_value(p, name)`             | Parse `p` and store the result under `name`           |
 | `hammer.h_get_value(name)`                | Retrieve a previously stored value by `name`          |
 | `hammer.h_free_value(name)`               | Retrieve and free a previously stored value by `name` |
+
+To use `h_dispatch`, create an `OpcodeMap` for each opcode and body parser:
+
+```java
+OpcodeMap text = new OpcodeMap();
+text.setOpcode(1);
+text.setParser(hammer.h_ch((short)'t'));
+
+HParser message = hammer.h_dispatch(
+    hammer.h_uint8(), new OpcodeMap[]{text}, hammer.h_ch((short)'?'));
+```
+
+Dispatch parsers are valid only with the Packrat backend. The entries are copied when the parser
+is created. If entries have the same opcode, the first entry is selected. A null parser is a valid
+entry value; when its opcode is selected, parsing fails rather than using the default parser. An
+opcode is a C `uint32_t`; `setOpcode(long)` uses C's unsigned conversion, so `-1` represents
+`0xffffffff`.
 
 ### Integer Parsers
 
