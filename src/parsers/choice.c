@@ -10,7 +10,7 @@
 #else
 #if defined(_MSC_VER)
 #include <malloc.h> // for _alloca
-#define STACK_VLA(type, name, size) type *name = _alloca(size)
+#define STACK_VLA(type, name, size) type *name = _alloca(sizeof(type) * (size))
 #else
 #error "Missing VLA implementation for this compiler"
 #endif

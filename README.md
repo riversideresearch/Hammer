@@ -4,12 +4,19 @@ Hammer is a parsing library. Like many modern parsing libraries, it provides a p
 
 Hammer is written in C and provides packrat, regex/RVM, LL(k), LALR(k), and GLR parsing backends.
 
+## Portability
+
+Hammer has a hosted-C99 core with build-selected POSIX, portable, and Windows
+providers. See [PORTABILITY.md](PORTABILITY.md) for provider selection and
+platform restrictions.
+
 ## Features
 
 - **Bit-oriented** -- grammars can include single-bit flags or multi-bit constructs that span character boundaries with no hassle
-- **Thread-safe, reentrant** -- each parse uses independent parse-local state. Parser graph construction is thread-local, while graph ownership and destruction tracking are synchronized across threads.
+- **Thread-safe, reentrant on threaded providers** -- each parse uses independent parse-local state. POSIX and Windows provide thread-local parser graph construction and synchronized graph ownership/destruction. The portable provider supports one serial graph construction context.
 - **Parsing backends** -- Packrat for general parser-combinator grammars, regex/RVM for regular grammars, plus LL(k), LALR(k), and GLR for context-free grammars
-- Windows and macOS installation is possible but not officially supported
+- Windows supports the core static library; shared libraries, examples, bindings,
+  and pkg-config metadata remain unavailable there.
 
 ## Installing
 
@@ -24,8 +31,8 @@ sudo apt install gcc scons
 
 ### macOS native C library
 
-macOS is not officially supported, but the native C library build, test, and
-install workflow is validated with Apple's Command Line Tools and Homebrew:
+macOS uses the POSIX provider. Its native C library build, test, and install
+workflow is validated with Apple's Command Line Tools and Homebrew:
 
 ```bash
 xcode-select --install

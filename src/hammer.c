@@ -22,13 +22,13 @@
 #include "glue.h"
 #include "internal.h"
 #include "parsers/parser_internal.h"
+#include "platform_provider.h"
 #include "trace.h"
 
 #include <assert.h>
 #include <ctype.h>
 #include <inttypes.h>
 #include <limits.h>
-#include <pthread.h>
 #include <stdarg.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -1174,26 +1174,23 @@ struct HParserGraph_ {
     bool claimed;
 };
 
-/*
- * Parser factories may be called concurrently, so graph collection is scoped
- * to the constructing thread. GCC and Clang support __thread in C99 mode.
- */
-static __thread HParserGraph *active_parser_graph;
 static HParserGraph *parser_graphs;
-static pthread_mutex_t parser_graphs_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 HParserGraph *h_parser_graph_begin(void) {
+    HParserGraph **active_graph = (HParserGraph **)h_platform_current_graph_slot();
     HParserGraph *graph = calloc(1, sizeof(*graph));
-    if (graph == NULL)
+    if (graph == NULL || active_graph == NULL) {
+        free(graph);
         return NULL;
+    }
 
-    graph->previous = active_parser_graph;
-    active_parser_graph = graph;
+    graph->previous = *active_graph;
+    *active_graph = graph;
 
-    pthread_mutex_lock(&parser_graphs_mutex);
+    h_platform_graph_lock();
     graph->next = parser_graphs;
     parser_graphs = graph;
-    pthread_mutex_unlock(&parser_graphs_mutex);
+    h_platform_graph_unlock();
     return graph;
 }
 
@@ -1201,7 +1198,11 @@ void h_parser_graph_end(HParserGraph *graph) {
     if (graph == NULL)
         return;
 
-    HParserGraph **link = &active_parser_graph;
+    HParserGraph **active_graph = (HParserGraph **)h_platform_current_graph_slot();
+    if (active_graph == NULL)
+        return;
+
+    HParserGraph **link = active_graph;
     while (*link && *link != graph)
         link = &(*link)->previous;
 
@@ -1212,10 +1213,17 @@ void h_parser_graph_end(HParserGraph *graph) {
 }
 
 void h_parser_graph_track(HParser *parser) {
-    HParserGraph *graph = active_parser_graph;
+    HParserGraph **active_graph = (HParserGraph **)h_platform_current_graph_slot();
+    HParserGraph *graph = active_graph ? *active_graph : NULL;
     if (graph == NULL || parser == NULL)
         return;
 
+    /*
+     * A different thread may be freeing a completed graph and traversing the
+     * registry to untrack its nodes. Keep this graph's growing array stable
+     * while that traversal is in progress.
+     */
+    h_platform_graph_lock();
     if (graph->count == graph->capacity) {
         const size_t capacity = graph->capacity == 0 ? 16 : graph->capacity * 2;
 
@@ -1234,26 +1242,27 @@ void h_parser_graph_track(HParser *parser) {
     }
 
     graph->parsers[graph->count++] = parser;
+    h_platform_graph_unlock();
 }
 
 static void h_parser_graph_untrack(HParser *parser) {
-    pthread_mutex_lock(&parser_graphs_mutex);
+    h_platform_graph_lock();
     for (HParserGraph *graph = parser_graphs; graph != NULL; graph = graph->next) {
         for (size_t i = 0; i < graph->count; ++i) {
             if (graph->parsers[i] == parser) {
                 graph->parsers[i] = NULL;
-                pthread_mutex_unlock(&parser_graphs_mutex);
+                h_platform_graph_unlock();
                 return;
             }
         }
     }
-    pthread_mutex_unlock(&parser_graphs_mutex);
+    h_platform_graph_unlock();
 }
 
 static bool h_parser_graph_claim(HParserGraph *graph) {
     bool claimed = false;
 
-    pthread_mutex_lock(&parser_graphs_mutex);
+    h_platform_graph_lock();
     HParserGraph **link = &parser_graphs;
     while (*link != NULL && *link != graph)
         link = &(*link)->next;
@@ -1266,13 +1275,13 @@ static bool h_parser_graph_claim(HParserGraph *graph) {
         graph->claimed = true;
         claimed = true;
     }
-    pthread_mutex_unlock(&parser_graphs_mutex);
+    h_platform_graph_unlock();
 
     return claimed;
 }
 
 static void h_parser_graph_remove(HParserGraph *graph) {
-    pthread_mutex_lock(&parser_graphs_mutex);
+    h_platform_graph_lock();
     HParserGraph **link = &parser_graphs;
     while (*link != NULL && *link != graph)
         link = &(*link)->next;
@@ -1280,7 +1289,7 @@ static void h_parser_graph_remove(HParserGraph *graph) {
         *link = graph->next;
         graph->next = NULL;
     }
-    pthread_mutex_unlock(&parser_graphs_mutex);
+    h_platform_graph_unlock();
 }
 
 void h_parser_graph_free(HParserGraph *graph) {
@@ -1291,9 +1300,23 @@ void h_parser_graph_free(HParserGraph *graph) {
     if (!h_parser_graph_claim(graph))
         return;
 
-    /* Do not hold the registry mutex while running parser or allocator code. */
-    while (graph->count > 0) {
-        HParser *parser = graph->parsers[--graph->count];
+    /*
+     * Do not hold the registry mutex while running parser or allocator code,
+     * but serialize access to graph->count and graph->parsers. A different
+     * thread may be completing a parser free and untracking its node.
+     */
+    for (;;) {
+        HParser *parser;
+
+        h_platform_graph_lock();
+        if (graph->count == 0) {
+            h_platform_graph_unlock();
+            break;
+        }
+        parser = graph->parsers[--graph->count];
+        graph->parsers[graph->count] = NULL;
+        h_platform_graph_unlock();
+
         if (parser != NULL)
             h_parser_free__m(parser->owner_mm__, parser);
     }
