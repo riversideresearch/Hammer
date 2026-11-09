@@ -55,6 +55,9 @@ else:
 envvars = {"PATH": os.environ["PATH"]}
 if "PKG_CONFIG_PATH" in os.environ:
     envvars["PKG_CONFIG_PATH"] = os.environ["PKG_CONFIG_PATH"]
+for tempvar in ("TEMP", "TMP"):
+    if tempvar in os.environ:
+        envvars[tempvar] = os.environ[tempvar]
 
 env = Environment(ENV=envvars, variables=vars, tools=tools, toolpath=["tools"])
 env["HAMMER_LIBRARY_PATH_ENV"] = "DYLD_LIBRARY_PATH" if sys.platform == "darwin" else "LD_LIBRARY_PATH"
