@@ -278,6 +278,7 @@ HParseResult *grow(HParserCacheKey *k, HParseState *state, HRecursionHead *head,
                 return cached->value.right;
             } else {
                 h_platform_errx(1, "impossible match");
+                return NULL;
             }
         }
     } else {
@@ -310,6 +311,7 @@ HParseResult *lr_answer(HParserCacheKey *k, HParseState *state, HLeftRec *growab
         }
     } else {
         h_platform_errx(1, "lrAnswer with no head");
+        return NULL;
     }
 }
 
