@@ -4,16 +4,14 @@
 
 #include <stdarg.h>
 
-#if defined(__STDC_VERSION__) &&                                                                   \
-    ((__STDC_VERSION__ >= 201112L && !defined(__STDC_NO_VLA__)) || (__STDC_VERSION__ >= 199901L))
-#define STACK_VLA(type, name, size) type name[size]
-#else
 #if defined(_MSC_VER)
 #include <malloc.h> // for _alloca
 #define STACK_VLA(type, name, size) type *name = _alloca(sizeof(type) * (size))
+#elif defined(__STDC_VERSION__) &&                                                                 \
+    ((__STDC_VERSION__ >= 201112L && !defined(__STDC_NO_VLA__)) || (__STDC_VERSION__ >= 199901L))
+#define STACK_VLA(type, name, size) type name[size]
 #else
 #error "Missing VLA implementation for this compiler"
-#endif
 #endif
 
 static HParseResult *parse_choice(void *env, HParseState *state) {
