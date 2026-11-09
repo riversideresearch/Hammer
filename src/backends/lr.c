@@ -50,8 +50,8 @@ static inline HHashValue hash_lr_item(const void *p) {
     HHashValue hash = 0;
 
     hash += h_hash_symbol(x->lhs);
-    for (HCFChoice **p = x->rhs; *p; p++)
-        hash += h_hash_symbol(*p);
+    for (HCFChoice **rhs = x->rhs; *rhs; rhs++)
+        hash += h_hash_symbol(*rhs);
     hash += (HHashValue)x->mark;
 
     return hash;
@@ -761,7 +761,7 @@ void h_pprint_lrdfa(FILE *f, const HCFGrammar *g, const HLRDFA *dfa, unsigned in
         for (HSlistNode *x = dfa->transitions->head; x; x = x->next) {
             const HLRTransition *t = x->elem;
             if (t->from == i) {
-                for (unsigned int i = 0; i < indent2 - 2; i++)
+                for (unsigned int padding = 0; padding < indent2 - 2; padding++)
                     fputc(' ', f);
                 pprint_transition(f, g, t);
                 fputc('\n', f);
