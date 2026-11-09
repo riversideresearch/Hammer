@@ -85,6 +85,11 @@ typedef struct HTraceState_ HTraceState;
 typedef struct HInputStream_ {
     // This should be considered to be a really big value type.
     const uint8_t *input;
+    /*
+     * The Packrat streaming backend owns and releases its concatenated buffer
+     * after parsing. Parsers that return borrowed input must copy from it.
+     */
+    bool input_is_temporary;
     size_t pos; // position of this chunk in a multi-chunk stream
     size_t index;
     size_t length;

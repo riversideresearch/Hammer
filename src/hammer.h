@@ -704,6 +704,20 @@ HParser *h_bits__m(HAllocator *mm__, size_t len, bool sign);
 HParser *h_bytes(size_t len);
 HParser *h_bytes__m(HAllocator *mm__, size_t len);
 
+/**
+ * @brief Captures all remaining final input as a zero-copy byte token.
+ *
+ * The parser consumes the complete remaining input and therefore makes a
+ * following h_end_p() redundant. It accepts an empty input. The parser
+ * requires byte alignment and a final input chunk; it suspends in a streaming
+ * parse until the final chunk is available.
+ *
+ * @return Result token type: TT_BYTES. Direct parses reference the caller's
+ * input buffer; streaming parses retain a copy in the parse result.
+ */
+HParser *h_take_rest(void);
+HParser *h_take_rest__m(HAllocator *mm__);
+
 /** @} */
 
 /**

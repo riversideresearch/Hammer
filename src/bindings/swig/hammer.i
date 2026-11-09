@@ -997,6 +997,8 @@ def float_range(p, f1, f2):
     return _h_float_range(p, f1, f2)
 def token(string):
     return _h_token(string)
+def take_rest():
+    return _h_take_rest()
 def whitespace(p):
     return _h_whitespace(p)
 def xor(p1, p2):
@@ -1130,7 +1132,17 @@ def free_value(name): return _h_free_value(name)
 
 %extend HParser_ {
     struct HParseResult_* parse(const uint8_t* input, size_t length) {
-        return h_parse($self, input, length);
+        /*
+         * JNI releases the byte-array storage after a native call. Parse
+         * through the streaming API so h_take_rest copies captured input into
+         * the result arena before that happens.
+         */
+        HSuspendedParser *s = h_parse_start($self);
+        if (s == NULL)
+            return h_parse($self, input, length);
+        if (length > 0)
+            h_parse_chunk(s, input, length);
+        return h_parse_finish(s);
     }
     struct HParseResult_* parse_debug(const uint8_t* input, size_t length,
                                       HParseDiagnostic** diagnostic, bool show) {
@@ -1179,7 +1191,17 @@ def free_value(name): return _h_free_value(name)
 
 %extend HParser_ {
     struct HParseResult_* parse(const uint8_t* input, size_t length) {
-        return h_parse($self, input, length);
+        /*
+         * Go input must not be retained after a cgo call. Parse through the
+         * streaming API so h_take_rest copies captured input into the result
+         * arena.
+         */
+        HSuspendedParser *s = h_parse_start($self);
+        if (s == NULL)
+            return h_parse($self, input, length);
+        if (length > 0)
+            h_parse_chunk(s, input, length);
+        return h_parse_finish(s);
     }
     bool compile(HParserBackend backend) {
         return h_compile($self, backend, NULL) == 0;

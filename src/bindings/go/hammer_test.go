@@ -18,9 +18,9 @@ func parseBytes(parser h.HParser, input []byte) h.HParseResult {
 	if len(input) == 0 {
 		// H_parse needs at least a valid pointer; pass a dummy one.
 		dummy := byte(0)
-		return h.H_parse(parser, &dummy, 0)
+		return parser.Parse(&dummy, 0)
 	}
-	return h.H_parse(parser, &input[0], int64(len(input)))
+	return parser.Parse(&input[0], int64(len(input)))
 }
 
 // astNil returns true when the parse failed (AST pointer is nil / zero).
@@ -596,6 +596,34 @@ func TestNotInFailure(t *testing.T) {
 	parser := h.H_not_in(&charset[0], int64(len(charset)))
 	if !astNil(parseBytes(parser, []byte{'a'})) {
 		t.Fatal("expected failure")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// TestTakeRest
+// ---------------------------------------------------------------------------
+
+func TestTakeRest(t *testing.T) {
+	parser := h.H_take_rest()
+
+	r := parseBytes(parser, []byte("remaining input"))
+	if astNil(r) {
+		t.Fatal("expected success")
+	}
+	ast := r.GetAst()
+	if int(ast.GetToken_type()) != int(TT_BYTES) {
+		t.Fatal("expected TT_BYTES token")
+	}
+	if got := getBytes(ast); !bytes.Equal(got, []byte("remaining input")) {
+		t.Errorf("got %q, want %q", got, "remaining input")
+	}
+
+	empty := parseBytes(parser, []byte{})
+	if astNil(empty) {
+		t.Fatal("expected empty input to succeed")
+	}
+	if got := getBytes(empty.GetAst()); len(got) != 0 {
+		t.Errorf("got %q, want empty bytes", got)
 	}
 }
 

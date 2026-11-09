@@ -41,8 +41,9 @@ static HParserCacheValue *cached_lr(HParseState *state, HLeftRec *lr) {
 }
 
 static bool input_stream_equal(const HInputStream *a, const HInputStream *b) {
-    return a->input == b->input && a->pos == b->pos && a->index == b->index &&
-           a->length == b->length && a->bit_offset == b->bit_offset && a->margin == b->margin &&
+    return a->input == b->input && a->input_is_temporary == b->input_is_temporary &&
+           a->pos == b->pos && a->index == b->index && a->length == b->length &&
+           a->bit_offset == b->bit_offset && a->margin == b->margin &&
            a->endianness == b->endianness && a->overrun == b->overrun &&
            a->last_chunk == b->last_chunk && a->trace == b->trace;
 }
@@ -58,6 +59,7 @@ static HHashValue hash_size(size_t value) {
 
 static HHashValue input_stream_hash(const HInputStream *input) {
     HHashValue hash = h_hash_ptr(input->input);
+    hash = hash_combine(hash, input->input_is_temporary);
     hash = hash_combine(hash, hash_size(input->pos));
     hash = hash_combine(hash, hash_size(input->index));
     hash = hash_combine(hash, hash_size(input->length));
@@ -539,6 +541,7 @@ bool h_packrat_parse_chunk(HSuspendedParser *s, HInputStream *input) {
             s->backend_state = NULL;
             return true;
         }
+        cat->input_is_temporary = true;
         if (input->length > 0)
             memcpy((void *)cat->input, input->input, input->length);
         s->backend_state = cat;

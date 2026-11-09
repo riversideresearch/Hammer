@@ -357,6 +357,12 @@ TEST(ParserTypes, Bytes) {
     EXPECT_TRUE(ParseFails(p, ""));
 }
 
+TEST(ParserTypes, TakeRest) {
+    Parser p = TakeRest();
+    EXPECT_TRUE(ParsesTo(p, "remaining input", "<72.65.6d.61.69.6e.69.6e.67.20.69.6e.70.75.74>"));
+    EXPECT_TRUE(ParsesTo(p, "", "<>"));
+}
+
 TEST(ParserTypes, Permutation) {
     Parser p = Permutation(Ch('a'), Ch('b'), NULL);
     EXPECT_TRUE(ParsesTo(p, "ab", "(u0x61 u0x62)"));
