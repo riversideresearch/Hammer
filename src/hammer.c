@@ -264,7 +264,7 @@ static char *h_get_string_for_backend_with_params__m(HAllocator *mm__,
         if (generic_text) {
             size_t size = strlen(generic_text) + 1;
             text = h_new(char, size);
-            strncpy(text, generic_text, size);
+            memcpy(text, generic_text, size);
         }
     }
 
@@ -313,7 +313,7 @@ static char *h_get_backend_text_with_no_params(HAllocator *mm__, HParserBackend 
         size = strlen(src) + 1;
         text = h_new(char, size);
         if (text)
-            strncpy(text, src, size);
+            memcpy(text, src, size);
     }
 
 done:
@@ -430,11 +430,7 @@ HParsedToken *act_param_with_name(const HParseResult *p, void *user_data) {
 }
 
 HParsedToken *act_backend_params(const HParseResult *p, void *user_data) {
-    HParsedToken *res = H_MAKE(backend_params_t, (void *)p->ast);
-
     backend_params_t *bp = H_ALLOC(backend_params_t);
-
-    HParsedToken **fields = h_seq_elements(p->ast);
 
     bp->len = h_seq_len(p->ast);
     bp->params = h_arena_malloc(p->arena, sizeof(backend_param_with_name_t) * bp->len);
@@ -443,8 +439,6 @@ HParsedToken *act_backend_params(const HParseResult *p, void *user_data) {
     }
 
     return H_MAKE(backend_params_t, bp);
-
-    return res;
 }
 
 static HParser *build_hparser_rule(void) {
@@ -518,8 +512,9 @@ HParserBackendWithParams *h_get_backend_with_params_by_name(const char *name_wit
                 backend_params_t *params = &be_w_params->params;
 
                 result->requested_name = h_new(char, name->len + 1);
-                memset(result->requested_name, '\0', name->len + 1);
-                strncpy(result->requested_name, (char *)name->name, name->len);
+                if (name->len > 0)
+                    memcpy(result->requested_name, name->name, name->len);
+                result->requested_name[name->len] = '\0';
 
                 result->backend = h_query_backend_by_name(result->requested_name);
 
