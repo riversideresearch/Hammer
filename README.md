@@ -6,10 +6,14 @@ Hammer is written in C and provides packrat, regex/RVM, LL(k), LALR(k), and GLR 
 
 ## Portability
 
-Hammer has a hosted-C99 core with build-selected POSIX, portable, and Windows
-providers. See [PORTABILITY.md](PORTABILITY.md) for provider selection and
-platform restrictions.
-
+Hammer has a hosted-C99 core with build-selected POSIX, portable, and Windows providers.
+| Setting | Provider |
+| --- | --- |
+| `auto` | POSIX on Unix-like systems, Windows on Windows, portable otherwise |
+| `posix` | POSIX terminal, clock, mutex, and thread-local-storage support |
+| `windows` | Windows terminal, performance-counter, synchronization, and TLS support |
+| `portable` | Hosted-C99 fallback with no OS threading dependency |
+| `custom` | An application-provided provider source |
 ## Features
 
 - **Bit-oriented** -- grammars can include single-bit flags or multi-bit constructs that span character boundaries with no hassle
