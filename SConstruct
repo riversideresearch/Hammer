@@ -392,6 +392,7 @@ def uninstall_action(target, source, env):
             "glue.h",
             "internal.h",
             "platform.h",
+            "platform_config.h",
         ]
     ] + [
         os.path.join(env["parsersincpath"], "parser_internal.h"),
