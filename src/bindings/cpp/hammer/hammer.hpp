@@ -199,6 +199,7 @@ class Indirect : public Parser {
 };
 
 static inline Parser Bytes(size_t len) { return Parser(h_bytes(len)); }
+static inline Parser TakeRest() { return Parser(h_take_rest()); }
 
 static inline Parser Permutation(Parser p, ...) {
     va_list ap;

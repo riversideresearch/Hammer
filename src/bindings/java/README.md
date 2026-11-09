@@ -108,6 +108,7 @@ All Hammer functions are exposed as static methods of the `hammer` class in the 
 | `hammer.h_ch_range((short)lo, (short)hi)` | Match any byte in `[lo, hi]`                          |
 | `hammer.h_in(byte[])`                     | Match any byte in the given charset                   |
 | `hammer.h_not_in(byte[])`                 | Match any byte not in the given charset               |
+| `hammer.h_take_rest()`                    | Capture all remaining input as a byte array           |
 | `hammer.h_sequence__a(HParser[])`         | Match each parser in order; result is `TT_SEQUENCE`   |
 | `hammer.h_choice__a(HParser[])`           | Try each parser in order; return first success        |
 | `hammer.h_dispatch(d, OpcodeMap[], def)`  | Select a parser by an integer discriminator           |

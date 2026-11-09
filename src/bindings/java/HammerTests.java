@@ -221,6 +221,21 @@ public class HammerTests {
         assertNull("bytes:fail", p.parse(new byte[]{(byte)'a'}));
     }
 
+    static void testTakeRest() {
+        HParser p = hammer.h_take_rest();
+
+        HParseResult r = p.parse(new byte[]{(byte)'r', (byte)'e', (byte)'s', (byte)'t'});
+        assertNotNull("take_rest:success", r);
+        assertTrue("take_rest:type", r.getAst().tokenType() == TT_BYTES);
+        assertEqual("take_rest:length", 4L, r.getAst().bytesLength());
+        assertEqual("take_rest:byte0", 'r', r.getAst().byteAt(0));
+        assertEqual("take_rest:byte3", 't', r.getAst().byteAt(3));
+
+        HParseResult empty = p.parse(new byte[]{});
+        assertNotNull("take_rest:empty", empty);
+        assertEqual("take_rest:empty_length", 0L, empty.getAst().bytesLength());
+    }
+
     static void testWhitespace() {
         HParser p = hammer.h_whitespace(hammer.h_ch((short)'a'));
 
@@ -739,6 +754,7 @@ public class HammerTests {
         testIn();
         testNotIn();
         testBytes();
+        testTakeRest();
         testWhitespace();
         testLeft();
         testRight();
