@@ -298,6 +298,16 @@ class TestNotIn(unittest.TestCase):
         self.assertEqual(self.parser.parse(b"a"), None)
 
 
+class TestTakeRest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.parser = h.take_rest()
+
+    def test_success(self):
+        self.assertEqual(self.parser.parse(b"remaining input"), b"remaining input")
+        self.assertEqual(self.parser.parse(b""), b"")
+
+
 class TestEndP(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

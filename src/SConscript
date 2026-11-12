@@ -53,6 +53,7 @@ parsers = [
         "optional",
         "permutation",
         "sequence",
+        "take_rest",
         "token",
         "unimplemented",
         "whitespace",

@@ -35,6 +35,7 @@ extern void register_parser_internal_tests(void);
 extern void register_permutation_tests(void);
 extern void register_seek_tests(void);
 extern void register_sequence_tests(void);
+extern void register_take_rest_tests(void);
 extern void register_token_tests(void);
 extern void register_value_tests(void);
 extern void register_whitespace_tests(void);
@@ -157,6 +158,7 @@ int main(int argc, char **argv) {
     register_permutation_tests();
     register_seek_tests();
     register_sequence_tests();
+    register_take_rest_tests();
     register_token_tests();
     register_value_tests();
     register_whitespace_tests();
