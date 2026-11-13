@@ -138,7 +138,7 @@ static void test_drop_from_rejects_out_of_range_index(void) {
         g_error("h_drop_from accepted more indices than the sequence contains");
     }
 
-    g_test_trap_subprocess(NULL, 0, G_TEST_SUBPROCESS_DEFAULT);
+    g_test_trap_subprocess(NULL, 0, 0); // G_TEST_SUBPROCESS_DEFAULT
     g_test_trap_assert_failed();
     g_test_trap_assert_stderr("*Hammer assertion failed*");
 }
@@ -150,7 +150,7 @@ static void test_drop_from_rejects_duplicate_indices(void) {
         g_error("h_drop_from accepted duplicate indices");
     }
 
-    g_test_trap_subprocess(NULL, 0, G_TEST_SUBPROCESS_DEFAULT);
+    g_test_trap_subprocess(NULL, 0, 0); // G_TEST_SUBPROCESS_DEFAULT
     g_test_trap_assert_failed();
     g_test_trap_assert_stderr("*Hammer assertion failed*");
 }
