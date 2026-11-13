@@ -1283,7 +1283,7 @@ static void test_many_reshape_rejects_non_sequence(void) {
         g_error("reshape_many accepted a non-sequence AST");
     }
 
-    g_test_trap_subprocess(NULL, 0, G_TEST_SUBPROCESS_DEFAULT);
+    g_test_trap_subprocess(NULL, 0, 0); // G_TEST_SUBPROCESS_DEFAULT
     g_test_trap_assert_failed();
     g_test_trap_assert_stderr("*Hammer assertion failed*");
 }
