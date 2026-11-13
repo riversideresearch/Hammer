@@ -260,7 +260,7 @@ static void test_sloballoc_rejects_misaligned_metadata(void) {
         g_error("slobfree accepted misaligned metadata");
     }
 
-    g_test_trap_subprocess(NULL, 0, G_TEST_SUBPROCESS_DEFAULT);
+    g_test_trap_subprocess(NULL, 0, 0); // G_TEST_SUBPROCESS_DEFAULT
     g_test_trap_assert_failed();
     g_test_trap_assert_stderr("*Hammer assertion failed*");
 }
