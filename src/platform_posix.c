@@ -8,8 +8,9 @@
 static pthread_mutex_t graph_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_key_t graph_key;
 static pthread_once_t graph_key_once = PTHREAD_ONCE_INIT;
+static int graph_key_ready;
 
-static void make_graph_key(void) { (void)pthread_key_create(&graph_key, free); }
+static void make_graph_key(void) { graph_key_ready = pthread_key_create(&graph_key, free) == 0; }
 
 static void gettime(struct timespec *time) {
     if (time != NULL && clock_gettime(CLOCK_THREAD_CPUTIME_ID, time) != 0) {
@@ -41,12 +42,16 @@ void h_platform_graph_unlock(void) { (void)pthread_mutex_unlock(&graph_lock); }
 void **h_platform_current_graph_slot(void) {
     void **slot;
 
-    (void)pthread_once(&graph_key_once, make_graph_key);
+    if (pthread_once(&graph_key_once, make_graph_key) != 0 || !graph_key_ready)
+        return NULL;
+
     slot = pthread_getspecific(graph_key);
     if (slot == NULL) {
         slot = calloc(1, sizeof(*slot));
-        if (slot != NULL)
-            (void)pthread_setspecific(graph_key, slot);
+        if (slot != NULL && pthread_setspecific(graph_key, slot) != 0) {
+            free(slot);
+            slot = NULL;
+        }
     }
     return slot;
 }
