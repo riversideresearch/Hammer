@@ -3,7 +3,7 @@ import os
 import shutil
 import sys
 
-Import("env libhammer_shared testruns targets binding_results binding_test_stamps")
+Import("env libhammer_shared testruns targets binding_results binding_test_stamps swig_headers")
 
 if libhammer_shared is None:
     print("Warning: Go bindings require shared library. Skipping.")
@@ -86,6 +86,7 @@ gobindings = goenv.Command(
         f"cp {go_src_dir}/hammer_test.go {abs_build_dir}/hammer_test.go"
     ),
 )
+goenv.Depends(gobindings, swig_headers)
 
 Default(gobindings)
 

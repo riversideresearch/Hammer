@@ -283,7 +283,12 @@ if selected_platform == "windows":
     windows_tests = Alias("testwindows", windows_thread_stamp)
     AlwaysBuild(windows_tests)
 
-Export("libhammer_static libhammer_shared")
+# SWIG parses these headers through bindings/swig/hammer.i.  The binding
+# environments disable implicit dependency scanning, so declare them
+# explicitly to prevent stale generated wrappers from masking a parse error.
+swig_headers = ["#src/allocator.h", "#src/compiler_specifics.h", "#src/hammer.h"]
+
+Export("libhammer_static libhammer_shared swig_headers")
 
 for b in env.get("bindings", []):
     if b == "none":
