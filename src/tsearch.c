@@ -22,7 +22,7 @@ typedef struct node_t {
 } node;
 
 /* find or insert datum into search tree */
-void *tsearch(const void *vkey, void **vrootp, int (*compar)(const void *, const void *)) {
+void *h_tsearch(const void *vkey, void **vrootp, int (*compar)(const void *, const void *)) {
     node *q;
     char *key = (char *)vkey;
     node **rootp = (node **)vrootp;
@@ -47,7 +47,7 @@ void *tsearch(const void *vkey, void **vrootp, int (*compar)(const void *, const
 }
 
 /* delete node with given key */
-void *tdelete(const void *vkey, void **vrootp, int (*compar)(const void *, const void *)) {
+void *h_tdelete(const void *vkey, void **vrootp, int (*compar)(const void *, const void *)) {
     node **rootp = (node **)vrootp;
     char *key = (char *)vkey;
     node *p = (node *)1;
@@ -85,32 +85,32 @@ void *tdelete(const void *vkey, void **vrootp, int (*compar)(const void *, const
 }
 
 /* Walk the nodes of a tree */
-static void trecurse(node *root, void (*action)(const void *, VISIT, int), int level) {
+static void h_trecurse(node *root, void (*action)(const void *, HVisit, int), int level) {
     if (root->left == (struct node_t *)0 && root->right == (struct node_t *)0)
-        (*action)(root, leaf, level);
+        (*action)(root, h_leaf, level);
     else {
-        (*action)(root, preorder, level);
+        (*action)(root, h_preorder, level);
         if (root->left != (struct node_t *)0)
-            trecurse(root->left, action, level + 1);
-        (*action)(root, postorder, level);
+            h_trecurse(root->left, action, level + 1);
+        (*action)(root, h_postorder, level);
         if (root->right != (struct node_t *)0)
-            trecurse(root->right, action, level + 1);
-        (*action)(root, endorder, level);
+            h_trecurse(root->right, action, level + 1);
+        (*action)(root, h_endorder, level);
     }
 }
 
 /* Walk the nodes of a tree */
-void twalk(const void *vroot, void (*action)(const void *, VISIT, int)) {
+void h_twalk(const void *vroot, void (*action)(const void *, HVisit, int)) {
     node *root = (node *)vroot;
 
-    if (root != (node *)0 && action != (void (*)(const void *, VISIT, int))0)
-        trecurse(root, action, 0);
+    if (root != (node *)0 && action != (void (*)(const void *, HVisit, int))0)
+        h_trecurse(root, action, 0);
 }
 
 /*	$OpenBSD: tfind.c,v 1.6 2014/03/16 18:38:30 guenther Exp $	*/
 
 /* find a node, or return 0 */
-void *tfind(const void *vkey, void *const *vrootp, int (*compar)(const void *, const void *)) {
+void *h_tfind(const void *vkey, void *const *vrootp, int (*compar)(const void *, const void *)) {
     char *key = (char *)vkey;
     node **rootp = (node **)vrootp;
 

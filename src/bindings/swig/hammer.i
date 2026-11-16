@@ -347,7 +347,9 @@
 #endif
 
  // All the include paths are relative to the build, i.e., ../../. If you need to build these manually (i.e., not with scons), keep that in mind.
-// Suppress GCC attributes that SWIG cannot parse.
+// Suppress GCC attributes that SWIG cannot parse, including Hammer's
+// compiler-portability wrapper.
+#define H_GCC_ATTRIBUTE(x)
 #define __attribute__(x)
 
 // Ignore va_list variants - SWIG cannot generate correct wrappers for va_list parameters.

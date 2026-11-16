@@ -4,9 +4,13 @@
 import glob
 import os
 import re
+import subprocess
 import sys
 
-Import("env testruns binding_results binding_test_stamps")
+Import("env testruns binding_results binding_test_stamps selected_platform")
+
+platform_config = env.ScanReplace("platform_config.h", File("#/src/platform_config.h.in"))
+AlwaysBuild(platform_config)
 
 dist_headers = [
     "hammer.h",
@@ -86,12 +90,14 @@ misc_hammer_parts = [
     "trace.c",
 ]
 
-misc_hammer_parts += ["platform.c"]
+misc_hammer_parts += ["platform_common.c", "tsearch.c", env["PLATFORM_SOURCE"]]
 
 # Use repository root to avoid variant_dir path leakage
 project_root = Dir("#").abspath
 tests_dir = os.path.join(project_root, "tests")
 src_dir = os.path.join(project_root, "src")
+generated_src_dir = os.path.join(project_root, env.subst("$BUILD_BASE"), "src")
+env.Prepend(CPPPATH=[generated_src_dir])
 
 ctests = [
     "t_benchmark.c",
@@ -173,11 +179,17 @@ if "GPROF" in env and env["GPROF"] == 1:
 libhammer_static = None
 libhammer_shared = None
 
+if selected_platform == "windows":
+    build_shared_library = False
+
 if build_shared_library:
     libhammer_shared = env.SharedLibrary(
         "hammer", parsers + backends + misc_hammer_parts
     )
 libhammer_static = env.StaticLibrary(static_library_name, parsers + backends + misc_hammer_parts)
+env.Depends(libhammer_static, platform_config)
+if libhammer_shared is not None:
+    env.Depends(libhammer_shared, platform_config)
 
 if libhammer_shared is not None:
     Default(libhammer_shared, libhammer_static)
@@ -188,12 +200,14 @@ else:
 
 env.Append(CPPPATH=[Dir("#").abspath, src_dir])
 env.Install("$incpath", dist_headers)
+env.Install("$incpath", platform_config)
 env.Install("$parsersincpath", parsers_headers)
 env.Install("$backendsincpath", backends_headers)
-pkgconfig_install = env.Install("$pkgconfigpath", "../../../libhammer.pc")
-env.Depends(pkgconfig_install, "#libhammer.pc")
+if selected_platform != "windows":
+    pkgconfig_install = env.Install("$pkgconfigpath", File("#/libhammer.pc"))
+    env.Depends(pkgconfig_install, "#libhammer.pc")
 
-if GetOption("with_tests"):
+if GetOption("with_tests") and selected_platform != "windows":
     testenv = env.Clone()
     testenv.ParseConfig("pkg-config --cflags --libs glib-2.0")
     # Add src/ to include path so tests can include hammer.h, internal.h, etc.
@@ -236,9 +250,51 @@ if GetOption("with_tests"):
     binding_results.append(("Core", core_results_file))
     binding_test_stamps.append(ctestexec_stamp[0])
 
-Export("libhammer_static libhammer_shared")
+portable_env = env.Clone()
+portable_env.Prepend(CPPPATH=[generated_src_dir, src_dir])
+portable_smoke = portable_env.Program(
+    "portable_smoke", [os.path.join(tests_dir, "portable_smoke.c"), libhammer_static]
+)
+portable_headers = portable_env.Program(
+    "portable_headers", [os.path.join(tests_dir, "portable_headers.c"), libhammer_static]
+)
+
+def run_smoke(target, source, env):
+    return subprocess.call([source[0].abspath], env=env["ENV"])
+
+portable_smoke_stamp = portable_env.Command(
+    "portable_smoke.stamp", portable_smoke, Action(run_smoke, "running $SOURCE")
+)
+portable_headers_stamp = portable_env.Command(
+    "portable_headers.stamp", portable_headers, Action(run_smoke, "running $SOURCE")
+)
+AlwaysBuild(portable_smoke_stamp)
+AlwaysBuild(portable_headers_stamp)
+portable_tests = Alias("testportable", [portable_smoke_stamp, portable_headers_stamp])
+AlwaysBuild(portable_tests)
+
+if selected_platform == "windows":
+    windows_thread = portable_env.Program(
+        "windows_thread", [os.path.join(tests_dir, "windows_thread.c"), libhammer_static]
+    )
+    windows_thread_stamp = portable_env.Command(
+        "windows_thread.stamp", windows_thread, Action(run_smoke, "running $SOURCE")
+    )
+    AlwaysBuild(windows_thread_stamp)
+    windows_tests = Alias("testwindows", windows_thread_stamp)
+    AlwaysBuild(windows_tests)
+
+# SWIG parses these headers through bindings/swig/hammer.i.  The binding
+# environments disable implicit dependency scanning, so declare them
+# explicitly to prevent stale generated wrappers from masking a parse error.
+swig_headers = ["#src/allocator.h", "#src/compiler_specifics.h", "#src/hammer.h"]
+
+Export("libhammer_static libhammer_shared swig_headers")
 
 for b in env.get("bindings", []):
     if b == "none":
         continue
+    if selected_platform == "windows":
+        print("Language bindings are unsupported by platform=windows", file=sys.stderr)
+        Exit(1)
     env.SConscript([f"bindings/{b}/SConscript"])

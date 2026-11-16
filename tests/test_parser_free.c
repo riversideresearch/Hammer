@@ -557,6 +557,89 @@ static gpointer free_graph_from_worker(gpointer data) {
     return NULL;
 }
 
+enum { concurrent_factory_workers = 4, concurrent_factory_iterations = 64 };
+
+typedef struct {
+    GMutex mutex;
+    GCond ready_condition;
+    GCond start_condition;
+    unsigned ready;
+    bool start;
+    gint failed;
+} ConcurrentFactoryState;
+
+typedef struct {
+    ConcurrentFactoryState *state;
+    uint8_t character;
+} ConcurrentFactoryWorker;
+
+static gpointer construct_graphs_from_worker(gpointer data) {
+    ConcurrentFactoryWorker *worker = data;
+    ConcurrentFactoryState *state = worker->state;
+
+    g_mutex_lock(&state->mutex);
+    ++state->ready;
+    g_cond_signal(&state->ready_condition);
+    while (!state->start)
+        g_cond_wait(&state->start_condition, &state->mutex);
+    g_mutex_unlock(&state->mutex);
+
+    for (unsigned i = 0; i < concurrent_factory_iterations; ++i) {
+        const uint8_t input[] = {worker->character};
+        HParserGraph *graph = h_parser_graph_begin();
+        HParser *parser;
+        HParseResult *result;
+
+        if (graph == NULL) {
+            g_atomic_int_set(&state->failed, true);
+            return NULL;
+        }
+        parser = h_sequence(h_ch(worker->character), h_end_p(), NULL);
+        h_parser_graph_end(graph);
+        result = h_parse(parser, input, sizeof(input));
+        if (result == NULL) {
+            g_atomic_int_set(&state->failed, true);
+            h_parser_graph_free(graph);
+            return NULL;
+        }
+        h_parse_result_free(result);
+        h_parser_graph_free(graph);
+    }
+
+    return NULL;
+}
+
+static void test_parser_graph_concurrent_factory_construction(void) {
+    ConcurrentFactoryState state = {0};
+    ConcurrentFactoryWorker workers[concurrent_factory_workers];
+    GThread *threads[concurrent_factory_workers];
+
+    g_mutex_init(&state.mutex);
+    g_cond_init(&state.ready_condition);
+    g_cond_init(&state.start_condition);
+    for (unsigned i = 0; i < concurrent_factory_workers; ++i) {
+        workers[i] = (ConcurrentFactoryWorker){
+            .state = &state,
+            .character = (uint8_t)('a' + i),
+        };
+        threads[i] = g_thread_new("parser-factory", construct_graphs_from_worker, &workers[i]);
+    }
+
+    g_mutex_lock(&state.mutex);
+    while (state.ready < concurrent_factory_workers)
+        g_cond_wait(&state.ready_condition, &state.mutex);
+    state.start = true;
+    g_cond_broadcast(&state.start_condition);
+    g_mutex_unlock(&state.mutex);
+
+    for (unsigned i = 0; i < concurrent_factory_workers; ++i)
+        g_thread_join(threads[i]);
+    g_assert_false(g_atomic_int_get(&state.failed));
+    g_cond_clear(&state.start_condition);
+    g_cond_clear(&state.ready_condition);
+    g_mutex_clear(&state.mutex);
+}
+
 static void test_parser_graph_untracks_cross_thread_parser_free(void) {
     QuarantineAllocator quarantine = {0};
     HAllocator saved = install_quarantine_allocator(&quarantine);
@@ -633,6 +716,8 @@ void register_parser_free_tests(void) {
     g_test_add_func("/core/parser/free/graph/parser_allocator",
                     test_parser_graph_uses_parser_allocator);
     g_test_add_func("/core/parser/free/graph/grows", test_parser_graph_grows);
+    g_test_add_func("/core/parser/free/graph/concurrent_factory_construction",
+                    test_parser_graph_concurrent_factory_construction);
     g_test_add_func("/core/parser/free/graph/cross_thread_parser",
                     test_parser_graph_untracks_cross_thread_parser_free);
     g_test_add_func("/core/parser/free/graph/cross_thread_graph",
