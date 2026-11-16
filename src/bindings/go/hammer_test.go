@@ -2,6 +2,7 @@ package hammer_test
 
 import (
 	"bytes"
+	"runtime"
 	"testing"
 	"unsafe"
 
@@ -624,6 +625,53 @@ func TestTakeRest(t *testing.T) {
 	}
 	if got := getBytes(empty.GetAst()); len(got) != 0 {
 		t.Errorf("got %q, want empty bytes", got)
+	}
+}
+
+func TestTakeRestOwnedInput(t *testing.T) {
+	for _, name := range []string{"packrat", "regex"} {
+		t.Run(name, func(t *testing.T) {
+			backend := h.PB_PACKRAT
+			if name == "regex" {
+				backend = h.PB_REGULAR
+			}
+			parser := h.H_take_rest()
+			if !parser.Compile(backend) {
+				t.Fatal("compile failed")
+			}
+			for mode := 0; mode < 5; mode++ {
+				if mode >= 3 && name != "packrat" {
+					continue
+				}
+				input := bytes.Repeat([]byte{0x5a}, 4096)
+				var r h.HParseResult
+				switch mode {
+				case 0:
+					r = parseBytes(parser, input)
+				case 1:
+					r = h.H_parse(parser, &input[0], int64(len(input)))
+				case 2:
+					r = h.H_parse_debug(parser, &input[0], int64(len(input)), nil, false)
+				case 3:
+					r = h.H_parse_bits(parser, &input[0], int64(len(input)*8))
+				case 4:
+					r = h.H_parse_bits_debug(parser, &input[0], int64(len(input)*8), nil, false)
+				}
+				if astNil(r) {
+					t.Fatalf("mode %d: expected success", mode)
+				}
+				for i := range input {
+					input[i] = 0x33
+				}
+				input = nil
+				runtime.GC()
+				got := getBytes(r.GetAst())
+				h.H_parse_result_free(r)
+				if !bytes.Equal(got, bytes.Repeat([]byte{0x5a}, 4096)) {
+					t.Fatalf("mode %d: parse result retained caller-owned input", mode)
+				}
+			}
+		})
 	}
 }
 

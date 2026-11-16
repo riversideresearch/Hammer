@@ -577,7 +577,7 @@ static size_t h_bit_length_to_bytes(size_t bit_length) {
 
 static HParseResult *h_parse_with_trace(HAllocator *mm__, const HParser *parser,
                                         const uint8_t *input, size_t length, size_t bit_length,
-                                        HTraceState *trace) {
+                                        HTraceState *trace, bool input_is_temporary) {
     // Set up a parse state...
     HInputStream input_stream = {.pos = 0,
                                  .index = 0,
@@ -589,6 +589,7 @@ static HParseResult *h_parse_with_trace(HAllocator *mm__, const HParser *parser,
                                  .endianness = DEFAULT_ENDIANNESS,
                                  .length = length,
                                  .input = input,
+                                 .input_is_temporary = input_is_temporary,
                                  .last_chunk = true,
                                  .trace = trace};
 
@@ -600,7 +601,18 @@ HParseResult *h_parse(const HParser *parser, const uint8_t *input, size_t length
 }
 HParseResult *h_parse__m(HAllocator *mm__, const HParser *parser, const uint8_t *input,
                          size_t length) {
-    return h_parse_with_trace(mm__, parser, input, length, h_byte_length_to_bits(length), NULL);
+    return h_parse_with_trace(mm__, parser, input, length, h_byte_length_to_bits(length), NULL,
+                              false);
+}
+
+HParseResult *h_parse_owned(const HParser *parser, const uint8_t *input, size_t length) {
+    return h_parse_owned__m(&system_allocator, parser, input, length);
+}
+
+HParseResult *h_parse_owned__m(HAllocator *mm__, const HParser *parser, const uint8_t *input,
+                               size_t length) {
+    return h_parse_with_trace(mm__, parser, input, length, h_byte_length_to_bits(length), NULL,
+                              true);
 }
 
 HParseResult *h_parse_bits(const HParser *parser, const uint8_t *input, size_t bit_length) {
@@ -612,7 +624,19 @@ HParseResult *h_parse_bits__m(HAllocator *mm__, const HParser *parser, const uin
     if (!parser || (parser->backend != PB_PACKRAT))
         return NULL;
     return h_parse_with_trace(mm__, parser, input, h_bit_length_to_bytes(bit_length), bit_length,
-                              NULL);
+                              NULL, false);
+}
+
+HParseResult *h_parse_bits_owned(const HParser *parser, const uint8_t *input, size_t bit_length) {
+    return h_parse_bits_owned__m(&system_allocator, parser, input, bit_length);
+}
+
+HParseResult *h_parse_bits_owned__m(HAllocator *mm__, const HParser *parser, const uint8_t *input,
+                                    size_t bit_length) {
+    if (!parser || parser->backend != PB_PACKRAT)
+        return NULL;
+    return h_parse_with_trace(mm__, parser, input, h_bit_length_to_bytes(bit_length), bit_length,
+                              NULL, true);
 }
 
 // Twin of h_parse() that attaches an independent diagnostic collector to this
@@ -629,14 +653,16 @@ HParseResult *h_parse_debug(const HParser *parser, const uint8_t *input, size_t 
     return h_parse_debug__m(&system_allocator, parser, input, length, diagnostic,
                             dumpExecutionTrace);
 }
-HParseResult *h_parse_debug__m(HAllocator *mm__, const HParser *parser, const uint8_t *input,
-                               size_t length, HParseDiagnostic **diagnostic,
-                               bool dumpExecutionTrace) {
+static HParseResult *h_parse_debug_with_input_lifetime(HAllocator *mm__, const HParser *parser,
+                                                       const uint8_t *input, size_t length,
+                                                       HParseDiagnostic **diagnostic,
+                                                       bool dumpExecutionTrace,
+                                                       bool input_is_temporary) {
     if (diagnostic)
         *diagnostic = NULL;
     HTraceState *trace = h_trace_state_new(dumpExecutionTrace);
-    HParseResult *res =
-        h_parse_with_trace(mm__, parser, input, length, h_byte_length_to_bits(length), trace);
+    HParseResult *res = h_parse_with_trace(
+        mm__, parser, input, length, h_byte_length_to_bits(length), trace, input_is_temporary);
     HParseDiagnostic *collected = NULL;
     if (diagnostic || h_trace_should_print_summary(trace))
         TRACE_GET_DIAGNOSTIC(trace, &collected);
@@ -648,6 +674,26 @@ HParseResult *h_parse_debug__m(HAllocator *mm__, const HParser *parser, const ui
         h_parse_diagnostic_free(collected);
     h_trace_state_free(trace);
     return res;
+}
+
+HParseResult *h_parse_debug__m(HAllocator *mm__, const HParser *parser, const uint8_t *input,
+                               size_t length, HParseDiagnostic **diagnostic,
+                               bool dumpExecutionTrace) {
+    return h_parse_debug_with_input_lifetime(mm__, parser, input, length, diagnostic,
+                                             dumpExecutionTrace, false);
+}
+
+HParseResult *h_parse_debug_owned(const HParser *parser, const uint8_t *input, size_t length,
+                                  HParseDiagnostic **diagnostic, bool dumpExecutionTrace) {
+    return h_parse_debug_owned__m(&system_allocator, parser, input, length, diagnostic,
+                                  dumpExecutionTrace);
+}
+
+HParseResult *h_parse_debug_owned__m(HAllocator *mm__, const HParser *parser, const uint8_t *input,
+                                     size_t length, HParseDiagnostic **diagnostic,
+                                     bool dumpExecutionTrace) {
+    return h_parse_debug_with_input_lifetime(mm__, parser, input, length, diagnostic,
+                                             dumpExecutionTrace, true);
 }
 
 HParseResult *h_parse_bits_debug(const HParser *parser, const uint8_t *input, size_t bit_length,
@@ -656,9 +702,11 @@ HParseResult *h_parse_bits_debug(const HParser *parser, const uint8_t *input, si
                                  dumpExecutionTrace);
 }
 
-HParseResult *h_parse_bits_debug__m(HAllocator *mm__, const HParser *parser, const uint8_t *input,
-                                    size_t bit_length, HParseDiagnostic **diagnostic,
-                                    bool dumpExecutionTrace) {
+static HParseResult *h_parse_bits_debug_with_input_lifetime(HAllocator *mm__, const HParser *parser,
+                                                            const uint8_t *input, size_t bit_length,
+                                                            HParseDiagnostic **diagnostic,
+                                                            bool dumpExecutionTrace,
+                                                            bool input_is_temporary) {
     if (diagnostic)
         *diagnostic = NULL;
     if (!parser || (parser->backend != PB_PACKRAT))
@@ -666,7 +714,8 @@ HParseResult *h_parse_bits_debug__m(HAllocator *mm__, const HParser *parser, con
 
     size_t length = h_bit_length_to_bytes(bit_length);
     HTraceState *trace = h_trace_state_new(dumpExecutionTrace);
-    HParseResult *res = h_parse_with_trace(mm__, parser, input, length, bit_length, trace);
+    HParseResult *res =
+        h_parse_with_trace(mm__, parser, input, length, bit_length, trace, input_is_temporary);
     HParseDiagnostic *collected = NULL;
     if (diagnostic || h_trace_should_print_summary(trace))
         TRACE_GET_DIAGNOSTIC(trace, &collected);
@@ -678,6 +727,27 @@ HParseResult *h_parse_bits_debug__m(HAllocator *mm__, const HParser *parser, con
         h_parse_diagnostic_free(collected);
     h_trace_state_free(trace);
     return res;
+}
+
+HParseResult *h_parse_bits_debug__m(HAllocator *mm__, const HParser *parser, const uint8_t *input,
+                                    size_t bit_length, HParseDiagnostic **diagnostic,
+                                    bool dumpExecutionTrace) {
+    return h_parse_bits_debug_with_input_lifetime(mm__, parser, input, bit_length, diagnostic,
+                                                  dumpExecutionTrace, false);
+}
+
+HParseResult *h_parse_bits_debug_owned(const HParser *parser, const uint8_t *input,
+                                       size_t bit_length, HParseDiagnostic **diagnostic,
+                                       bool dumpExecutionTrace) {
+    return h_parse_bits_debug_owned__m(&system_allocator, parser, input, bit_length, diagnostic,
+                                       dumpExecutionTrace);
+}
+
+HParseResult *h_parse_bits_debug_owned__m(HAllocator *mm__, const HParser *parser,
+                                          const uint8_t *input, size_t bit_length,
+                                          HParseDiagnostic **diagnostic, bool dumpExecutionTrace) {
+    return h_parse_bits_debug_with_input_lifetime(mm__, parser, input, bit_length, diagnostic,
+                                                  dumpExecutionTrace, true);
 }
 
 void h_parse_result_free__m(HAllocator *alloc, HParseResult *result) {
