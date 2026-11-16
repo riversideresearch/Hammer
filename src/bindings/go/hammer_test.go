@@ -626,6 +626,27 @@ func TestTakeRest(t *testing.T) {
 	if got := getBytes(empty.GetAst()); len(got) != 0 {
 		t.Errorf("got %q, want empty bytes", got)
 	}
+
+	if !parser.Compile(h.PB_REGULAR) {
+		t.Fatal("expected regular backend to compile")
+	}
+	largeInput := make([]byte, 4096)
+	for i := range largeInput {
+		largeInput[i] = byte(i)
+	}
+	regular := parseBytes(parser, largeInput)
+	for i := range largeInput {
+		largeInput[i] = 0
+	}
+	if astNil(regular) {
+		t.Fatal("expected regular-backend parse success")
+	}
+	defer h.H_parse_result_free(regular)
+	got := getBytes(regular.GetAst())
+	if got[0] != 0 || got[123] != 123 || got[4095] != 255 {
+		t.Errorf("captured bytes changed after input mutation: got %d, %d, %d",
+			got[0], got[123], got[4095])
+	}
 }
 
 func TestTakeRestOwnedInput(t *testing.T) {

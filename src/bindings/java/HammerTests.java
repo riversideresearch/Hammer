@@ -234,6 +234,20 @@ public class HammerTests {
         HParseResult empty = p.parse(new byte[]{});
         assertNotNull("take_rest:empty", empty);
         assertEqual("take_rest:empty_length", 0L, empty.getAst().bytesLength());
+
+        assertTrue("take_rest:regular_backend", p.compile(HParserBackend.PB_REGULAR));
+        byte[] largeInput = new byte[4096];
+        for (int i = 0; i < largeInput.length; i++) {
+            largeInput[i] = (byte)i;
+        }
+        HParseResult regular = p.parse(largeInput);
+        for (int i = 0; i < largeInput.length; i++) {
+            largeInput[i] = 0;
+        }
+        assertNotNull("take_rest:regular_success", regular);
+        assertEqual("take_rest:regular_first", 0L, regular.getAst().byteAt(0));
+        assertEqual("take_rest:regular_middle", 123L, regular.getAst().byteAt(123) & 0xff);
+        assertEqual("take_rest:regular_last", 255L, regular.getAst().byteAt(4095) & 0xff);
     }
 
     static void testTakeRestOwnedInput() {
