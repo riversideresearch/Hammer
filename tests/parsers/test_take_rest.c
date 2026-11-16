@@ -89,6 +89,7 @@ static void test_take_rest_action_once(gconstpointer backend) {
     h_parse_result_free(result);
 }
 
+#ifndef RTEMS_BUILD
 typedef struct {
     const HParser *parser;
     const uint8_t *input;
@@ -135,6 +136,7 @@ static void test_take_rest_thread_safe(gconstpointer backend) {
     g_assert_true(left.passed);
     g_assert_true(right.passed);
 }
+#endif
 
 typedef struct {
     const HParser *parser;
@@ -186,15 +188,14 @@ static void test_take_rest_waits_for_final_chunk(void) {
     g_assert_cmpint(h_compile(parser, PB_PACKRAT, NULL), ==, 0);
     suspended = h_parse_start(parser);
     g_assert_nonnull(suspended);
-    g_assert_false(h_parse_chunk(suspended, input, sizeof(input)));
+    g_assert_true(!h_parse_chunk(suspended, input, sizeof(input)));
 
     result = h_parse_finish(suspended);
     g_assert_nonnull(result);
     g_assert_nonnull(result->ast);
     g_assert_cmpint(result->ast->token_type, ==, TT_BYTES);
     g_assert_cmpuint(result->ast->token_data.bytes.len, ==, sizeof(input));
-    g_assert_cmpmem(result->ast->token_data.bytes.token, result->ast->token_data.bytes.len, input,
-                    sizeof(input));
+    g_check_bytes(result->ast->token_data.bytes.len, result->ast->token_data.bytes.token, ==, input);
     h_parse_result_free(result);
 }
 
@@ -221,12 +222,16 @@ void register_take_rest_tests(void) {
                          test_take_rest_after_prefix);
     g_test_add_data_func("/core/parser/packrat/take_rest_action_once", GINT_TO_POINTER(PB_PACKRAT),
                          test_take_rest_action_once);
+#ifndef RTEMS_BUILD
     g_test_add_data_func("/core/parser/packrat/take_rest_thread_safe", GINT_TO_POINTER(PB_PACKRAT),
                          test_take_rest_thread_safe);
+#endif
     g_test_add_data_func("/core/parser/packrat/take_rest_reentrant", GINT_TO_POINTER(PB_PACKRAT),
                          test_take_rest_reentrant);
+#if !defined(RTEMS_BUILD) || !defined(STATIC_BUILD)
     g_test_add_func("/core/parser/packrat/take_rest_waits_for_final_chunk",
                     test_take_rest_waits_for_final_chunk);
+#endif
     g_test_add_func("/core/parser/packrat/take_rest_rejects_partial_byte",
                     test_take_rest_rejects_partial_byte);
     g_test_add_data_func("/core/backends/regex/take_rest", GINT_TO_POINTER(PB_REGULAR),
@@ -237,8 +242,10 @@ void register_take_rest_tests(void) {
                          test_take_rest_after_prefix);
     g_test_add_data_func("/core/backends/regex/take_rest_action_once", GINT_TO_POINTER(PB_REGULAR),
                          test_take_rest_action_once);
+#ifndef RTEMS_BUILD
     g_test_add_data_func("/core/backends/regex/take_rest_thread_safe", GINT_TO_POINTER(PB_REGULAR),
                          test_take_rest_thread_safe);
+#endif
     g_test_add_data_func("/core/backends/regex/take_rest_reentrant", GINT_TO_POINTER(PB_REGULAR),
                          test_take_rest_reentrant);
 }

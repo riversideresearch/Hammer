@@ -98,7 +98,7 @@ static const HParserVtable take_rest_vt = {
     .higher = false,
 };
 
-HParser *h_take_rest(void) { return h_take_rest__m(&system_allocator); }
+HParser *h_take_rest(void) { return h_take_rest__m(h_default_allocator); }
 
 HParser *h_take_rest__m(HAllocator *mm__) {
     return h_new_parser_with_free(mm__, &take_rest_vt, NULL, h_no_free_env);

@@ -112,6 +112,7 @@ SRCS = \
     $(HAMMER_SRC)/parsers/permutation.c \
     $(HAMMER_SRC)/parsers/seek.c \
     $(HAMMER_SRC)/parsers/sequence.c \
+    $(HAMMER_SRC)/parsers/take_rest.c \
     $(HAMMER_SRC)/parsers/template.c \
     $(HAMMER_SRC)/parsers/token.c \
     $(HAMMER_SRC)/parsers/unimplemented.c \

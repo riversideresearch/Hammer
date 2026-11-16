@@ -95,6 +95,7 @@ void register_all_hammer_tests(void) {
     register_permutation_tests();
     register_seek_tests();
     register_sequence_tests();
+    register_take_rest_tests();
     register_token_tests();
     register_value_tests();
     register_whitespace_tests();
