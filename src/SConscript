@@ -283,7 +283,14 @@ if selected_platform == "windows":
         "windows_thread.stamp", windows_thread, Action(run_smoke, "running $SOURCE")
     )
     AlwaysBuild(windows_thread_stamp)
-    windows_tests = Alias("testwindows", windows_thread_stamp)
+    windows_platform = portable_env.Program(
+        "windows_platform", [os.path.join(tests_dir, "windows_platform.c")]
+    )
+    windows_platform_stamp = portable_env.Command(
+        "windows_platform.stamp", windows_platform, Action(run_smoke, "running $SOURCE")
+    )
+    AlwaysBuild(windows_platform_stamp)
+    windows_tests = Alias("testwindows", [windows_thread_stamp, windows_platform_stamp])
     AlwaysBuild(windows_tests)
 
 # SWIG parses these headers through bindings/swig/hammer.i.  The binding

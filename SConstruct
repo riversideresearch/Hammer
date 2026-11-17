@@ -196,6 +196,13 @@ env["LINKFLAGS"] = ARGUMENTS.get("LDFLAGS") or os.getenv("LDFLAGS") or env["LINK
 
 if selected_platform == "windows":
     env.Append(CCFLAGS=["/std:c11", "/W4", "/WX"])
+    # Match the intentional unused-argument/local exceptions in the Unix build.
+    if os.path.basename(env["CC"]).lower() in ("clang-cl", "clang-cl.exe"):
+        env.Append(
+            CCFLAGS=["-Wno-unused-parameter", "-Wno-unused-variable", "-Wno-attributes"]
+        )
+    else:
+        env.Append(CCFLAGS=["/wd4100", "/wd4101", "/wd4189"])
 else:
     env.MergeFlags(
         "-std=c99 -Wall -Wextra -Werror -Wno-unused-parameter "

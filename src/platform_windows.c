@@ -6,15 +6,20 @@
 
 static CRITICAL_SECTION graph_lock;
 static INIT_ONCE graph_once = INIT_ONCE_STATIC_INIT;
-static DWORD graph_tls = TLS_OUT_OF_INDEXES;
+static DWORD graph_fls = FLS_OUT_OF_INDEXES;
+
+/* Unlike TLS slots, FLS slots can release their storage when a thread exits. */
+static VOID CALLBACK free_graph_slot(PVOID slot) { free(slot); }
 
 static BOOL CALLBACK init_provider(PINIT_ONCE once, PVOID parameter, PVOID *context) {
     (void)once;
     (void)parameter;
     (void)context;
+    graph_fls = FlsAlloc(free_graph_slot);
+    if (graph_fls == FLS_OUT_OF_INDEXES)
+        return FALSE;
     InitializeCriticalSection(&graph_lock);
-    graph_tls = TlsAlloc();
-    return graph_tls != TLS_OUT_OF_INDEXES;
+    return TRUE;
 }
 
 static int provider_ready(void) {
@@ -68,11 +73,13 @@ void **h_platform_current_graph_slot(void) {
 
     if (!provider_ready())
         return NULL;
-    slot = TlsGetValue(graph_tls);
+    slot = FlsGetValue(graph_fls);
     if (slot == NULL) {
         slot = calloc(1, sizeof(*slot));
-        if (slot != NULL)
-            (void)TlsSetValue(graph_tls, slot);
+        if (slot != NULL && !FlsSetValue(graph_fls, slot)) {
+            free(slot);
+            slot = NULL;
+        }
     }
     return slot;
 }
