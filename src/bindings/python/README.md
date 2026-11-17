@@ -97,6 +97,7 @@ print(result)  # (b'GET ', (b'/', b'i', b'n', ...))
 | `h.ch_range(lo, hi)` | Match any byte in `[lo, hi]`                             |
 | `h.in_(charset)`     | Match any byte in the given `bytes` charset              |
 | `h.not_in(charset)`  | Match any byte not in the given `bytes` charset          |
+| `h.take_rest()`      | Capture all remaining input as `bytes`                   |
 | `h.sequence(*ps)`    | Match each parser in order; return tuple of results      |
 | `h.choice(*ps)`      | Try each parser in order; return first success           |
 | `h.many(p)`          | Match `p` zero or more times; return tuple               |

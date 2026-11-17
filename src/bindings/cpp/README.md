@@ -71,6 +71,7 @@ All combinators live in the `hammer` namespace.
 | `ChRange(lo, hi)`                 | Match any byte in `[lo, hi]`                           |
 | `In(str)`                         | Match any byte in the given charset                    |
 | `NotIn(str)`                      | Match any byte not in the given charset                |
+| `TakeRest()`                      | Capture all remaining input as bytes                   |
 | `Sequence(p, ..., NULL)`          | Match each parser in order; result is `TT_SEQUENCE`    |
 | `Choice(p, ..., NULL)`            | Try each parser in order; return first success         |
 | `Many(p)`                         | Match `p` zero or more times; result is `TT_SEQUENCE`  |

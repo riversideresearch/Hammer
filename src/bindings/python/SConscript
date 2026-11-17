@@ -6,7 +6,7 @@ import os
 import shutil
 import sys
 
-Import("env libhammer_shared testruns targets binding_results binding_test_stamps")
+Import("env libhammer_shared testruns targets binding_results binding_test_stamps swig_headers")
 
 if libhammer_shared is None:
     print("Warning: Python bindings require the shared library (not available in coverage/gprof builds). Skipping.")
@@ -29,6 +29,7 @@ libhammer_python = pythonenv.Command(
     [swig, setup],
     "HAMMER_VERSION_FILE={} {} {} build_ext --inplace".format(version_file, env["python"], pysetup),
 )
+pythonenv.Depends(libhammer_python, swig_headers)
 Default(libhammer_python)
 
 reporter = os.path.join(Dir("#").abspath, "tools", "test_reporter.py")

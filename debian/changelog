@@ -1,3 +1,18 @@
+libhammer (3.5.0-1) unstable; urgency=medium
+
+  * Add h_take_rest() to capture the remaining input, with C++, Python, Java,
+    and Go bindings
+  * Add build-selected POSIX, portable, Windows, and custom platform providers
+  * Add Windows core static-library support and portable-core CI checks
+  * Fix input-buffer lifetimes in streaming and managed-language parse results
+  * Synchronize parser graph tracking during concurrent construction and cleanup
+  * Free Windows parser graph storage when threads exit or storage setup fails
+  * Handle POSIX thread-local key allocation errors
+  * Fix SWIG header dependencies, Go binding build paths, and GLib 2.72 tests
+  * Add parser, binding, portability, and Windows storage regression tests
+
+ -- Mahmoud Elbasiouny <melbasiouny@riversideresearch.org>  Tue, 17 Nov 2026 13:08:08 -0500
+
 libhammer (3.4.0-1) unstable; urgency=medium
 
   * Add Packrat-only h_parse_bits() and h_parse_bits_debug() APIs, including

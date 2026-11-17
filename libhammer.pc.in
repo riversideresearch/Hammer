@@ -7,4 +7,4 @@ Name: libhammer
 Description: The Hammer parsing library
 Version: ${VERSION}
 Cflags: -I${includedir}
-Libs: -L${libdir} -lhammer -lpthread
+Libs: -L${libdir} -lhammer ${PLATFORM_LIBS}

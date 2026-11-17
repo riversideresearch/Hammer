@@ -6,7 +6,7 @@ import os
 import shutil
 import sys
 
-Import("env libhammer_shared testruns targets binding_results binding_test_stamps")
+Import("env libhammer_shared testruns targets binding_results binding_test_stamps swig_headers")
 
 if libhammer_shared is None:
     print("Warning: Java bindings require the shared library (not available in coverage/gprof builds). Skipping.")
@@ -69,6 +69,7 @@ swig_out = javaenv.Command(
         " -o $TARGET $SOURCE",
     ],
 )
+javaenv.Depends(swig_out, swig_headers)
 
 # Compile the JNI shared library from the SWIG-generated wrapper.
 jnienv = javaenv.Clone()

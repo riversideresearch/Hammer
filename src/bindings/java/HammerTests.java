@@ -221,6 +221,65 @@ public class HammerTests {
         assertNull("bytes:fail", p.parse(new byte[]{(byte)'a'}));
     }
 
+    static void testTakeRest() {
+        HParser p = hammer.h_take_rest();
+
+        HParseResult r = p.parse(new byte[]{(byte)'r', (byte)'e', (byte)'s', (byte)'t'});
+        assertNotNull("take_rest:success", r);
+        assertTrue("take_rest:type", r.getAst().tokenType() == TT_BYTES);
+        assertEqual("take_rest:length", 4L, r.getAst().bytesLength());
+        assertEqual("take_rest:byte0", 'r', r.getAst().byteAt(0));
+        assertEqual("take_rest:byte3", 't', r.getAst().byteAt(3));
+
+        HParseResult empty = p.parse(new byte[]{});
+        assertNotNull("take_rest:empty", empty);
+        assertEqual("take_rest:empty_length", 0L, empty.getAst().bytesLength());
+
+        assertTrue("take_rest:regular_backend", p.compile(HParserBackend.PB_REGULAR));
+        byte[] largeInput = new byte[4096];
+        for (int i = 0; i < largeInput.length; i++) {
+            largeInput[i] = (byte)i;
+        }
+        HParseResult regular = p.parse(largeInput);
+        for (int i = 0; i < largeInput.length; i++) {
+            largeInput[i] = 0;
+        }
+        assertNotNull("take_rest:regular_success", regular);
+        assertEqual("take_rest:regular_first", 0L, regular.getAst().byteAt(0));
+        assertEqual("take_rest:regular_middle", 123L, regular.getAst().byteAt(123) & 0xff);
+        assertEqual("take_rest:regular_last", 255L, regular.getAst().byteAt(4095) & 0xff);
+    }
+
+    static void testTakeRestOwnedInput() {
+        for (HParserBackend backend : new HParserBackend[]{
+                HParserBackend.PB_PACKRAT, HParserBackend.PB_REGULAR}) {
+            HParser p = hammer.h_take_rest();
+            assertTrue("take_rest:owned_compile", p.compile(backend));
+            for (int mode = 0; mode < 4; mode++) {
+                byte[] input = new byte[4096];
+                java.util.Arrays.fill(input, (byte)0x5a);
+                HParseResult r;
+                switch (mode) {
+                case 0: r = p.parse(input); break;
+                case 1: r = p.parse_debug(input, null, false); break;
+                case 2: r = hammer.h_parse(p, input); break;
+                default:
+                    r = hammer.h_parse_debug(p, input, null, false);
+                    break;
+                }
+                assertNotNull("take_rest:owned_result", r);
+                java.util.Arrays.fill(input, (byte)0x33);
+                // Reuse JNI allocation sizes before reading the first result.
+                for (int i = 0; i < 8; i++)
+                    p.parse(new byte[4096]);
+                boolean intact = r.getAst().bytesLength() == 4096;
+                for (int i = 0; i < 4096; i++)
+                    intact &= r.getAst().byteAt(i) == 0x5a;
+                assertTrue("take_rest:owned_bytes", intact);
+            }
+        }
+    }
+
     static void testWhitespace() {
         HParser p = hammer.h_whitespace(hammer.h_ch((short)'a'));
 
@@ -739,6 +798,8 @@ public class HammerTests {
         testIn();
         testNotIn();
         testBytes();
+        testTakeRest();
+        testTakeRestOwnedInput();
         testWhitespace();
         testLeft();
         testRight();

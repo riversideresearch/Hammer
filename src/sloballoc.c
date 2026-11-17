@@ -25,7 +25,6 @@ typedef union SLOBAlignment_ {
 struct alloc {
     size_t size;
     size_t padding;
-    uint8_t data[];
 };
 
 struct block {
@@ -36,8 +35,10 @@ struct block {
 struct slob {
     size_t size;
     struct block *head;
-    uint8_t data[];
 };
+
+#define ALLOC_DATA(allocation) ((uint8_t *)(allocation) + sizeof(struct alloc))
+#define SLOB_DATA(slob) ((uint8_t *)(slob) + sizeof(struct slob))
 
 typedef union {
     size_t size;
@@ -121,13 +122,13 @@ void *sloballoc(SLOB *slob, size_t size) {
         if (b->size >= remblock) {
             // cut from the end of the block
             b->size -= sizeof(struct alloc) + size;
-            struct alloc *a = slob_metadata_at(((struct alloc *)b)->data + b->size);
+            struct alloc *a = slob_metadata_at(ALLOC_DATA((struct alloc *)b) + b->size);
             a->size = size;
-            return a->data;
+            return ALLOC_DATA(a);
         } else if (b->size >= size) {
             // when a block fills, it converts directly to a struct alloc
             *p = b->next; // unlink
-            return ((struct alloc *)b)->data;
+            return ALLOC_DATA((struct alloc *)b);
         }
     }
 
@@ -150,8 +151,8 @@ void *slobrealloc(SLOB *slob, void *a_, size_t size) {
     if (size == 0)
         return NULL;
     struct alloc *a = slob_metadata_at((uint8_t *)a_ - sizeof(struct alloc));
-    assert((uint8_t *)a >= slob->data);
-    assert(a->data + a->size <= slob->data + slob->size);
+    assert((uint8_t *)a >= SLOB_DATA(slob));
+    assert(ALLOC_DATA(a) + a->size <= SLOB_DATA(slob) + slob->size);
     size_t old_size = a->size;
 
     // Try in-place shrink
@@ -185,16 +186,16 @@ void slobfree(SLOB *slob, void *a_) {
     struct block *b, **p, *left = NULL, *right = NULL, **rightp = NULL;
 
     // sanity check: a lies inside slob
-    assert((uint8_t *)a >= slob->data);
-    assert(a->data + a->size <= slob->data + slob->size);
+    assert((uint8_t *)a >= SLOB_DATA(slob));
+    assert(ALLOC_DATA(a) + a->size <= SLOB_DATA(slob) + slob->size);
 
     // scan list for blocks adjacent to a
     for (p = &slob->head; (b = *p); p = &b->next) {
-        if ((uint8_t *)a == ((struct alloc *)b)->data + b->size) {
+        if ((uint8_t *)a == ALLOC_DATA((struct alloc *)b) + b->size) {
             assert(!left);
             left = b;
         }
-        if (a->data + a->size == (uint8_t *)b) {
+        if (ALLOC_DATA(a) + a->size == (uint8_t *)b) {
             assert(!right);
             right = b;
             rightp = p;
@@ -218,9 +219,9 @@ void slobfree(SLOB *slob, void *a_) {
         **rightp = *right;
     } else {
         // spawn new block over a
-        struct block *b = (struct block *)a;
-        b->next = slob->head;
-        slob->head = b;
+        struct block *new_block = (struct block *)a;
+        new_block->next = slob->head;
+        slob->head = new_block;
     }
 }
 
@@ -236,14 +237,14 @@ int slobcheck(SLOB *slob) {
     size_t nblocks = 0, nfree = 0;
 
 #define FORBLOCKS                                                                                  \
-    for (p = slob->data; p != slob->data + slob->size;                                             \
+    for (p = SLOB_DATA(slob); p != SLOB_DATA(slob) + slob->size;                                   \
          p += sizeof(struct alloc) + ((struct alloc *)slob_metadata_at(p))->size)
 
     // 1. memory area is divided seamlessly and exactly into n blocks
     FORBLOCKS {
-        if (p < slob->data)
+        if (p < SLOB_DATA(slob))
             return 1;
-        if (p > slob->data + slob->size)
+        if (p > SLOB_DATA(slob) + slob->size)
             return 2;
         nblocks++;
 

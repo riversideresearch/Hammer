@@ -166,6 +166,7 @@ func main() {
 | `hammer.ChRange(lo, hi)`       | Match any byte in `[lo, hi]`                            |
 | `hammer.In([]byte(...))`       | Match any byte in the given charset                     |
 | `hammer.NotIn([]byte(...))`    | Match any byte not in the given charset                 |
+| `hammer.H_take_rest()`          | Capture all remaining input as a byte slice              |
 | `hammer.Sequence(p1, p2, ...)` | Match each parser in order                              |
 | `hammer.Choice(p1, p2, ...)`   | Try each parser in order and return the first success   |
 | `hammer.Many(p)`               | Match `p` zero or more times                            |
