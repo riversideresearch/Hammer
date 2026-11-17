@@ -196,7 +196,8 @@ static void test_take_rest_waits_for_final_chunk(void) {
     g_assert_nonnull(result->ast);
     g_assert_cmpint(result->ast->token_type, ==, TT_BYTES);
     g_assert_cmpuint(result->ast->token_data.bytes.len, ==, sizeof(input));
-    g_check_bytes(result->ast->token_data.bytes.len, result->ast->token_data.bytes.token, ==, input);
+    g_check_bytes(result->ast->token_data.bytes.len, result->ast->token_data.bytes.token, ==,
+                  input);
     h_parse_result_free(result);
 }
 
