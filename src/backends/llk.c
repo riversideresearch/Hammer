@@ -641,11 +641,11 @@ static HCountedArray *llk_parse_chunk_(HLLkState *s, const HParser *parser, HInp
             plan = NULL;
 
             // push production's rhs onto the stack (in reverse order)
-            HCFChoice **s;
-            for (s = p->items; *s; s++)
+            HCFChoice **item;
+            for (item = p->items; *item; item++)
                 ;
-            for (s--; s >= p->items; s--)
-                h_slist_push(stack, *s);
+            for (item--; item >= p->items; item--)
+                h_slist_push(stack, *item);
 
             continue; // no result to record
         }
@@ -914,7 +914,7 @@ HParseResult *h_llk_parse_finish(HSuspendedParser *s) {
 
 char *h_llk_get_description(HAllocator *mm__, HParserBackend be, void *param) {
     const char *backend_name = "LL";
-    size_t k, len;
+    size_t k;
     char *descr = NULL;
 
     k = h_get_param_k(param);

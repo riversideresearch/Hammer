@@ -1,5 +1,6 @@
 /* Copyright (c) 2026 Riverside Research */
 #include "hammer.h"
+#include "internal.h"
 #include "test_suite.h"
 
 #include <glib.h>
@@ -213,7 +214,65 @@ static void test_take_rest_rejects_partial_byte(void) {
     g_assert_null(h_parse_bits(bit_limited, input, 1));
 }
 
+static HParseResult *parse_owned_test(unsigned int mode, const HParser *parser,
+                                      const uint8_t *input, size_t length) {
+    switch (mode) {
+    case 0:
+        return h_parse_owned(parser, input, length);
+    case 1:
+        return h_parse_owned__m(&system_allocator, parser, input, length);
+    case 2:
+        return h_parse_debug_owned(parser, input, length, NULL, false);
+    case 3:
+        return h_parse_debug_owned__m(&system_allocator, parser, input, length, NULL, false);
+    case 4:
+        return h_parse_bits_owned(parser, input, length * 8);
+    case 5:
+        return h_parse_bits_owned__m(&system_allocator, parser, input, length * 8);
+    case 6:
+        return h_parse_bits_debug_owned(parser, input, length * 8, NULL, false);
+    default:
+        return h_parse_bits_debug_owned__m(&system_allocator, parser, input, length * 8, NULL,
+                                           false);
+    }
+}
+
+static void test_take_rest_owned(gconstpointer backend) {
+    HParserBackend selected = (HParserBackend)GPOINTER_TO_INT(backend);
+    HParser *parser = h_sequence(h_ch('Z'), h_take_rest(), NULL);
+    HParser *empty_parser = h_take_rest();
+
+    g_assert_cmpint(h_compile(parser, selected, NULL), ==, 0);
+    g_assert_cmpint(h_compile(empty_parser, selected, NULL), ==, 0);
+    for (unsigned int mode = 0; mode < 8; ++mode) {
+        if (mode >= 4 && selected != PB_PACKRAT)
+            continue;
+        uint8_t input[] = {'Z', 0x00, 0x7f, 0x80, 0xff};
+        const uint8_t expected[] = {0x00, 0x7f, 0x80, 0xff};
+        HParseResult *result = parse_owned_test(mode, parser, input, sizeof(input));
+        g_assert_nonnull(result);
+        const HParsedToken *suffix = result->ast->token_data.seq->elements[1];
+        g_assert_cmpint(suffix->token_type, ==, TT_BYTES);
+        g_assert_cmpuint(suffix->token_data.bytes.len, ==, sizeof(expected));
+        g_assert_true(suffix->token_data.bytes.token != input + 1);
+        memset(input, 0x33, sizeof(input));
+        g_check_bytes(sizeof(expected), suffix->token_data.bytes.token, ==, expected);
+        h_parse_result_free(result);
+
+        result = parse_owned_test(mode, empty_parser, NULL, 0);
+        g_assert_nonnull(result);
+        g_assert_cmpuint(result->ast->token_data.bytes.len, ==, 0);
+        h_parse_result_free(result);
+
+        g_assert_null(parse_owned_test(mode, parser, (const uint8_t *)"X", 1));
+    }
+}
+
 void register_take_rest_tests(void) {
+    g_test_add_data_func("/core/parser/packrat/take_rest_owned", GINT_TO_POINTER(PB_PACKRAT),
+                         test_take_rest_owned);
+    g_test_add_data_func("/core/backends/regex/take_rest_owned", GINT_TO_POINTER(PB_REGULAR),
+                         test_take_rest_owned);
     g_test_add_data_func("/core/parser/packrat/take_rest", GINT_TO_POINTER(PB_PACKRAT),
                          test_take_rest);
     g_test_add_data_func("/core/parser/packrat/take_rest_zero_copy", GINT_TO_POINTER(PB_PACKRAT),

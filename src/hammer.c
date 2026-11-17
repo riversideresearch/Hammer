@@ -22,13 +22,13 @@
 #include "glue.h"
 #include "internal.h"
 #include "parsers/parser_internal.h"
+#include "platform_provider.h"
 #include "trace.h"
 
 #include <assert.h>
 #include <ctype.h>
 #include <inttypes.h>
 #include <limits.h>
-#include <pthread.h>
 #include <stdarg.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -279,7 +279,7 @@ static char *h_get_string_for_backend_with_params__m(HAllocator *mm__,
         if (generic_text) {
             size_t size = strlen(generic_text) + 1;
             text = h_new(char, size);
-            strncpy(text, generic_text, size);
+            memcpy(text, generic_text, size);
         }
     }
 
@@ -328,7 +328,7 @@ static char *h_get_backend_text_with_no_params(HAllocator *mm__, HParserBackend 
         size = strlen(src) + 1;
         text = h_new(char, size);
         if (text)
-            strncpy(text, src, size);
+            memcpy(text, src, size);
     }
 
 done:
@@ -445,11 +445,7 @@ HParsedToken *act_param_with_name(const HParseResult *p, void *user_data) {
 }
 
 HParsedToken *act_backend_params(const HParseResult *p, void *user_data) {
-    HParsedToken *res = H_MAKE(backend_params_t, (void *)p->ast);
-
     backend_params_t *bp = H_ALLOC(backend_params_t);
-
-    HParsedToken **fields = h_seq_elements(p->ast);
 
     bp->len = h_seq_len(p->ast);
     bp->params = h_arena_malloc(p->arena, sizeof(backend_param_with_name_t) * bp->len);
@@ -458,8 +454,6 @@ HParsedToken *act_backend_params(const HParseResult *p, void *user_data) {
     }
 
     return H_MAKE(backend_params_t, bp);
-
-    return res;
 }
 
 static HParser *build_hparser_rule(void) {
@@ -533,8 +527,9 @@ HParserBackendWithParams *h_get_backend_with_params_by_name(const char *name_wit
                 backend_params_t *params = &be_w_params->params;
 
                 result->requested_name = h_new(char, name->len + 1);
-                memset(result->requested_name, '\0', name->len + 1);
-                strncpy(result->requested_name, (char *)name->name, name->len);
+                if (name->len > 0)
+                    memcpy(result->requested_name, name->name, name->len);
+                result->requested_name[name->len] = '\0';
 
                 result->backend = h_query_backend_by_name(result->requested_name);
 
@@ -592,7 +587,7 @@ static size_t h_bit_length_to_bytes(size_t bit_length) {
 
 static HParseResult *h_parse_with_trace(HAllocator *mm__, const HParser *parser,
                                         const uint8_t *input, size_t length, size_t bit_length,
-                                        HTraceState *trace) {
+                                        HTraceState *trace, bool input_is_temporary) {
     // Set up a parse state...
     HInputStream input_stream = {.pos = 0,
                                  .index = 0,
@@ -604,6 +599,7 @@ static HParseResult *h_parse_with_trace(HAllocator *mm__, const HParser *parser,
                                  .endianness = DEFAULT_ENDIANNESS,
                                  .length = length,
                                  .input = input,
+                                 .input_is_temporary = input_is_temporary,
                                  .last_chunk = true,
                                  .trace = trace};
 
@@ -615,7 +611,18 @@ HParseResult *h_parse(const HParser *parser, const uint8_t *input, size_t length
 }
 HParseResult *h_parse__m(HAllocator *mm__, const HParser *parser, const uint8_t *input,
                          size_t length) {
-    return h_parse_with_trace(mm__, parser, input, length, h_byte_length_to_bits(length), NULL);
+    return h_parse_with_trace(mm__, parser, input, length, h_byte_length_to_bits(length), NULL,
+                              false);
+}
+
+HParseResult *h_parse_owned(const HParser *parser, const uint8_t *input, size_t length) {
+    return h_parse_owned__m(&system_allocator, parser, input, length);
+}
+
+HParseResult *h_parse_owned__m(HAllocator *mm__, const HParser *parser, const uint8_t *input,
+                               size_t length) {
+    return h_parse_with_trace(mm__, parser, input, length, h_byte_length_to_bits(length), NULL,
+                              true);
 }
 
 HParseResult *h_parse_bits(const HParser *parser, const uint8_t *input, size_t bit_length) {
@@ -627,7 +634,19 @@ HParseResult *h_parse_bits__m(HAllocator *mm__, const HParser *parser, const uin
     if (!parser || (parser->backend != PB_PACKRAT))
         return NULL;
     return h_parse_with_trace(mm__, parser, input, h_bit_length_to_bytes(bit_length), bit_length,
-                              NULL);
+                              NULL, false);
+}
+
+HParseResult *h_parse_bits_owned(const HParser *parser, const uint8_t *input, size_t bit_length) {
+    return h_parse_bits_owned__m(&system_allocator, parser, input, bit_length);
+}
+
+HParseResult *h_parse_bits_owned__m(HAllocator *mm__, const HParser *parser, const uint8_t *input,
+                                    size_t bit_length) {
+    if (!parser || parser->backend != PB_PACKRAT)
+        return NULL;
+    return h_parse_with_trace(mm__, parser, input, h_bit_length_to_bytes(bit_length), bit_length,
+                              NULL, true);
 }
 
 // Twin of h_parse() that attaches an independent diagnostic collector to this
@@ -644,14 +663,16 @@ HParseResult *h_parse_debug(const HParser *parser, const uint8_t *input, size_t 
     return h_parse_debug__m(h_default_parse_allocator, parser, input, length, diagnostic,
                             dumpExecutionTrace);
 }
-HParseResult *h_parse_debug__m(HAllocator *mm__, const HParser *parser, const uint8_t *input,
-                               size_t length, HParseDiagnostic **diagnostic,
-                               bool dumpExecutionTrace) {
+static HParseResult *h_parse_debug_with_input_lifetime(HAllocator *mm__, const HParser *parser,
+                                                       const uint8_t *input, size_t length,
+                                                       HParseDiagnostic **diagnostic,
+                                                       bool dumpExecutionTrace,
+                                                       bool input_is_temporary) {
     if (diagnostic)
         *diagnostic = NULL;
     HTraceState *trace = h_trace_state_new(dumpExecutionTrace);
-    HParseResult *res =
-        h_parse_with_trace(mm__, parser, input, length, h_byte_length_to_bits(length), trace);
+    HParseResult *res = h_parse_with_trace(
+        mm__, parser, input, length, h_byte_length_to_bits(length), trace, input_is_temporary);
     HParseDiagnostic *collected = NULL;
     if (diagnostic || h_trace_should_print_summary(trace))
         TRACE_GET_DIAGNOSTIC(trace, &collected);
@@ -663,6 +684,26 @@ HParseResult *h_parse_debug__m(HAllocator *mm__, const HParser *parser, const ui
         h_parse_diagnostic_free(collected);
     h_trace_state_free(trace);
     return res;
+}
+
+HParseResult *h_parse_debug__m(HAllocator *mm__, const HParser *parser, const uint8_t *input,
+                               size_t length, HParseDiagnostic **diagnostic,
+                               bool dumpExecutionTrace) {
+    return h_parse_debug_with_input_lifetime(mm__, parser, input, length, diagnostic,
+                                             dumpExecutionTrace, false);
+}
+
+HParseResult *h_parse_debug_owned(const HParser *parser, const uint8_t *input, size_t length,
+                                  HParseDiagnostic **diagnostic, bool dumpExecutionTrace) {
+    return h_parse_debug_owned__m(&system_allocator, parser, input, length, diagnostic,
+                                  dumpExecutionTrace);
+}
+
+HParseResult *h_parse_debug_owned__m(HAllocator *mm__, const HParser *parser, const uint8_t *input,
+                                     size_t length, HParseDiagnostic **diagnostic,
+                                     bool dumpExecutionTrace) {
+    return h_parse_debug_with_input_lifetime(mm__, parser, input, length, diagnostic,
+                                             dumpExecutionTrace, true);
 }
 
 HParseResult *h_parse_bits_debug(const HParser *parser, const uint8_t *input, size_t bit_length,
@@ -671,9 +712,11 @@ HParseResult *h_parse_bits_debug(const HParser *parser, const uint8_t *input, si
                                  dumpExecutionTrace);
 }
 
-HParseResult *h_parse_bits_debug__m(HAllocator *mm__, const HParser *parser, const uint8_t *input,
-                                    size_t bit_length, HParseDiagnostic **diagnostic,
-                                    bool dumpExecutionTrace) {
+static HParseResult *h_parse_bits_debug_with_input_lifetime(HAllocator *mm__, const HParser *parser,
+                                                            const uint8_t *input, size_t bit_length,
+                                                            HParseDiagnostic **diagnostic,
+                                                            bool dumpExecutionTrace,
+                                                            bool input_is_temporary) {
     if (diagnostic)
         *diagnostic = NULL;
     if (!parser || (parser->backend != PB_PACKRAT))
@@ -681,7 +724,8 @@ HParseResult *h_parse_bits_debug__m(HAllocator *mm__, const HParser *parser, con
 
     size_t length = h_bit_length_to_bytes(bit_length);
     HTraceState *trace = h_trace_state_new(dumpExecutionTrace);
-    HParseResult *res = h_parse_with_trace(mm__, parser, input, length, bit_length, trace);
+    HParseResult *res =
+        h_parse_with_trace(mm__, parser, input, length, bit_length, trace, input_is_temporary);
     HParseDiagnostic *collected = NULL;
     if (diagnostic || h_trace_should_print_summary(trace))
         TRACE_GET_DIAGNOSTIC(trace, &collected);
@@ -693,6 +737,27 @@ HParseResult *h_parse_bits_debug__m(HAllocator *mm__, const HParser *parser, con
         h_parse_diagnostic_free(collected);
     h_trace_state_free(trace);
     return res;
+}
+
+HParseResult *h_parse_bits_debug__m(HAllocator *mm__, const HParser *parser, const uint8_t *input,
+                                    size_t bit_length, HParseDiagnostic **diagnostic,
+                                    bool dumpExecutionTrace) {
+    return h_parse_bits_debug_with_input_lifetime(mm__, parser, input, bit_length, diagnostic,
+                                                  dumpExecutionTrace, false);
+}
+
+HParseResult *h_parse_bits_debug_owned(const HParser *parser, const uint8_t *input,
+                                       size_t bit_length, HParseDiagnostic **diagnostic,
+                                       bool dumpExecutionTrace) {
+    return h_parse_bits_debug_owned__m(&system_allocator, parser, input, bit_length, diagnostic,
+                                       dumpExecutionTrace);
+}
+
+HParseResult *h_parse_bits_debug_owned__m(HAllocator *mm__, const HParser *parser,
+                                          const uint8_t *input, size_t bit_length,
+                                          HParseDiagnostic **diagnostic, bool dumpExecutionTrace) {
+    return h_parse_bits_debug_with_input_lifetime(mm__, parser, input, bit_length, diagnostic,
+                                                  dumpExecutionTrace, true);
 }
 
 void h_parse_result_free__m(HAllocator *alloc, HParseResult *result) {
@@ -1189,26 +1254,23 @@ struct HParserGraph_ {
     bool claimed;
 };
 
-/*
- * Parser factories may be called concurrently, so graph collection is scoped
- * to the constructing thread. GCC and Clang support __thread in C99 mode.
- */
-static __thread HParserGraph *active_parser_graph;
 static HParserGraph *parser_graphs;
-static pthread_mutex_t parser_graphs_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 HParserGraph *h_parser_graph_begin(void) {
+    HParserGraph **active_graph = (HParserGraph **)h_platform_current_graph_slot();
     HParserGraph *graph = calloc(1, sizeof(*graph));
-    if (graph == NULL)
+    if (graph == NULL || active_graph == NULL) {
+        free(graph);
         return NULL;
+    }
 
-    graph->previous = active_parser_graph;
-    active_parser_graph = graph;
+    graph->previous = *active_graph;
+    *active_graph = graph;
 
-    pthread_mutex_lock(&parser_graphs_mutex);
+    h_platform_graph_lock();
     graph->next = parser_graphs;
     parser_graphs = graph;
-    pthread_mutex_unlock(&parser_graphs_mutex);
+    h_platform_graph_unlock();
     return graph;
 }
 
@@ -1216,7 +1278,11 @@ void h_parser_graph_end(HParserGraph *graph) {
     if (graph == NULL)
         return;
 
-    HParserGraph **link = &active_parser_graph;
+    HParserGraph **active_graph = (HParserGraph **)h_platform_current_graph_slot();
+    if (active_graph == NULL)
+        return;
+
+    HParserGraph **link = active_graph;
     while (*link && *link != graph)
         link = &(*link)->previous;
 
@@ -1227,10 +1293,17 @@ void h_parser_graph_end(HParserGraph *graph) {
 }
 
 void h_parser_graph_track(HParser *parser) {
-    HParserGraph *graph = active_parser_graph;
+    HParserGraph **active_graph = (HParserGraph **)h_platform_current_graph_slot();
+    HParserGraph *graph = active_graph ? *active_graph : NULL;
     if (graph == NULL || parser == NULL)
         return;
 
+    /*
+     * A different thread may be freeing a completed graph and traversing the
+     * registry to untrack its nodes. Keep this graph's growing array stable
+     * while that traversal is in progress.
+     */
+    h_platform_graph_lock();
     if (graph->count == graph->capacity) {
         const size_t capacity = graph->capacity == 0 ? 16 : graph->capacity * 2;
 
@@ -1249,26 +1322,27 @@ void h_parser_graph_track(HParser *parser) {
     }
 
     graph->parsers[graph->count++] = parser;
+    h_platform_graph_unlock();
 }
 
 static void h_parser_graph_untrack(HParser *parser) {
-    pthread_mutex_lock(&parser_graphs_mutex);
+    h_platform_graph_lock();
     for (HParserGraph *graph = parser_graphs; graph != NULL; graph = graph->next) {
         for (size_t i = 0; i < graph->count; ++i) {
             if (graph->parsers[i] == parser) {
                 graph->parsers[i] = NULL;
-                pthread_mutex_unlock(&parser_graphs_mutex);
+                h_platform_graph_unlock();
                 return;
             }
         }
     }
-    pthread_mutex_unlock(&parser_graphs_mutex);
+    h_platform_graph_unlock();
 }
 
 static bool h_parser_graph_claim(HParserGraph *graph) {
     bool claimed = false;
 
-    pthread_mutex_lock(&parser_graphs_mutex);
+    h_platform_graph_lock();
     HParserGraph **link = &parser_graphs;
     while (*link != NULL && *link != graph)
         link = &(*link)->next;
@@ -1281,13 +1355,13 @@ static bool h_parser_graph_claim(HParserGraph *graph) {
         graph->claimed = true;
         claimed = true;
     }
-    pthread_mutex_unlock(&parser_graphs_mutex);
+    h_platform_graph_unlock();
 
     return claimed;
 }
 
 static void h_parser_graph_remove(HParserGraph *graph) {
-    pthread_mutex_lock(&parser_graphs_mutex);
+    h_platform_graph_lock();
     HParserGraph **link = &parser_graphs;
     while (*link != NULL && *link != graph)
         link = &(*link)->next;
@@ -1295,7 +1369,7 @@ static void h_parser_graph_remove(HParserGraph *graph) {
         *link = graph->next;
         graph->next = NULL;
     }
-    pthread_mutex_unlock(&parser_graphs_mutex);
+    h_platform_graph_unlock();
 }
 
 void h_parser_graph_free(HParserGraph *graph) {
@@ -1306,9 +1380,23 @@ void h_parser_graph_free(HParserGraph *graph) {
     if (!h_parser_graph_claim(graph))
         return;
 
-    /* Do not hold the registry mutex while running parser or allocator code. */
-    while (graph->count > 0) {
-        HParser *parser = graph->parsers[--graph->count];
+    /*
+     * Do not hold the registry mutex while running parser or allocator code,
+     * but serialize access to graph->count and graph->parsers. A different
+     * thread may be completing a parser free and untracking its node.
+     */
+    for (;;) {
+        HParser *parser;
+
+        h_platform_graph_lock();
+        if (graph->count == 0) {
+            h_platform_graph_unlock();
+            break;
+        }
+        parser = graph->parsers[--graph->count];
+        graph->parsers[graph->count] = NULL;
+        h_platform_graph_unlock();
+
         if (parser != NULL)
             h_parser_free__m(parser->owner_mm__, parser);
     }

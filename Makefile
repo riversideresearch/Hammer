@@ -29,6 +29,7 @@ BUILD_DIR := build/rtems/static
 endif
 
 TEST_BUILD_DIR = $(BUILD_DIR)/tests
+PLATFORM_CONFIG = $(BUILD_DIR)/platform_config.h
 
 # Compiler flags
 ifeq ($(findstring sparc,$(RTEMS_BSP)),sparc)
@@ -54,6 +55,7 @@ CFLAGS = \
     $(RTEMS_DEFINES) \
 	-Wall -Wextra -Wno-unused-parameter -Wno-unused-variable \
 	-g \
+	-I$(BUILD_DIR) \
 	-I$(RTEMS_BSP_LIB)/include \
     -Ishim \
 	-I$(HAMMER_SRC)
@@ -75,7 +77,9 @@ SRCS = \
     $(HAMMER_SRC)/cfgrammar.c \
     $(HAMMER_SRC)/pprint.c \
     $(HAMMER_SRC)/registry.c \
-    $(HAMMER_SRC)/platform.c \
+    $(HAMMER_SRC)/platform_common.c \
+    $(HAMMER_SRC)/platform_rtems.c \
+    $(HAMMER_SRC)/tsearch.c \
     $(HAMMER_SRC)/trace.c \
     $(HAMMER_SRC)/bitreader.c \
     $(HAMMER_SRC)/bitwriter.c \
@@ -133,7 +137,8 @@ endif
 RTEMS_HOST_ONLY_TEST_SRCS = \
 	$(TEST_DIR)/backends/test_trace.c \
 	$(TEST_DIR)/installed_consumer_smoke.c \
-	$(TEST_DIR)/test_static_alloc.c
+	$(TEST_DIR)/test_static_alloc.c \
+	$(TEST_DIR)/windows_thread.c
 TEST_SRCS := $(filter-out $(RTEMS_HOST_ONLY_TEST_SRCS), \
 	$(sort $(shell find $(TEST_DIR) -type f -name '*.c' -print)))
 
@@ -152,6 +157,17 @@ TARGET = $(BUILD_DIR)/libhammer.a
 TEST_OBJS = $(patsubst $(TEST_DIR)/%.c,$(TEST_BUILD_DIR)/%.o, $(TEST_SRCS))
 TEST_TARGET = $(BUILD_DIR)/libhammer_tests.a
 
+$(PLATFORM_CONFIG): $(HAMMER_SRC)/platform_config.h.in
+	@mkdir -p $(dir $@)
+	@sed \
+		-e 's/$${H_PLATFORM_PROVIDER}/rtems/' \
+		-e 's/$${H_PLATFORM_POSIX}/0/' \
+		-e 's/$${H_PLATFORM_WINDOWS}/0/' \
+		-e 's/$${H_PLATFORM_THREADS}/0/' \
+		$< > $@
+
+$(OBJS) $(TEST_OBJS): $(PLATFORM_CONFIG)
+
 $(TEST_BUILD_DIR)/%.o: $(TEST_DIR)/%.c
 	@mkdir -p $(dir $@)
 	$(CC) -I$(TEST_DIR) $(TEST_CFLAGS) -c $< -o $@
@@ -165,7 +181,7 @@ $(TEST_TARGET): $(TEST_OBJS)
 
 .PHONY: all clean info
 
-all: $(BUILD_DIR) $(TARGET)
+all: $(BUILD_DIR) $(PLATFORM_CONFIG) $(TARGET)
 
 tests: $(TARGET) $(TEST_TARGET)
 
@@ -176,6 +192,8 @@ $(BUILD_DIR):
 #Link all object files into a static library
 $(TARGET): $(OBJS)
 	$(AR) rcs $@ $^
+	# Drop the pre-provider platform object left by an in-place upgrade.
+	@$(AR) d $@ platform.o 2>/dev/null || true
 	$(RANLIB) $@
 	@echo "Built: $@"
 
@@ -202,7 +220,7 @@ clean:
 
 # INSTALL
 
-install:
+install: $(TARGET) $(PLATFORM_CONFIG)
 	mkdir -p $(INSTALL_PREFIX)/lib $(INSTALL_PREFIX)/include
 	cp $(TARGET) $(INSTALL_PREFIX)/lib/
 	cp $(HAMMER_SRC)/hammer.h $(INSTALL_PREFIX)/include/
@@ -215,6 +233,7 @@ endif
 	cp $(HAMMER_SRC)/rtems_test_suite.h $(INSTALL_PREFIX)/include/
 	cp $(HAMMER_SRC)/internal.h $(INSTALL_PREFIX)/include/
 	cp $(HAMMER_SRC)/platform.h $(INSTALL_PREFIX)/include/
+	cp $(PLATFORM_CONFIG) $(INSTALL_PREFIX)/include/
 
 install-tests: install
 	mkdir -p $(INSTALL_PREFIX)/tests

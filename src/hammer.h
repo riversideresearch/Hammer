@@ -989,8 +989,8 @@ HParser *h_nothing_p__m(HAllocator *mm__);
  *
  * @result Result token type: TT_SEQUENCE
  */
-HParser *h_sequence(HParser *p, ...) __attribute__((sentinel));
-HParser *h_sequence__m(HAllocator *mm__, HParser *p, ...) __attribute__((sentinel));
+HParser *h_sequence(HParser *p, ...) H_GCC_ATTRIBUTE((sentinel));
+HParser *h_sequence__m(HAllocator *mm__, HParser *p, ...) H_GCC_ATTRIBUTE((sentinel));
 HParser *h_sequence__mv(HAllocator *mm__, HParser *p, va_list ap);
 HParser *h_sequence__v(HParser *p, va_list ap);
 HParser *h_sequence__a(void *args[]);
@@ -1025,8 +1025,8 @@ HParser *h_drop_from___ma(HAllocator *mm__, void *args[]);
  * @note Packrat is the only backend with ordered choice, other backends will not apply each parser
  * in order.
  */
-HParser *h_choice(HParser *p, ...) __attribute__((sentinel));
-HParser *h_choice__m(HAllocator *mm__, HParser *p, ...) __attribute__((sentinel));
+HParser *h_choice(HParser *p, ...) H_GCC_ATTRIBUTE((sentinel));
+HParser *h_choice__m(HAllocator *mm__, HParser *p, ...) H_GCC_ATTRIBUTE((sentinel));
 HParser *h_choice__mv(HAllocator *mm__, HParser *p, va_list ap);
 HParser *h_choice__v(HParser *p, va_list ap);
 HParser *h_choice__a(void *args[]);
@@ -1081,8 +1081,8 @@ HParser *h_dispatch__s(HParser *discriminator, const OpcodeMap *map, size_t coun
  * @param p Null-terminated list of parsers
  * @return Result token type: TT_SEQUENCE
  */
-HParser *h_permutation(HParser *p, ...) __attribute__((sentinel));
-HParser *h_permutation__m(HAllocator *mm__, HParser *p, ...) __attribute__((sentinel));
+HParser *h_permutation(HParser *p, ...) H_GCC_ATTRIBUTE((sentinel));
+HParser *h_permutation__m(HAllocator *mm__, HParser *p, ...) H_GCC_ATTRIBUTE((sentinel));
 HParser *h_permutation__mv(HAllocator *mm__, HParser *p, va_list ap);
 HParser *h_permutation__v(HParser *p, va_list ap);
 HParser *h_permutation__a(void *args[]);
