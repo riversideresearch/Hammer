@@ -9,6 +9,24 @@
 
 #include "compiler_specifics.h"
 
+/*
+ * Library builds find the generated configuration through their build include
+ * directory.  Extension users sometimes include a source-tree internal header
+ * while linking against an installed Hammer; in that case use the installed
+ * sibling configuration header instead.
+ */
+#if defined(__has_include)
+#if __has_include("platform_config.h")
+#include "platform_config.h"
+#elif __has_include(<hammer/platform_config.h>)
+#include <hammer/platform_config.h>
+#else
+#error "Hammer platform_config.h was not generated or installed"
+#endif
+#else
+#include "platform_config.h"
+#endif
+
 #include <stdarg.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -42,10 +60,16 @@ int64_t h_platform_stopwatch_ns(struct HStopWatch *stopwatch);
 
 /* Platform dependent definitions for HStopWatch */
 
+#if H_PLATFORM_POSIX
 #include <time.h>
-
 struct HStopWatch {
     struct timespec start;
 };
+#else
+struct HStopWatch {
+    /* Opaque provider state. Use the stopwatch functions above. */
+    int64_t words[2];
+};
+#endif
 
 #endif

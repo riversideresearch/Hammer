@@ -3,7 +3,7 @@ import os
 import shutil
 import sys
 
-Import("env libhammer_shared testruns targets binding_results binding_test_stamps")
+Import("env libhammer_shared testruns targets binding_results binding_test_stamps swig_headers")
 
 if libhammer_shared is None:
     print("Warning: Go bindings require shared library. Skipping.")
@@ -24,6 +24,7 @@ src_dir = os.path.join(project_root, "src")
 go_src_dir = os.path.join(project_root, "src/bindings/go")
 build_dir = os.path.join(env["BUILD_BASE"], "src/bindings/go")
 abs_build_dir = os.path.join(project_root, build_dir)
+generated_src_dir = os.path.join(project_root, env["BUILD_BASE"], "src")
 hammer_lib_dir = os.path.dirname(str(libhammer_shared[0]))
 
 #
@@ -86,6 +87,7 @@ gobindings = goenv.Command(
         f"cp {go_src_dir}/hammer_test.go {abs_build_dir}/hammer_test.go"
     ),
 )
+goenv.Depends(gobindings, swig_headers)
 
 Default(gobindings)
 
@@ -105,7 +107,7 @@ gotestexec = goenv.Command(
         (
             "cd {} && "
             "{}={} "
-            "CGO_CFLAGS='-I{}/src' "
+            "CGO_CFLAGS='-I{} -I{}/src' "
             "CGO_LDFLAGS='-L{} -lhammer' "
             "GOCACHE={} "
             "{} {} --binding Go --results-file {} -- "
@@ -114,6 +116,7 @@ gotestexec = goenv.Command(
             abs_build_dir,
             env["HAMMER_LIBRARY_PATH_ENV"],
             hammer_lib_dir,
+            generated_src_dir,
             project_root,
             hammer_lib_dir,
             goenv["ENV"]["GOCACHE"],

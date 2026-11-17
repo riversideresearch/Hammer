@@ -111,7 +111,8 @@ static void record_rvm_match_failure(HRVMMatchFailure *failure, size_t index, ui
 }
 
 HParseResult *run_trace(HAllocator *mm__, HRVMProg *orig_prog, HRVMTrace *trace,
-                        const uint8_t *input, size_t len, HTraceState *trace_state);
+                        const uint8_t *input, size_t len, HTraceState *trace_state,
+                        bool input_is_temporary);
 
 HRVMTrace *invert_trace(HRVMTrace *trace) {
     HRVMTrace *last = NULL;
@@ -131,7 +132,7 @@ HRVMTrace *invert_trace(HRVMTrace *trace) {
 }
 
 static void *h_rvm_run__m(HAllocator *mm__, HRVMProg *prog, const uint8_t *input, size_t len,
-                          HTraceState *trace_state) {
+                          HTraceState *trace_state, bool input_is_temporary) {
     HArena *arena = h_new_arena(mm__, 0);
     HSArray *heads_a = h_sarray_new(mm__, prog->length), // Both of these contain HRVMTrace*'s
         *heads_b = h_sarray_new(mm__, prog->length);
@@ -268,7 +269,7 @@ finalize:
     if (ret_trace) {
         // Invert the direction of the trace linked list.
         ret_trace = invert_trace(ret_trace);
-        ret = run_trace(mm__, prog, ret_trace, input, len, trace_state);
+        ret = run_trace(mm__, prog, ret_trace, input, len, trace_state, input_is_temporary);
         // NB: ret is in its own arena
         // Dump execution trace on successful parse if tracing is enabled
         if (ret && h_trace_is_dump_enabled(trace_state)) {
@@ -337,7 +338,8 @@ bool svm_stack_ensure_cap(HAllocator *mm__, HSVMContext *ctx, size_t addl) {
 #pragma GCC diagnostic ignored "-Wclobbered"
 #endif
 HParseResult *run_trace(HAllocator *mm__, HRVMProg *orig_prog, HRVMTrace *trace,
-                        const uint8_t *input, size_t len, HTraceState *trace_state) {
+                        const uint8_t *input, size_t len, HTraceState *trace_state,
+                        bool input_is_temporary) {
     // orig_prog is only used for the action table
     HSVMContext *ctx = NULL;
     HArena *arena = h_new_arena(mm__, 0);
@@ -416,8 +418,14 @@ HParseResult *run_trace(HAllocator *mm__, HRVMProg *orig_prog, HRVMTrace *trace,
             }
             assert(tmp_res->bit_offset == 0);
 
-            tmp_res->token_data.bytes.token = input + tmp_res->index;
             tmp_res->token_data.bytes.len = cur->input_pos - tmp_res->index;
+            if (input_is_temporary && tmp_res->token_data.bytes.len > 0) {
+                uint8_t *copy = a_new(uint8_t, tmp_res->token_data.bytes.len);
+                memcpy(copy, input + tmp_res->index, tmp_res->token_data.bytes.len);
+                tmp_res->token_data.bytes.token = copy;
+            } else {
+                tmp_res->token_data.bytes.token = input ? input + tmp_res->index : NULL;
+            }
             break;
         case SVM_ACCEPT:
             if (ctx->stack_count > 1) {
@@ -670,7 +678,8 @@ static int h_regex_compile(HAllocator *mm__, HParser *parser, const void *params
 static HParseResult *h_regex_parse(HAllocator *mm__, const HParser *parser,
                                    HInputStream *input_stream) {
     return h_rvm_run__m(mm__, (HRVMProg *)parser->backend_data, input_stream->input,
-                        input_stream->length, input_stream->trace);
+                        input_stream->length, input_stream->trace,
+                        input_stream->input_is_temporary);
 }
 
 HParserBackendVTable h__regex_backend_vtable = {

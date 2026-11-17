@@ -85,6 +85,11 @@ typedef struct HTraceState_ HTraceState;
 typedef struct HInputStream_ {
     // This should be considered to be a really big value type.
     const uint8_t *input;
+    /*
+     * Streaming buffers and managed-language input can expire after parsing.
+     * Parsers that return borrowed input must copy from temporary storage.
+     */
+    bool input_is_temporary;
     size_t pos; // position of this chunk in a multi-chunk stream
     size_t index;
     size_t length;
@@ -418,6 +423,24 @@ static inline size_t h_input_stream_length(HInputStream *state) {
 }
 // need to decide if we want to make this public.
 HParseResult *h_do_parse(const HParser *parser, HParseState *state);
+/* Managed-language input expires when the native call returns. */
+HParseResult *h_parse_owned(const HParser *parser, const uint8_t *input, size_t length);
+HParseResult *h_parse_owned__m(HAllocator *mm__, const HParser *parser, const uint8_t *input,
+                               size_t length);
+HParseResult *h_parse_debug_owned(const HParser *parser, const uint8_t *input, size_t length,
+                                  HParseDiagnostic **diagnostic, bool dumpExecutionTrace);
+HParseResult *h_parse_debug_owned__m(HAllocator *mm__, const HParser *parser, const uint8_t *input,
+                                     size_t length, HParseDiagnostic **diagnostic,
+                                     bool dumpExecutionTrace);
+HParseResult *h_parse_bits_owned(const HParser *parser, const uint8_t *input, size_t bit_length);
+HParseResult *h_parse_bits_owned__m(HAllocator *mm__, const HParser *parser, const uint8_t *input,
+                                    size_t bit_length);
+HParseResult *h_parse_bits_debug_owned(const HParser *parser, const uint8_t *input,
+                                       size_t bit_length, HParseDiagnostic **diagnostic,
+                                       bool dumpExecutionTrace);
+HParseResult *h_parse_bits_debug_owned__m(HAllocator *mm__, const HParser *parser,
+                                          const uint8_t *input, size_t bit_length,
+                                          HParseDiagnostic **diagnostic, bool dumpExecutionTrace);
 void put_cached(HParseState *ps, const HParser *p, HParseResult *cached);
 
 HActionPlan *h_action_plan_concat(HArena *arena, HActionPlan *left, HActionPlan *right);

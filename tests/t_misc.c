@@ -221,7 +221,7 @@ static void test_glue_act_second_rejects_short_sequence(void) {
         g_error("h_act_second accepted a sequence with fewer than two elements");
     }
 
-    g_test_trap_subprocess(NULL, 0, G_TEST_SUBPROCESS_DEFAULT);
+    g_test_trap_subprocess(NULL, 0, 0); // G_TEST_SUBPROCESS_DEFAULT
     g_test_trap_assert_failed();
     g_test_trap_assert_stderr("*Hammer assertion failed*");
 }

@@ -708,6 +708,20 @@ HParser *h_bits__m(HAllocator *mm__, size_t len, bool sign);
 HParser *h_bytes(size_t len);
 HParser *h_bytes__m(HAllocator *mm__, size_t len);
 
+/**
+ * @brief Captures all remaining final input as a zero-copy byte token.
+ *
+ * The parser consumes the complete remaining input and therefore makes a
+ * following h_end_p() redundant. It accepts an empty input. The parser
+ * requires byte alignment and a final input chunk; it suspends in a streaming
+ * parse until the final chunk is available.
+ *
+ * @return Result token type: TT_BYTES. Direct parses reference the caller's
+ * input buffer; streaming parses retain a copy in the parse result.
+ */
+HParser *h_take_rest(void);
+HParser *h_take_rest__m(HAllocator *mm__);
+
 /** @} */
 
 /**
@@ -975,8 +989,8 @@ HParser *h_nothing_p__m(HAllocator *mm__);
  *
  * @result Result token type: TT_SEQUENCE
  */
-HParser *h_sequence(HParser *p, ...) __attribute__((sentinel));
-HParser *h_sequence__m(HAllocator *mm__, HParser *p, ...) __attribute__((sentinel));
+HParser *h_sequence(HParser *p, ...) H_GCC_ATTRIBUTE((sentinel));
+HParser *h_sequence__m(HAllocator *mm__, HParser *p, ...) H_GCC_ATTRIBUTE((sentinel));
 HParser *h_sequence__mv(HAllocator *mm__, HParser *p, va_list ap);
 HParser *h_sequence__v(HParser *p, va_list ap);
 HParser *h_sequence__a(void *args[]);
@@ -1011,8 +1025,8 @@ HParser *h_drop_from___ma(HAllocator *mm__, void *args[]);
  * @note Packrat is the only backend with ordered choice, other backends will not apply each parser
  * in order.
  */
-HParser *h_choice(HParser *p, ...) __attribute__((sentinel));
-HParser *h_choice__m(HAllocator *mm__, HParser *p, ...) __attribute__((sentinel));
+HParser *h_choice(HParser *p, ...) H_GCC_ATTRIBUTE((sentinel));
+HParser *h_choice__m(HAllocator *mm__, HParser *p, ...) H_GCC_ATTRIBUTE((sentinel));
 HParser *h_choice__mv(HAllocator *mm__, HParser *p, va_list ap);
 HParser *h_choice__v(HParser *p, va_list ap);
 HParser *h_choice__a(void *args[]);
@@ -1067,8 +1081,8 @@ HParser *h_dispatch__s(HParser *discriminator, const OpcodeMap *map, size_t coun
  * @param p Null-terminated list of parsers
  * @return Result token type: TT_SEQUENCE
  */
-HParser *h_permutation(HParser *p, ...) __attribute__((sentinel));
-HParser *h_permutation__m(HAllocator *mm__, HParser *p, ...) __attribute__((sentinel));
+HParser *h_permutation(HParser *p, ...) H_GCC_ATTRIBUTE((sentinel));
+HParser *h_permutation__m(HAllocator *mm__, HParser *p, ...) H_GCC_ATTRIBUTE((sentinel));
 HParser *h_permutation__mv(HAllocator *mm__, HParser *p, va_list ap);
 HParser *h_permutation__v(HParser *p, va_list ap);
 HParser *h_permutation__a(void *args[]);

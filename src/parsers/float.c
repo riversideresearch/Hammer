@@ -13,9 +13,10 @@ typedef struct {
 
 static bool supports_binary32(void) {
     const float one = 1.0f;
+    size_t float_size = sizeof(float);
     uint32_t raw_bits;
 
-    if (sizeof(float) != sizeof(raw_bits))
+    if (float_size != sizeof(raw_bits))
         return false;
 
     memcpy(&raw_bits, &one, sizeof(raw_bits));
@@ -25,9 +26,10 @@ static bool supports_binary32(void) {
 
 static bool supports_binary64(void) {
     const double one = 1.0;
+    size_t double_size = sizeof(double);
     uint64_t raw_bits;
 
-    if (sizeof(double) != sizeof(raw_bits))
+    if (double_size != sizeof(raw_bits))
         return false;
 
     memcpy(&raw_bits, &one, sizeof(raw_bits));
@@ -112,7 +114,7 @@ static HParsedToken *make_float_token(HArena *arena, const HParsedToken *source,
 }
 
 static HParsedToken *reshape_float(const HParseResult *p, void *user_data) {
-    float_env *env = user_data;
+    (void)user_data;
     assert(p->ast);
     assert(p->ast->token_type == TT_SEQUENCE);
 

@@ -132,3 +132,34 @@ jobs:
           scons install prefix="$PREFIX" DESTDIR="$STAGING_ROOT"
           STAGED_DYLIB="$STAGING_ROOT${PREFIX}/lib/libhammer.dylib"
           test "$(otool -D "$STAGED_DYLIB" | tail -n +2)" = "$PREFIX/lib/libhammer.dylib"
+
+  portable-core:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: python -m pip install scons
+      - run: scons platform=portable --no-tests testportable
+      - run: sh tools/portability-audit.sh
+
+  windows-core:
+    runs-on: windows-latest
+    env:
+      # clang-cl does not accept the workflow's Unix compiler flags.
+      CFLAGS: ""
+    defaults:
+      run:
+        shell: cmd
+    steps:
+      - uses: actions/checkout@v7
+      - run: |
+          set "VSINSTALL="
+          "%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath > "%RUNNER_TEMP%\hammer-vs-path.txt"
+          if errorlevel 1 exit /b 1
+          set /p VSINSTALL=<"%RUNNER_TEMP%\hammer-vs-path.txt"
+          if not defined VSINSTALL exit /b 1
+          call "%VSINSTALL%\VC\Auxiliary\Build\vcvars64.bat"
+          if errorlevel 1 exit /b 1
+          python -m pip install scons
+          if errorlevel 1 exit /b 1
+          set "CC=clang-cl"
+          scons platform=windows --no-tests testportable testwindows

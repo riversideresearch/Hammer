@@ -35,18 +35,18 @@ static bool follow_transition(const HLRTable *table, size_t x, HCFChoice *A, siz
     if (action->type == HLR_CONFLICT) {
         if (!action->data.branches)
             return false;
-        HSlistNode *x;
-        for (x = action->data.branches->head; x; x = x->next) {
-            action = x->elem;
+        HSlistNode *branch;
+        for (branch = action->data.branches->head; branch; branch = branch->next) {
+            action = branch->elem;
             if (action->type == HLR_CONFLICT)
                 return false;
             assert(action->type != HLR_CONFLICT); // no nesting of conflicts
             if (action->type == HLR_SHIFT)
                 break;
         }
-        if (x == NULL || x->next != NULL)
+        if (branch == NULL || branch->next != NULL)
             return false;
-        assert(x != NULL && x->next == NULL); // shift found at the bottom
+        assert(branch != NULL && branch->next == NULL); // shift found at the bottom
     }
     if (action->type != HLR_SHIFT)
         return false;
@@ -334,52 +334,69 @@ int h_lalr_compile(HAllocator *mm__, HParser *parser, const void *params) {
         }
 
         // go through the inadequate states; replace inadeq with a new list
-        HSlist *inadeq = table->inadeq;
+        HSlist *inadequate_states = table->inadeq;
         table->inadeq = h_slist_new(arena);
 
-        for (HSlistNode *x = inadeq->head; x; x = x->next) {
+        for (HSlistNode *x = inadequate_states->head; x; x = x->next) {
             size_t state = (uintptr_t)x->elem;
-            bool inadeq = false;
+            bool has_inadequacy = false;
 
             // clear old forall entry, it's being replaced by more fine-grained ones
             table->forall[state] = NULL;
 
             // go through each reducible item of state
-            H_FOREACH_KEY(dfa->states[state], HLRItem * item)
-            if (item->mark < item->len)
-                continue;
+            const HHashTable *items = dfa->states[state];
+            for (size_t item_index = 0; item_index < items->capacity; ++item_index) {
+                for (HHashTableEntry *item_entry = &items->contents[item_index]; item_entry != NULL;
+                     item_entry = item_entry->next) {
+                    const HLRItem *item;
 
-            // action to place in the table cells indicated by lookahead
-            HLRAction *action = h_reduce_action(arena, item);
+                    if (item_entry->key == NULL)
+                        continue;
+                    item = item_entry->key;
+                    if (item->mark < item->len)
+                        continue;
 
-            // find all LR(0)-enhanced productions matching item
-            HHashSet *lhss = h_hashtable_get(eg->corr, item->lhs);
-            if (lhss == NULL)
-                continue;
-            assert(lhss != NULL);
-            H_FOREACH_KEY(lhss, HCFChoice * lhs)
-            if (match_any_production(table, eg, lhs, item->rhs, state)) {
-                // the left-hand symbol's follow set is this production's
-                // contribution to the lookahead
-                const HStringMap *fs = h_follow(k, eg->grammar, lhs);
-                if (fs == NULL || fs->epsilon_branch != NULL || h_stringmap_empty(fs))
-                    continue;
-                assert(fs != NULL);
-                assert(fs->epsilon_branch == NULL);
-                // NB: there is a case where fs can be empty: when reducing by lhs
-                // would lead to certain parse failure, by means of h_nothing_p()
-                // for instance. in that case, the below code correctly adds no
-                // reduce action.
-                assert(!h_stringmap_empty(fs)); // XXX
+                    // action to place in the table cells indicated by lookahead
+                    HLRAction *action = h_reduce_action(arena, item);
 
-                // for each lookahead symbol, put action into table cell
-                if (terminals_put(table->tmap[state], fs, action) < 0)
-                    inadeq = true;
+                    // find all LR(0)-enhanced productions matching item
+                    HHashSet *lhss = h_hashtable_get(eg->corr, item->lhs);
+                    if (lhss == NULL)
+                        continue;
+
+                    for (size_t lhs_index = 0; lhs_index < lhss->capacity; ++lhs_index) {
+                        for (HHashTableEntry *lhs_entry = &lhss->contents[lhs_index];
+                             lhs_entry != NULL; lhs_entry = lhs_entry->next) {
+                            const HCFChoice *lhs;
+
+                            if (lhs_entry->key == NULL)
+                                continue;
+                            lhs = lhs_entry->key;
+                            if (!match_any_production(table, eg, lhs, item->rhs, state))
+                                continue;
+
+                            // the left-hand symbol's follow set is this production's
+                            // contribution to the lookahead
+                            const HStringMap *fs = h_follow(k, eg->grammar, lhs);
+                            if (fs == NULL || fs->epsilon_branch != NULL || h_stringmap_empty(fs))
+                                continue;
+                            assert(fs != NULL);
+                            assert(fs->epsilon_branch == NULL);
+                            // NB: there is a case where fs can be empty: when reducing by lhs
+                            // would lead to certain parse failure, by means of h_nothing_p()
+                            // for instance. in that case, the below code correctly adds no
+                            // reduce action.
+                            assert(!h_stringmap_empty(fs)); // XXX
+
+                            // for each lookahead symbol, put action into table cell
+                            if (terminals_put(table->tmap[state], fs, action) < 0)
+                                has_inadequacy = true;
+                        }
+                    }
+                }
             }
-            H_END_FOREACH     // enhanced production
-                H_END_FOREACH // reducible item
-
-                if (inadeq) {
+            if (has_inadequacy) {
                 h_slist_push(table->inadeq, (void *)(uintptr_t)state);
             }
         }

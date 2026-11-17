@@ -46,6 +46,7 @@ HParser *h_parser_auto_source_at(HParser *parser, const char *file, const char *
 #define h_int32(...) H_AUTO_SOURCE_CALL(h_int32, __VA_ARGS__)
 #define h_int64(...) H_AUTO_SOURCE_CALL(h_int64, __VA_ARGS__)
 #define h_bytes(...) H_AUTO_SOURCE_CALL(h_bytes, __VA_ARGS__)
+#define h_take_rest(...) H_AUTO_SOURCE_CALL(h_take_rest, __VA_ARGS__)
 #define h_many(...) H_AUTO_SOURCE_CALL(h_many, __VA_ARGS__)
 #define h_many1(...) H_AUTO_SOURCE_CALL(h_many1, __VA_ARGS__)
 #define h_many_cap(...) H_AUTO_SOURCE_CALL(h_many_cap, __VA_ARGS__)

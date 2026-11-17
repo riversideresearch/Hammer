@@ -5,6 +5,7 @@
 import os
 import subprocess
 import sys
+import tempfile
 
 default_install_dir = "/usr/local"
 
@@ -24,15 +25,28 @@ vars.Add(
     ListVariable("bindings", "Language bindings to build", "none", ["python", "java", "cpp", "go"])
 )
 vars.Add("python", "Python interpreter", "python3")
+vars.Add(
+    EnumVariable(
+        "platform",
+        "Platform provider (auto, portable, posix, rtems, windows, or custom)",
+        "auto",
+        allowed_values=("auto", "portable", "posix", "rtems", "windows", "custom"),
+    )
+)
+vars.Add("platform_source", "Provider source required by platform=custom", "")
+vars.Add(BoolVariable("platform_threads", "Custom provider supports threaded graph ownership", False))
 
 tools = ["default", "scanreplace"]
+requested_cc = ARGUMENTS.get("CC") or os.getenv("CC")
 
-# add the clang tool if necessary
-if os.getenv("CC") == "clang":
+# clang-cl retains the normal Windows archiver/linker tool selection.
+if os.path.basename(requested_cc or "") == "clang-cl":
+    pass
+elif requested_cc == "clang":
     tools.append("clang")
 else:
     # try to detect if cc happens to be clang by inspecting --version
-    cc = os.getenv("CC") or "cc"
+    cc = requested_cc or "cc"
     ver = subprocess.run([cc, "--version"], capture_output=True, check=False).stdout
     if b"clang" in ver.split():
         tools.append("clang")
@@ -41,9 +55,36 @@ else:
 envvars = {"PATH": os.environ["PATH"]}
 if "PKG_CONFIG_PATH" in os.environ:
     envvars["PKG_CONFIG_PATH"] = os.environ["PKG_CONFIG_PATH"]
+for tempvar in ("TEMP", "TMP"):
+    if tempvar in os.environ:
+        envvars[tempvar] = os.environ[tempvar]
 
 env = Environment(ENV=envvars, variables=vars, tools=tools, toolpath=["tools"])
 env["HAMMER_LIBRARY_PATH_ENV"] = "DYLD_LIBRARY_PATH" if sys.platform == "darwin" else "LD_LIBRARY_PATH"
+
+selected_platform = env["platform"]
+if selected_platform == "auto":
+    if os.name == "nt" or sys.platform.startswith("win"):
+        selected_platform = "windows"
+    elif sys.platform.startswith(("linux", "darwin", "freebsd", "netbsd", "openbsd")):
+        selected_platform = "posix"
+    else:
+        selected_platform = "portable"
+if selected_platform == "custom" and not env["platform_source"]:
+    print("platform=custom requires platform_source=<provider.c>", file=sys.stderr)
+    Exit(1)
+
+env["H_PLATFORM_PROVIDER"] = selected_platform
+env["H_PLATFORM_POSIX"] = int(selected_platform == "posix")
+env["H_PLATFORM_WINDOWS"] = int(selected_platform == "windows")
+env["H_PLATFORM_THREADS"] = int(
+    selected_platform in ("posix", "windows")
+    or (selected_platform == "custom" and bool(env["platform_threads"]))
+)
+env["PLATFORM_SOURCE"] = (
+    env["platform_source"] if selected_platform == "custom" else f"platform_{selected_platform}.c"
+)
+env["PLATFORM_PC_LIBS"] = "-pthread" if selected_platform == "posix" else ""
 
 
 def calcInstallPath(*elements):
@@ -87,8 +128,11 @@ with open("VERSION", "r") as f:
 # Export version for use in sub-SConscripts
 env["VERSION"] = version
 
-pkgconfig_file = env.ScanReplace("libhammer.pc.in", VERSION=version)
+pkgconfig_file = env.ScanReplace(
+    "libhammer.pc.in", VERSION=version, PLATFORM_LIBS=env["PLATFORM_PC_LIBS"]
+)
 env.Depends(pkgconfig_file, "VERSION")
+AlwaysBuild(pkgconfig_file)
 
 AddOption(
     "--variant",
@@ -145,27 +189,54 @@ AddOption(
     help="compile with the fPIC flag for use with shared objects",
 )
 
-env["CC"] = os.getenv("CC") or env["CC"]
-env["CXX"] = os.getenv("CXX") or env["CXX"]
-env["CFLAGS"] = os.getenv("CFLAGS") or env["CFLAGS"]
-env["LINKFLAGS"] = os.getenv("LDFLAGS") or env["LINKFLAGS"]
+env["CC"] = requested_cc or env["CC"]
+env["CXX"] = ARGUMENTS.get("CXX") or os.getenv("CXX") or env["CXX"]
+env["CFLAGS"] = ARGUMENTS.get("CFLAGS") or os.getenv("CFLAGS") or env["CFLAGS"]
+env["LINKFLAGS"] = ARGUMENTS.get("LDFLAGS") or os.getenv("LDFLAGS") or env["LINKFLAGS"]
 
-# Language standard and warnings. Darwin hides vasprintf when
-# _POSIX_C_SOURCE is defined, so use its native feature-test macro there.
-feature_test_macro = (
-    "-D_DARWIN_C_SOURCE" if sys.platform == "darwin" else "-D_POSIX_C_SOURCE=200809L"
-)
-env.MergeFlags(
-    f"-std=c99 {feature_test_macro} -Wall -Wextra -Werror -Wno-unused-parameter "
-    "-Wno-attributes -Wno-unused-variable"
-)
+if selected_platform == "windows":
+    env.Append(CCFLAGS=["/std:c11", "/W4", "/WX"])
+    # Match the intentional unused-argument/local exceptions in the Unix build.
+    if os.path.basename(env["CC"]).lower() in ("clang-cl", "clang-cl.exe"):
+        env.Append(
+            CCFLAGS=["-Wno-unused-parameter", "-Wno-unused-variable", "-Wno-attributes"]
+        )
+    else:
+        env.Append(CCFLAGS=["/wd4100", "/wd4101", "/wd4189"])
+else:
+    env.MergeFlags(
+        "-std=c99 -Wall -Wextra -Werror -Wno-unused-parameter "
+        "-Wno-attributes -Wno-unused-variable"
+    )
 
-# Linker options. macOS provides these APIs through libSystem and has no librt.
-if sys.platform != "darwin":
-    env.MergeFlags("-lrt")
-env.Append(LIBS=["pthread"])
+if selected_platform == "posix":
+    env.MergeFlags("-D_POSIX_C_SOURCE=200809L -pthread")
+    with tempfile.TemporaryDirectory(prefix="hammer-librt-") as probe_dir:
+        probe_source = os.path.join(probe_dir, "probe.c")
+        probe_binary = os.path.join(probe_dir, "probe")
+        with open(probe_source, "w") as probe:
+            probe.write(
+                "#define _POSIX_C_SOURCE 200809L\n"
+                "#include <time.h>\n"
+                "int main(void) { struct timespec t; return clock_gettime(CLOCK_THREAD_CPUTIME_ID, &t); }\n"
+            )
+        try:
+            needs_librt = subprocess.run(
+                [os.getenv("CC") or env["CC"], probe_source, "-o", probe_binary],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                check=False,
+            ).returncode != 0
+        except OSError:
+            needs_librt = False
+    if needs_librt:
+        env.Append(LIBS=["rt"])
+        env["PLATFORM_PC_LIBS"] += " -lrt"
 
 if GetOption("coverage"):
+    if selected_platform == "windows":
+        print("--coverage is not supported by platform=windows", file=sys.stderr)
+        Exit(1)
     env.Append(CCFLAGS=["--coverage"], LDFLAGS=["--coverage"], LINKFLAGS=["--coverage"])
     if env["CC"] == "gcc":
         env.Append(LIBS=["gcov"])
@@ -173,9 +244,12 @@ if GetOption("coverage"):
         env.ParseConfig("llvm-config --ldflags")
 
 if GetOption("force_debug"):
-    env.Append(CCFLAGS=["-g"])
+    env.Append(CCFLAGS=["/Zi" if selected_platform == "windows" else "-g"])
 
 if GetOption("gprof"):
+    if selected_platform == "windows":
+        print("--gprof is not supported by platform=windows", file=sys.stderr)
+        Exit(1)
     if env["CC"] == "gcc" and env["CXX"] == "g++":
         env.Append(CCFLAGS=["-pg"], LDFLAGS=["-pg"], LINKFLAGS=["-pg"])
         env["GPROF"] = 1
@@ -184,6 +258,9 @@ if GetOption("gprof"):
         Exit(1)
 
 if GetOption("fpic"):
+    if selected_platform == "windows":
+        print("--fPIC is not supported by platform=windows", file=sys.stderr)
+        Exit(1)
     if env["CC"] == "gcc":
         env.Append(CCFLAGS=["-fPIC"])
     else:
@@ -191,10 +268,10 @@ if GetOption("fpic"):
         Exit(1)
 
 dbg = env.Clone(VARIANT="debug")
-dbg.Append(CCFLAGS=["-g"])
+dbg.Append(CCFLAGS=["/Zi" if selected_platform == "windows" else "-g"])
 
 opt = env.Clone(VARIANT="opt")
-opt.Append(CCFLAGS=["-O3"])
+opt.Append(CCFLAGS=["/O2" if selected_platform == "windows" else "-O3"])
 
 if GetOption("variant") == "debug":
     env = dbg
@@ -217,17 +294,21 @@ Export("testruns")
 Export("targets")
 Export("binding_results")
 Export("binding_test_stamps")
+Export("selected_platform")
 
 if not GetOption("in_place"):
     env["BUILD_BASE"] = "build/$VARIANT"
     lib = env.SConscript(["src/SConscript"], variant_dir="$BUILD_BASE/src")
-    env.Alias(
-        "examples", env.SConscript(["examples/old/SConscript"], variant_dir="$BUILD_BASE/examples")
-    )
+    if selected_platform != "windows":
+        env.Alias(
+            "examples",
+            env.SConscript(["examples/old/SConscript"], variant_dir="$BUILD_BASE/examples"),
+        )
 else:
     env["BUILD_BASE"] = "."
     lib = env.SConscript(["src/SConscript"])
-    env.Alias(env.SConscript(["examples/old/SConscript"]))
+    if selected_platform != "windows":
+        env.Alias(env.SConscript(["examples/old/SConscript"]))
 
 for testrun in testruns:
     env.Alias("test", testrun)
@@ -318,6 +399,7 @@ def uninstall_action(target, source, env):
             "glue.h",
             "internal.h",
             "platform.h",
+            "platform_config.h",
         ]
     ] + [
         os.path.join(env["parsersincpath"], "parser_internal.h"),

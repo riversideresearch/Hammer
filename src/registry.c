@@ -25,12 +25,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#if defined(_MSC_VER)
-#define h_strdup _strdup
-#else
-#define h_strdup strdup
-#endif
-
 static void *tt_registry = NULL;
 static HTTEntry **tt_by_id = NULL;
 static size_t tt_by_id_sz = 0;
@@ -48,6 +42,21 @@ static int ext_next = 0;
 static int compare_entries(const void *v1, const void *v2) {
     const HTTEntry *e1 = (HTTEntry *)v1, *e2 = (HTTEntry *)v2;
     return strcmp(e1->name, e2->name);
+}
+
+static char *h_strdup(const char *source) {
+    size_t length;
+    char *copy;
+
+    if (source == NULL)
+        return NULL;
+    length = strlen(source);
+    if (length == SIZE_MAX)
+        return NULL;
+    copy = malloc(length + 1);
+    if (copy != NULL)
+        memcpy(copy, source, length + 1);
+    return copy;
 }
 
 static void default_unamb_sub(const HParsedToken *tok, struct result_buf *buf) {
@@ -70,7 +79,7 @@ HTokenType h_allocate_token_new(const char *name,
     new_entry->unamb_sub = unamb_sub ? unamb_sub : default_unamb_sub;
     new_entry->pprint = pprint;
 
-    void *search_result = tsearch(new_entry, &tt_registry, compare_entries);
+    void *search_result = h_tsearch(new_entry, &tt_registry, compare_entries);
     if (!search_result) {
         system_allocator.free(&system_allocator, new_entry);
         return TT_INVALID;
@@ -137,7 +146,7 @@ rollback:
      * Delete the tree node before freeing new_entry because the tree
      * comparator still needs new_entry->name.
      */
-    tdelete(new_entry, &tt_registry, compare_entries);
+    h_tdelete(new_entry, &tt_registry, compare_entries);
     free(owned_name);
     system_allocator.free(&system_allocator, new_entry);
     return TT_INVALID;
@@ -148,7 +157,7 @@ HTokenType h_allocate_token_type(const char *name) {
 HTokenType h_get_token_type_number(const char *name) {
     HTTEntry e;
     e.name = name;
-    HTTEntry **ret = (HTTEntry **)tfind(&e, &tt_registry, compare_entries);
+    HTTEntry **ret = (HTTEntry **)h_tfind(&e, &tt_registry, compare_entries);
     if (ret == NULL)
         return 0;
     else
