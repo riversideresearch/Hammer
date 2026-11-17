@@ -375,6 +375,19 @@
 // Ignore functions declared in hammer.h but not present in the library.
 %ignore h_get_backend_with_params_by_name__m;
 
+#if defined(SWIGJAVA) || defined(SWIGGO)
+// Keep the C API's zero-copy behavior, but bind its parse names to owned-input
+// variants. This also protects callers that bypass HParser.parse().
+%ignore h_parse;
+%ignore h_parse__m;
+%ignore h_parse_debug;
+%ignore h_parse_debug__m;
+%ignore h_parse_bits;
+%ignore h_parse_bits__m;
+%ignore h_parse_bits_debug;
+%ignore h_parse_bits_debug__m;
+#endif
+
 #if defined(SWIGPYTHON)
 // These APIs either require C-owned output pointers or FILE* values. Python
 // receives safe value-object wrappers instead of raw aliases.
@@ -461,6 +474,35 @@ static void h_action_collection_free(struct HPythonActionCollection_ *collection
 %ignore h_dispatch__s;
 #endif
 %include "hammer.h"
+
+#if defined(SWIGJAVA) || defined(SWIGGO)
+%rename(h_parse) h_parse_owned;
+%rename(h_parse__m) h_parse_owned__m;
+%rename(h_parse_debug) h_parse_debug_owned;
+%rename(h_parse_debug__m) h_parse_debug_owned__m;
+%rename(h_parse_bits) h_parse_bits_owned;
+%rename(h_parse_bits__m) h_parse_bits_owned__m;
+%rename(h_parse_bits_debug) h_parse_bits_debug_owned;
+%rename(h_parse_bits_debug__m) h_parse_bits_debug_owned__m;
+HParseResult *h_parse_owned(const HParser *parser, const uint8_t *input, size_t length);
+HParseResult *h_parse_owned__m(HAllocator *mm__, const HParser *parser, const uint8_t *input,
+                              size_t length);
+HParseResult *h_parse_debug_owned(const HParser *parser, const uint8_t *input, size_t length,
+                                  HParseDiagnostic **diagnostic, bool dumpExecutionTrace);
+HParseResult *h_parse_debug_owned__m(HAllocator *mm__, const HParser *parser,
+                                     const uint8_t *input, size_t length,
+                                     HParseDiagnostic **diagnostic, bool dumpExecutionTrace);
+HParseResult *h_parse_bits_owned(const HParser *parser, const uint8_t *input, size_t bit_length);
+HParseResult *h_parse_bits_owned__m(HAllocator *mm__, const HParser *parser,
+                                    const uint8_t *input, size_t bit_length);
+HParseResult *h_parse_bits_debug_owned(const HParser *parser, const uint8_t *input,
+                                       size_t bit_length, HParseDiagnostic **diagnostic,
+                                       bool dumpExecutionTrace);
+HParseResult *h_parse_bits_debug_owned__m(HAllocator *mm__, const HParser *parser,
+                                          const uint8_t *input, size_t bit_length,
+                                          HParseDiagnostic **diagnostic,
+                                          bool dumpExecutionTrace);
+#endif
 
 #ifdef SWIGJAVA
 /*
@@ -1134,21 +1176,12 @@ def free_value(name): return _h_free_value(name)
 
 %extend HParser_ {
     struct HParseResult_* parse(const uint8_t* input, size_t length) {
-        /*
-         * JNI releases the byte-array storage after a native call. Parse
-         * through the streaming API so h_take_rest copies captured input into
-         * the result arena before that happens.
-         */
-        HSuspendedParser *s = h_parse_start($self);
-        if (s == NULL)
-            return h_parse($self, input, length);
-        if (length > 0)
-            h_parse_chunk(s, input, length);
-        return h_parse_finish(s);
+        /* JNI releases the input storage when this native call returns. */
+        return h_parse_owned($self, input, length);
     }
     struct HParseResult_* parse_debug(const uint8_t* input, size_t length,
                                       HParseDiagnostic** diagnostic, bool show) {
-        return h_parse_debug($self, input, length, diagnostic, show);
+        return h_parse_debug_owned($self, input, length, diagnostic, show);
     }
     bool compile(HParserBackend backend) {
         return h_compile($self, backend, NULL) == 0;
@@ -1193,17 +1226,8 @@ def free_value(name): return _h_free_value(name)
 
 %extend HParser_ {
     struct HParseResult_* parse(const uint8_t* input, size_t length) {
-        /*
-         * Go input must not be retained after a cgo call. Parse through the
-         * streaming API so h_take_rest copies captured input into the result
-         * arena.
-         */
-        HSuspendedParser *s = h_parse_start($self);
-        if (s == NULL)
-            return h_parse($self, input, length);
-        if (length > 0)
-            h_parse_chunk(s, input, length);
-        return h_parse_finish(s);
+        /* Results must not retain Go storage after this cgo call returns. */
+        return h_parse_owned($self, input, length);
     }
     bool compile(HParserBackend backend) {
         return h_compile($self, backend, NULL) == 0;
